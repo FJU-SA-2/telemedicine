@@ -10,7 +10,7 @@ db = mysql.connector.connect(
     host="localhost",
     user="root",
     password="你的密碼",
-    database="telemedicine2"
+    database="telemedicine"
 )
 cursor = db.cursor(dictionary=True)
 
