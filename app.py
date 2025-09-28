@@ -9,7 +9,7 @@ CORS(app)  # 允許跨域，Next.js 可以呼叫
 db = mysql.connector.connect(
     host="localhost",
     user="root",
-    password="你的密碼",
+    password="",
     database="telemedicine"
 )
 cursor = db.cursor(dictionary=True)
