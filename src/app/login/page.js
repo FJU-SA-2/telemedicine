@@ -365,31 +365,13 @@ export default function TelemedicineAuth() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-<<<<<<< HEAD
                       <label className="block text-sm font-medium text-gray-700 mb-2 ">姓名</label>
-=======
-                      <label className="block text-sm font-medium text-gray-700 mb-2">姓氏</label>
->>>>>>> 58174573335a2285115b0849dab37c5fe8ae9a63
                       <input 
                         type="text"
                         value={registerForm.firstName}
                         onChange={(e) => setRegisterForm({...registerForm, firstName: e.target.value})}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
-<<<<<<< HEAD
                         placeholder="姓名"
-=======
-                        placeholder="姓氏"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">名字</label>
-                      <input 
-                        type="text"
-                        value={registerForm.lastName}
-                        onChange={(e) => setRegisterForm({...registerForm, lastName: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
-                        placeholder="名字"
->>>>>>> 58174573335a2285115b0849dab37c5fe8ae9a63
                       />
                     </div>
 
