@@ -1,17 +1,40 @@
 'use client';
-import React, { use, useState } from 'react';
+import React, { useState } from 'react';
 import { User, UserCheck, ArrowLeft, Mail, Lock, Phone, Calendar, MapPin } from 'lucide-react';
 
 export default function TelemedicineAuth() {
-  const [currentStep, setCurrentStep] = useState('role'); // 'role', 'auth', 'register'
-  const [selectedRole, setSelectedRole] = useState(''); // 'patient', 'doctor'
-  const [authMode, setAuthMode] = useState('login'); // 'login', 'register'
+  const [currentStep, setCurrentStep] = useState('role');
+  const [selectedRole, setSelectedRole] = useState('');
+  const [authMode, setAuthMode] = useState('login');
   const [isAnimating, setIsAnimating] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  
+  const [loginForm, setLoginForm] = useState({
+    email: '',
+    password: '',
+    rememberMe: false
+  });
+  
+  const [registerForm, setRegisterForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+    birthDate: '',
+    specialty: '',
+    location: '',
+    agreeTerms: false
+  });
 
   const handleRoleSelect = (role) => {
     if (isAnimating) return;
     setIsAnimating(true);
     setSelectedRole(role);
+    setError('');
+    setSuccess('');
     
     setTimeout(() => {
       setCurrentStep('auth');
@@ -22,6 +45,8 @@ export default function TelemedicineAuth() {
   const handleBack = () => {
     if (isAnimating) return;
     setIsAnimating(true);
+    setError('');
+    setSuccess('');
     
     setTimeout(() => {
       if (currentStep === 'register') {
@@ -38,6 +63,8 @@ export default function TelemedicineAuth() {
   const switchToRegister = () => {
     if (isAnimating) return;
     setIsAnimating(true);
+    setError('');
+    setSuccess('');
     
     setTimeout(() => {
       setCurrentStep('register');
@@ -48,6 +75,8 @@ export default function TelemedicineAuth() {
   const switchToLogin = () => {
     if (isAnimating) return;
     setIsAnimating(true);
+    setError('');
+    setSuccess('');
     
     setTimeout(() => {
       setCurrentStep('auth');
@@ -56,34 +85,159 @@ export default function TelemedicineAuth() {
     }, 300);
   };
 
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    
+    if (!loginForm.email || !loginForm.password) {
+      setError('請填寫所有必填欄位');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://127.0.0.1:5000/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: loginForm.email,
+          password: loginForm.password,
+          role: selectedRole
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccess('登入成功！');
+        console.log('登入成功:', data);
+        setTimeout(() => {
+          console.log('導向到主頁面');
+        }, 1500);
+      } else {
+        setError(data.message || '登入失敗');
+      }
+    } catch (err) {
+      setError('連線失敗，請檢查網路連線');
+      console.error('登入錯誤:', err);
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    
+    if (!registerForm.firstName || !registerForm.lastName || !registerForm.email || 
+        !registerForm.phone || !registerForm.password || !registerForm.confirmPassword) {
+      setError('請填寫所有必填欄位');
+      return;
+    }
+
+    if (registerForm.password !== registerForm.confirmPassword) {
+      setError('兩次輸入的密碼不一致');
+      return;
+    }
+
+    if (registerForm.password.length < 6) {
+      setError('密碼長度至少需要 6 個字元');
+      return;
+    }
+
+    if (!registerForm.agreeTerms) {
+      setError('請同意服務條款和隱私政策');
+      return;
+    }
+
+    if (selectedRole === 'doctor' && (!registerForm.specialty || !registerForm.location)) {
+      setError('請填寫執業科別和執業地點');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:5000/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: `${registerForm.firstName}${registerForm.lastName}`,
+          email: registerForm.email,
+          password: registerForm.password,
+          role: selectedRole,
+          phone: registerForm.phone,
+          birthDate: registerForm.birthDate,
+          specialty: registerForm.specialty,
+          location: registerForm.location
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccess('註冊成功！請登入');
+        setRegisterForm({
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          password: '',
+          confirmPassword: '',
+          birthDate: '',
+          specialty: '',
+          location: '',
+          agreeTerms: false
+        });
+        
+        setTimeout(() => {
+          switchToLogin();
+        }, 2000);
+      } else {
+        setError(data.message || '註冊失敗');
+      }
+    } catch (err) {
+      setError('連線失敗，請檢查網路連線');
+      console.error('註冊錯誤:', err);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">遠距醫療平台</h1>
         </div>
 
-        {/* Main Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8 relative overflow-hidden">
           
-          {/* Background Animation */}
           <div className={`absolute inset-0 bg-gradient-to-r from-blue-500/5 to-indigo-500/5 transition-all duration-500 ${isAnimating ? 'scale-110 opacity-0' : 'scale-100 opacity-100'}`}></div>
           
           <div className="relative z-10">
             
-            {/* Back Button */}
             {currentStep !== 'role' && (
               <button 
                 onClick={handleBack}
-                className="relative p-3 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                className="relative p-3 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors mb-4"
               >
                 <ArrowLeft size={20} />
               </button>
             )}
 
-            {/* Role Selection */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg text-sm">
+                {success}
+              </div>
+            )}
+
             {currentStep === 'role' && (
               <div className={`transition-all duration-500 ${isAnimating ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'}`}>
                 <h2 className="text-2xl font-bold text-center text-gray-800 mb-8">請選擇您的身份</h2>
@@ -122,7 +276,6 @@ export default function TelemedicineAuth() {
               </div>
             )}
 
-            {/* Login Form */}
             {currentStep === 'auth' && authMode === 'login' && (
               <div className={`transition-all duration-500 ${isAnimating ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'}`}>
                 <div className="text-center mb-6">
@@ -132,13 +285,15 @@ export default function TelemedicineAuth() {
                   </div>
                 </div>
 
-                <form className="space-y-6">
+                <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">電子信箱</label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 text-gray-400" size={20} />
                       <input 
                         type="email" 
+                        value={loginForm.email}
+                        onChange={(e) => setLoginForm({...loginForm, email: e.target.value})}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
                         placeholder="請輸入您的電子信箱"
                       />
@@ -150,7 +305,9 @@ export default function TelemedicineAuth() {
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 text-gray-400" size={20} />
                       <input 
-                        type="password" 
+                        type="password"
+                        value={loginForm.password}
+                        onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
                         placeholder="請輸入您的密碼"
                       />
@@ -159,7 +316,12 @@ export default function TelemedicineAuth() {
 
                   <div className="flex items-center justify-between">
                     <label className="flex items-center">
-                      <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                      <input 
+                        type="checkbox"
+                        checked={loginForm.rememberMe}
+                        onChange={(e) => setLoginForm({...loginForm, rememberMe: e.target.checked})}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
                       <span className="ml-2 text-sm text-gray-600">記住我</span>
                     </label>
                     <button type="button" className="text-sm text-blue-600 hover:text-blue-700">
@@ -168,7 +330,7 @@ export default function TelemedicineAuth() {
                   </div>
 
                   <button 
-                    type="submit"
+                    onClick={handleLogin}
                     className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-all transform hover:scale-105 ${
                       selectedRole === 'patient' 
                         ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700' 
@@ -177,7 +339,7 @@ export default function TelemedicineAuth() {
                   >
                     立即登入
                   </button>
-                </form>
+                </div>
 
                 <div className="mt-6 text-center">
                   <span className="text-gray-600">還沒有帳號？ </span>
@@ -191,7 +353,6 @@ export default function TelemedicineAuth() {
               </div>
             )}
 
-            {/* Register Form */}
             {currentStep === 'register' && (
               <div className={`transition-all duration-500 ${isAnimating ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'}`}>
                 <div className="text-center mb-6">
@@ -201,14 +362,34 @@ export default function TelemedicineAuth() {
                   </div>
                 </div>
 
-                <form className="space-y-4">
+                <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
+<<<<<<< HEAD
                       <label className="block text-sm font-medium text-gray-700 mb-2 ">姓名</label>
+=======
+                      <label className="block text-sm font-medium text-gray-700 mb-2">姓氏</label>
+>>>>>>> 58174573335a2285115b0849dab37c5fe8ae9a63
                       <input 
-                        type="text" 
+                        type="text"
+                        value={registerForm.firstName}
+                        onChange={(e) => setRegisterForm({...registerForm, firstName: e.target.value})}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
+<<<<<<< HEAD
                         placeholder="姓名"
+=======
+                        placeholder="姓氏"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">名字</label>
+                      <input 
+                        type="text"
+                        value={registerForm.lastName}
+                        onChange={(e) => setRegisterForm({...registerForm, lastName: e.target.value})}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
+                        placeholder="名字"
+>>>>>>> 58174573335a2285115b0849dab37c5fe8ae9a63
                       />
                     </div>
 
@@ -225,11 +406,13 @@ export default function TelemedicineAuth() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 ">電子信箱</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">電子信箱</label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 text-gray-400" size={20} />
                       <input 
-                        type="email" 
+                        type="email"
+                        value={registerForm.email}
+                        onChange={(e) => setRegisterForm({...registerForm, email: e.target.value})}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
                         placeholder="請輸入電子信箱"
                       />
@@ -241,7 +424,9 @@ export default function TelemedicineAuth() {
                     <div className="relative">
                       <Phone className="absolute left-3 top-3 text-gray-400" size={20} />
                       <input 
-                        type="tel" 
+                        type="tel"
+                        value={registerForm.phone}
+                        onChange={(e) => setRegisterForm({...registerForm, phone: e.target.value})}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
                         placeholder="請輸入手機號碼"
                       />
@@ -254,7 +439,9 @@ export default function TelemedicineAuth() {
                       <div className="relative">
                         <Calendar className="absolute left-3 top-3 text-gray-400" size={20} />
                         <input 
-                          type="date" 
+                          type="date"
+                          value={registerForm.birthDate}
+                          onChange={(e) => setRegisterForm({...registerForm, birthDate: e.target.value})}
                           className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
                         />
                       </div>
@@ -265,7 +452,11 @@ export default function TelemedicineAuth() {
                     <>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">執業科別</label>
-                        <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black">
+                        <select 
+                          value={registerForm.specialty}
+                          onChange={(e) => setRegisterForm({...registerForm, specialty: e.target.value})}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
+                        >
                           <option value="">請選擇科別</option>
                           <option value="internal">內科</option>
                           <option value="surgery">外科</option>
@@ -281,7 +472,9 @@ export default function TelemedicineAuth() {
                         <div className="relative">
                           <MapPin className="absolute left-3 top-3 text-gray-400" size={20} />
                           <input 
-                            type="text" 
+                            type="text"
+                            value={registerForm.location}
+                            onChange={(e) => setRegisterForm({...registerForm, location: e.target.value})}
                             className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
                             placeholder="請輸入執業醫院或診所"
                           />
@@ -295,7 +488,9 @@ export default function TelemedicineAuth() {
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 text-gray-400" size={20} />
                       <input 
-                        type="password" 
+                        type="password"
+                        value={registerForm.password}
+                        onChange={(e) => setRegisterForm({...registerForm, password: e.target.value})}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
                         placeholder="請設定密碼"
                       />
@@ -307,7 +502,9 @@ export default function TelemedicineAuth() {
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 text-gray-400" size={20} />
                       <input 
-                        type="password" 
+                        type="password"
+                        value={registerForm.confirmPassword}
+                        onChange={(e) => setRegisterForm({...registerForm, confirmPassword: e.target.value})}
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
                         placeholder="請再次輸入密碼"
                       />
@@ -315,7 +512,12 @@ export default function TelemedicineAuth() {
                   </div>
 
                   <div className="flex items-center">
-                    <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    <input 
+                      type="checkbox"
+                      checked={registerForm.agreeTerms}
+                      onChange={(e) => setRegisterForm({...registerForm, agreeTerms: e.target.checked})}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
                     <span className="ml-2 text-sm text-gray-600">
                       我同意 <button type="button" className="text-blue-600 hover:text-blue-700">服務條款</button> 和 
                       <button type="button" className="text-blue-600 hover:text-blue-700"> 隱私政策</button>
@@ -323,7 +525,7 @@ export default function TelemedicineAuth() {
                   </div>
 
                   <button 
-                    type="submit"
+                    onClick={handleRegister}
                     className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-all transform hover:scale-105 ${
                       selectedRole === 'patient' 
                         ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700' 
@@ -332,7 +534,7 @@ export default function TelemedicineAuth() {
                   >
                     完成註冊
                   </button>
-                </form>
+                </div>
 
                 <div className="mt-6 text-center">
                   <span className="text-gray-600">已經有帳號？ </span>
@@ -348,7 +550,6 @@ export default function TelemedicineAuth() {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="text-center mt-8 text-sm text-gray-500">
           <p>© 2025 遠距醫療平台. 保障您的健康與隱私</p>
         </div>
