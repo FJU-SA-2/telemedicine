@@ -365,25 +365,26 @@ export default function TelemedicineAuth() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">姓氏</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2 ">姓名</label>
                       <input 
                         type="text"
                         value={registerForm.firstName}
                         onChange={(e) => setRegisterForm({...registerForm, firstName: e.target.value})}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
-                        placeholder="姓氏"
+                        placeholder="姓名"
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">名字</label>
-                      <input 
-                        type="text"
-                        value={registerForm.lastName}
-                        onChange={(e) => setRegisterForm({...registerForm, lastName: e.target.value})}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
-                        placeholder="名字"
-                      />
-                    </div>
+
+                  <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">生理性別</label>
+                        <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black">
+                          <option value="">請選擇</option>
+                          <option value="male">男性</option>
+                          <option value="female">女性</option>
+                          </select>
+                      </div>
+
+                 
                   </div>
 
                   <div>
