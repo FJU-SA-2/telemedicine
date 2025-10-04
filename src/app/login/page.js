@@ -56,6 +56,26 @@ export default function TelemedicineAuth() {
     }
   };
 
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('http://localhost:5000/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        // 登入成功 → 導回首頁
+        window.location.href = '/';
+      }
+    } catch (err) {
+      console.error(err);
+      alert("登入失敗，請稍後再試。");
+    }
+  };
 
   const handleRoleSelect = (role) => {
     if (isAnimating) return;
@@ -181,7 +201,7 @@ export default function TelemedicineAuth() {
                   </div>
                 </div>
 
-                <form className="space-y-6">
+                <form onSubmit={handleLogin} className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">電子信箱</label>
                     <div className="relative">
@@ -200,6 +220,7 @@ export default function TelemedicineAuth() {
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 text-gray-400" size={20} />
                       <input
+                        value={password} onChange={(e) => setPassword(e.target.value)}
                         type="password"
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
                         placeholder="請輸入您的密碼"

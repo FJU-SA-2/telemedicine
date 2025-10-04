@@ -77,7 +77,38 @@ def register_user():
     except Exception as e:
         return jsonify({'message': str(e)}), 500
 
+@app.route("/api/login", methods=["POST"])
+def login_user():
+    data = request.get_json()
+    email = data.get("email")
+    password = data.get("password")
 
+    if not email or not password:
+        return jsonify({"message": "請輸入帳號與密碼"}), 400
 
+    try:
+        # 查詢 users 表
+        sql = "SELECT * FROM users WHERE email = %s"
+        cursor.execute(sql, (email,))
+        user = cursor.fetchone()
+
+        if not user:
+            return jsonify({"message": "帳號不存在"}), 401
+
+        # 簡單密碼比對 (之後建議加密)
+        if user["password_hash"] != password:
+            return jsonify({"message": "密碼錯誤"}), 401
+
+        return jsonify({
+            "message": "登入成功",
+            "user": {
+                "user_id": user["user_id"],
+                "username": user["username"],
+                "role": user["role"]
+            }
+        }), 200
+
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
 if __name__ == "__main__":
     app.run()
