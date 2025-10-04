@@ -1,8 +1,10 @@
 'use client';
 import React, { use, useState } from 'react';
 import { User, UserCheck, ArrowLeft, Mail, Lock, Phone, Calendar, MapPin, House, VenusAndMars } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function TelemedicineAuth() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState('role'); // 'role', 'auth', 'register'
   const [selectedRole, setSelectedRole] = useState(''); // 'patient', 'doctor'
   const [authMode, setAuthMode] = useState('login'); // 'login', 'register'
@@ -22,6 +24,12 @@ export default function TelemedicineAuth() {
   const handleSubmit = async (e) => {
     e.preventDefault(); // 防止表單提交後頁面刷新
 
+    // ★ 加入密碼驗證
+  if (password !== confirmPassword) {
+    alert("密碼與確認密碼不一致");
+    return;
+  }
+
     // 組成要送給後端的資料
     const bodyData = {
       first_name: firstName,
@@ -38,11 +46,11 @@ export default function TelemedicineAuth() {
     };
 
     try {
-      const res = await fetch('http://127.0.0.1:5000/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyData),
-      });
+      const res = await fetch('/api/register', {  // 改成相對路徑
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bodyData),
+    });
 
       const data = await res.json();
       alert(data.message);
@@ -56,26 +64,41 @@ export default function TelemedicineAuth() {
     }
   };
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await fetch('http://127.0.0.1:5000/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+ const handleLogin = async (e) => {
+  e.preventDefault();
+  
+  if (!email || !password) {
+    alert("請輸入帳號與密碼");
+    return;
+  }
 
-      const data = await res.json();
+  try {
+    // ★ 改成完整的 Flask URL
+    const res = await fetch("/api/login", {  // 改成相對路徑
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ email, password }),
+  });
 
-      if (res.ok) {
-        // 登入成功 → 導回首頁
-        window.location.href = '/';
-      }
-    } catch (err) {
-      console.error(err);
-      alert("登入失敗，請稍後再試。");
+    const data = await res.json();
+
+    if (!res.ok || data.success === false) {
+      alert(data.message || "登入失敗,請檢查帳密");
+      return;
     }
-  };
+
+    // 登入成功
+    alert("登入成功!");
+    
+    // ★ 跳轉到首頁
+    router.push("/");
+    
+  } catch (err) {
+    console.error(err);
+    alert("登入失敗,請稍後再試");
+  }
+};
 
   const handleRoleSelect = (role) => {
     if (isAnimating) return;
@@ -143,20 +166,24 @@ export default function TelemedicineAuth() {
           <div className="relative z-10">
 
             {/* Back Button */}
-            {currentStep !== 'role' && (
-              <button
-                onClick={handleBack}
-                className="absolute  -left-5 p-2 text-gray-500 hover:text-gray-700 transition-colors rounded-full hover:bg-gray-200 active:bg-gray-300flex items-center justify-center"
-              >
-                <ArrowLeft size={20} />
-              </button>
-            )}
+            <button
+            onClick={() => {
+              if (currentStep === 'role') {
+                router.push('/');  // 在選擇身份階段返回首頁
+              } else {
+                handleBack();  // 其他階段用原本的邏輯
+              }
+            }}
+            className="absolute -left-5 p-2 text-gray-500 hover:text-gray-700 transition-colors rounded-full hover:bg-gray-200 active:bg-gray-300 flex items-center justify-center"
+          >
+            <ArrowLeft size={20} />
+          </button>
 
             {/* Role Selection */}
             {currentStep === 'role' && (
               <div className={`transition-all duration-500 ${isAnimating ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'}`}>
                 <h2 className="text-2xl font-bold text-center text-gray-800 mb-8">請選擇您的身份</h2>
-
+              
                 <div className="space-y-4">
                   <button
                     onClick={() => handleRoleSelect('patient')}
