@@ -154,7 +154,7 @@ export default function TelemedicineAuth() {
 
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">遠距醫療平台</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">醫隨行 · MOG</h1>
         </div>
 
         {/* Main Card */}
@@ -479,7 +479,7 @@ export default function TelemedicineAuth() {
 
         {/* Footer */}
         <div className="text-center mt-8 text-sm text-gray-500">
-          <p>© 2025 遠距醫療平台. 保障您的健康與隱私</p>
+          <p>© 醫隨行 MOG · 保障您的健康與隱私</p>
         </div>
       </div>
     </div>
