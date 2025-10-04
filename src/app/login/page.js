@@ -194,7 +194,7 @@ export default function TelemedicineAuth() {
                         <User className="text-blue-600" size={24} />
                       </div>
                       <div className="text-left">
-                        <h3 className="text-lg font-semibold text-gray-800">我是病患</h3>
+                        <h3 className="text-lg font-semibold text-gray-800">我是患者</h3>
                         <p className="text-gray-600 text-sm">尋求專業醫療諮詢與服務</p>
                       </div>
                     </div>
@@ -294,7 +294,7 @@ export default function TelemedicineAuth() {
                 <div className="text-center mb-6">
                   <div className={`inline-flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium ${selectedRole === 'patient' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
                     {selectedRole === 'patient' ? <User size={16} /> : <UserCheck size={16} />}
-                    <span>{selectedRole === 'patient' ? '病患註冊' : '醫生註冊'}</span>
+                    <span>{selectedRole === 'patient' ? '患者註冊' : '醫生註冊'}</span>
                   </div>
                 </div>
 
