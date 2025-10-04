@@ -1,10 +1,12 @@
 // pages/HomePage.jsx
 "use client";
 import { useState } from "react";
-import Sidebar from "./components/Sidebar";
-import Navbar from "./components/Navbar";
-import Doctorbox from "./components/Doctorbox";
+import Sidebar from "../components/Sidebar";
+import Navbar from "../components/Navbar";
+import Doctorbox from "../components/Doctorbox";
 import { Menu } from "lucide-react";
+
+
 
 export default function HomePage() {
   const [isOpen, setIsOpen] = useState(false);
@@ -27,7 +29,7 @@ export default function HomePage() {
       {/* 原本內容 */}
       <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
         <Navbar />
-     首頁，放平台介紹
+        
       </div>
     </div>
   );
