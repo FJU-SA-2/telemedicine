@@ -1,23 +1,13 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
-import { Menu, Calendar, Clock, Filter, CheckCircle } from "lucide-react";
+import { Menu, Filter, CheckCircle } from "lucide-react";
 
-
-// 假資料
-const mockDoctors = [
-  { doctor_id: 1, name: "張心怡", specialty: "心臟科", experience_years: 10, introduction: "專業心臟科醫師" },
-  { doctor_id: 2, name: "林怡君", specialty: "皮膚科", experience_years: 8, introduction: "皮膚科專家" },
-  { doctor_id: 3, name: "李志明", specialty: "骨科", experience_years: 12, introduction: "骨科醫師" }
-];
-
-
-// 預約模態視窗
+// 🟢 預約模態視窗
 function BookingModal({ doctor, onClose, onConfirm }) {
   const [selectedDate, setSelectedDate] = useState("2025-10-05");
   const [selectedTime, setSelectedTime] = useState("09:00");
-
 
   const weekDates = [
     { day: "週日", date: 5, fullDate: "2025-10-05" },
@@ -26,43 +16,44 @@ function BookingModal({ doctor, onClose, onConfirm }) {
     { day: "週三", date: 8, fullDate: "2025-10-08" },
     { day: "週四", date: 9, fullDate: "2025-10-09" },
     { day: "週五", date: 10, fullDate: "2025-10-10" },
-    { day: "週六", date: 11, fullDate: "2025-10-11" }
+    { day: "週六", date: 11, fullDate: "2025-10-11" },
   ];
-
 
   const timeSlots = [
     "09:00", "09:30", "10:00", "10:30",
     "11:00", "11:30", "14:00", "14:30",
-    "15:00", "15:30", "16:00", "16:30",
-    "17:00"
+    "15:00", "15:30", "16:00", "16:30", "17:00"
   ];
 
-
   const getDayName = (fullDate) => {
-    const dateObj = weekDates.find(d => d.fullDate === fullDate);
+    const dateObj = weekDates.find((d) => d.fullDate === fullDate);
     return dateObj ? dateObj.day : "";
   };
 
+  const doctorFullName = `${doctor.last_name}${doctor.first_name}`;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
       <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl pointer-events-auto">
-        <div className="p-6">
-          {/* 醫師資訊和關閉按鈕 */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-lg">
-                {doctor.name.charAt(0)}
-              </div>
-              <div>
-                <h3 className="font-bold text-base">{doctor.name}</h3>
-                <p className="text-sm text-gray-500">{doctor.specialty}</p>
-              </div>
+        <div className="relative p-6">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+          >
+            ×
+          </button>
+
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-lg">
+              {doctor.last_name.charAt(0)}
+            </div>
+            <div>
+              <h3 className="font-bold text-base">{doctorFullName}</h3>
+              <p className="text-sm text-gray-500">{doctor.specialty}</p>
             </div>
           </div>
 
-
-          {/* 選擇日期 */}
+          {/* 日期選擇 */}
           <div className="mb-5">
             <h4 className="text-sm font-medium text-gray-700 mb-3">選擇日期</h4>
             <div className="grid grid-cols-7 gap-2">
@@ -83,8 +74,7 @@ function BookingModal({ doctor, onClose, onConfirm }) {
             </div>
           </div>
 
-
-          {/* 選擇時段 */}
+          {/* 時間選擇 */}
           <div className="mb-5">
             <h4 className="text-sm font-medium text-gray-700 mb-3">選擇時段</h4>
             <div className="grid grid-cols-4 gap-2">
@@ -104,20 +94,20 @@ function BookingModal({ doctor, onClose, onConfirm }) {
             </div>
           </div>
 
-
-          {/* 預約資訊確認 */}
+          {/* 預約確認 */}
           <div className="bg-blue-50 rounded-lg p-4 mb-5">
             <h4 className="text-sm font-semibold text-gray-800 mb-2">預約資訊確認</h4>
             <div className="space-y-1 text-sm text-gray-700">
-              <p>醫師：{doctor.name} ({doctor.specialty})</p>
-              <p>日期：{selectedDate.split('-')[1]}月{selectedDate.split('-')[2]}日 {getDayName(selectedDate)}</p>
+              <p>醫師：{doctorFullName} ({doctor.specialty})</p>
+              <p>
+                日期：{selectedDate.split("-")[1]}月{selectedDate.split("-")[2]}日{" "}
+                {getDayName(selectedDate)}
+              </p>
               <p>時間：{selectedTime}</p>
               <p>方式：視訊診療</p>
             </div>
           </div>
 
-
-          {/* 確認預約按鈕 */}
           <button
             onClick={() => onConfirm({ doctor, date: selectedDate, time: selectedTime })}
             className="w-full bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600 transition"
@@ -130,22 +120,60 @@ function BookingModal({ doctor, onClose, onConfirm }) {
   );
 }
 
-
-// 預約頁面
+// 🟢 預約主頁面
 function BookingPage() {
-  const [selectedSpecialty, setSelectedSpecialty] = useState("all");
+  const [doctors, setDoctors] = useState([]);
+  const [favorites, setFavorites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedSpecialty, setSelectedSpecialty] = useState("");
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  const userId = 1; // 模擬登入使用者 ID
 
-  const specialties = ["all", "心臟科", "神經科", "骨科", "皮膚科"];
+  useEffect(() => {
+    async function fetchDoctors() {
+      try {
+        const response = await fetch("/api/doctors");
+        const data = await response.json();
+        setDoctors(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("無法取得醫生資料:", error);
+        setDoctors([]);
+      } finally {
+        setLoading(false);
+      }
+    }
 
+    async function fetchFavorites() {
+      try {
+        const res = await fetch(`/api/favorites?user_id=${userId}`);
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setFavorites(data.map((id) => Number(id)));
+        }
+      } catch (err) {
+        console.error("無法取得收藏資料", err);
+      }
+    }
 
-  const filteredDoctors = mockDoctors.filter(doctor =>
-    selectedSpecialty === "all" || doctor.specialty === selectedSpecialty
-  );
+    fetchDoctors();
+    fetchFavorites();
+  }, []);
 
+  const specialties =
+    doctors.length > 0
+      ? ["所有科別", ...new Set(doctors.map((d) => d.specialty))]
+      : ["所有科別"];
+
+  const filteredDoctors = doctors.filter((doctor) => {
+    const specialtyMatch =
+      !selectedSpecialty ||
+      selectedSpecialty === "所有科別" ||
+      doctor.specialty === selectedSpecialty;
+    return specialtyMatch;
+  });
 
   const handleBooking = (bookingData) => {
     console.log("預約資料:", bookingData);
@@ -154,6 +182,44 @@ function BookingPage() {
     setTimeout(() => setShowSuccess(false), 3000);
   };
 
+  const toggleFavorite = async (doctorId) => {
+    try {
+      const res = await fetch("/api/favorites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, doctor_id: doctorId }),
+      });
+
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        console.error("⚠️ API 沒有回傳 JSON，操作中止。");
+        return;
+      }
+
+      if (!data || typeof data.isFavorite === "undefined") {
+        console.error("⚠️ API 回傳格式不正確:", data);
+        return;
+      }
+
+      setFavorites((prev) =>
+        data.isFavorite
+          ? [...prev, doctorId]
+          : prev.filter((id) => id !== doctorId)
+      );
+    } catch (err) {
+      console.error("收藏操作失敗", err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+        <p className="text-gray-600">載入中...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -164,56 +230,85 @@ function BookingPage() {
         </div>
       )}
 
+      {/* 篩選區塊 */}
+      <div className="mb-6 bg-white rounded-lg shadow-sm p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Filter size={20} className="text-blue-600" />
+          <h3 className="text-lg font-semibold">篩選條件</h3>
+        </div>
 
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold mb-4">瀏覽醫師</h2>
-        <div className="flex gap-2 flex-wrap">
-          {specialties.map((specialty) => (
-            <button
-              key={specialty}
-              onClick={() => setSelectedSpecialty(specialty)}
-              className={`px-4 py-2 rounded-lg transition ${
-                selectedSpecialty === specialty
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
-              }`}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              選擇科別
+            </label>
+            <select
+              value={selectedSpecialty}
+              onChange={(e) => setSelectedSpecialty(e.target.value)}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700"
             >
-              {specialty === "all" ? "全部科別" : specialty}
-            </button>
-          ))}
+              <option value="">所有科別</option>
+              {specialties
+                .filter((s) => s !== "所有科別")
+                .map((specialty) => (
+                  <option key={specialty} value={specialty}>
+                    {specialty}
+                  </option>
+                ))}
+            </select>
+          </div>
         </div>
       </div>
 
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredDoctors.map(doctor => (
-          <div key={doctor.doctor_id} className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-start gap-4 mb-4">
-              <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                {doctor.name.charAt(0)}
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-lg">{doctor.name}</h3>
-                <p className="text-blue-600 text-sm">{doctor.specialty}</p>
-                <p className="text-gray-500 text-xs mt-1">
-                  {doctor.experience_years} 年經驗
-                </p>
-              </div>
-            </div>
-            <p className="text-gray-600 text-sm mb-4">{doctor.introduction}</p>
-            <button
-              onClick={() => {
-                setSelectedDoctor(doctor);
-                setShowModal(true);
-              }}
-              className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-            >
-              立即預約
-            </button>
-          </div>
-        ))}
+      {/* 醫師列表 */}
+      <div className="mb-4">
+        <h2 className="text-xl font-bold">
+          搜尋結果 ({filteredDoctors.length} 位醫師)
+        </h2>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredDoctors.map((doctor) => {
+          const fullName = `${doctor.last_name}${doctor.first_name}`;
+          return (
+            <div
+              key={doctor.doctor_id}
+              className="bg-white rounded-lg shadow p-6 relative"
+            >
+              {/* 收藏按鈕 */}
+              <div
+                onClick={() => toggleFavorite(doctor.doctor_id)}
+                className="absolute top-3 right-3 text-yellow-400 text-xl cursor-pointer select-none"
+              >
+                {favorites.includes(doctor.doctor_id) ? "★" : "☆"}
+              </div>
+
+              <div className="flex items-start gap-4 mb-4">
+                <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                  {doctor.last_name.charAt(0)}
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-lg">{fullName}</h3>
+                  <p className="text-blue-600 text-sm">{doctor.specialty}</p>
+                  <p className="text-gray-500 text-xs mt-1">
+                    {doctor.practice_hospital}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  setSelectedDoctor(doctor);
+                  setShowModal(true);
+                }}
+                className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+              >
+                立即預約
+              </button>
+            </div>
+          );
+        })}
+      </div>
 
       {showModal && selectedDoctor && (
         <BookingModal
@@ -226,177 +321,17 @@ function BookingPage() {
   );
 }
 
-
-// 首頁組件
+// 🟢 其他分頁
 function HomePage() {
-  const [currentSlide, setCurrentSlide] = useState(0);
-
-
-  // 幻燈片內容
-  const slides = [
-    {
-      title: "專業遠距醫療服務",
-      description: "隨時隨地獲得專業醫療諮詢",
-      image: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1200&h=600&fit=crop",
-      bgColor: "from-blue-500 to-indigo-600"
-    },
-    {
-      title: "經驗豐富的醫療團隊",
-      description: "匯聚各科專業醫師為您服務",
-      image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=1200&h=600&fit=crop",
-      bgColor: "from-green-500 to-teal-600"
-    },
-    {
-      title: "便捷的線上預約",
-      description: "一鍵預約，輕鬆管理您的健康",
-      image: "https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=1200&h=600&fit=crop",
-      bgColor: "from-purple-500 to-pink-600"
-    },
-    {
-      title: "安全的隱私保護",
-      description: "您的健康資訊受到完善保護",
-      image: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=1200&h=600&fit=crop",
-      bgColor: "from-orange-500 to-red-600"
-    }
-  ];
-
-
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
-  };
-
-
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-  };
-
-
-  const goToSlide = (index) => {
-    setCurrentSlide(index);
-  };
-
-
   return (
-    <div>
-      {/* 幻燈片輪播 */}
-      <div className="relative w-full h-[600px] overflow-hidden bg-gray-900">
-        {/* 幻燈片內容 */}
-        <div
-          className="flex transition-transform duration-500 ease-in-out h-full"
-          style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-        >
-          {slides.map((slide, index) => (
-            <div key={index} className="min-w-full h-full relative">
-              {/* 背景圖片 */}
-              <img
-                src={slide.image}
-                alt={slide.title}
-                className="w-full h-full object-cover"
-              />
-             
-              {/* 漸層遮罩 */}
-              <div className={`absolute inset-0 bg-gradient-to-r ${slide.bgColor} opacity-60`}></div>
-
-
-              {/* 文字內容 */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-white px-4">
-                <h2 className="text-5xl font-bold mb-4 text-center drop-shadow-lg">
-                  {slide.title}
-                </h2>
-                <p className="text-2xl text-center drop-shadow-md">
-                  {slide.description}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-
-        {/* 左箭頭按鈕 */}
-        <button
-          onClick={prevSlide}
-          className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/30 hover:bg-white/50 backdrop-blur-sm p-3 rounded-full transition-all duration-300 group"
-          aria-label="上一張"
-        >
-          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-
-
-        {/* 右箭頭按鈕 */}
-        <button
-          onClick={nextSlide}
-          className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/30 hover:bg-white/50 backdrop-blur-sm p-3 rounded-full transition-all duration-300 group"
-          aria-label="下一張"
-        >
-          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-
-
-        {/* 底部指示點 */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3">
-          {slides.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => goToSlide(index)}
-              className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                currentSlide === index
-                  ? "bg-white w-8"
-                  : "bg-white/50 hover:bg-white/75"
-              }`}
-              aria-label={`前往第 ${index + 1} 張`}
-            />
-          ))}
-        </div>
-      </div>
-
-
-      {/* 平台介紹區域 */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">
-          為什麼選擇我們？
-        </h2>
-        <div className="grid md:grid-cols-3 gap-8">
-          <div className="text-center p-6 bg-white rounded-lg shadow-md">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold mb-2">不限特定地點</h3>
-            <p className="text-gray-600">隨地都能獲得醫療諮詢</p>
-          </div>
-
-
-          <div className="text-center p-6 bg-white rounded-lg shadow-md">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold mb-2">資料安全保障</h3>
-            <p className="text-gray-600">符合醫療隱私保護標準</p>
-          </div>
-
-
-          <div className="text-center p-6 bg-white rounded-lg shadow-md">
-            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold mb-2">專業醫療團隊</h3>
-            <p className="text-gray-600">經驗豐富的認證醫師</p>
-          </div>
-        </div>
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <h2 className="text-2xl font-bold mb-4">首頁</h2>
+      <div className="bg-white rounded-lg shadow p-6">
+        <p className="text-gray-600">歡迎使用遠距醫療系統</p>
       </div>
     </div>
   );
 }
-
 
 function SettingsPage() {
   return (
@@ -407,16 +342,13 @@ function SettingsPage() {
   );
 }
 
-
-// 主應用程式
+// 🟢 主應用入口
 export default function App() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("reserve");
 
-
   return (
     <div className="relative min-h-screen bg-gray-50">
-      {/* 選單按鈕 */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -426,8 +358,6 @@ export default function App() {
         </button>
       )}
 
-
-      {/* 側邊欄 */}
       <Sidebar
         isOpen={isOpen}
         setIsOpen={setIsOpen}
@@ -435,9 +365,11 @@ export default function App() {
         setActiveTab={setActiveTab}
       />
 
-
-      {/* 主內容區 */}
-      <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+      <div
+        className={`transition-all duration-300 ${
+          isOpen ? "ml-64" : "ml-0"
+        }`}
+      >
         <Navbar />
         {activeTab === "home" && <HomePage />}
         {activeTab === "reserve" && <BookingPage />}
@@ -447,4 +379,3 @@ export default function App() {
     </div>
   );
 }
-
