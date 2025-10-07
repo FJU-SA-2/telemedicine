@@ -10,6 +10,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   const menuItems = [
     { id: "/", label: "首頁", icon: House, href: "/" },
     { id: "/reserve", label: "我要預約", icon: Calendar, href: "/reserve" },
+    { id: "/my reserve", label: "我的預約", icon: Calendar, href: "/my reserve" },
     { id: "/doctorlist", label: "醫生介紹", icon: ContactRound, href: "/doctorlist" },
     { id: "/settings", label: "以後再想", icon: Settings, href: "/settings" },
   ];
