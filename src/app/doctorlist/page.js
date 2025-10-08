@@ -61,11 +61,10 @@ function BookingModal({ doctor, onClose, onConfirm }) {
                 <button
                   key={item.fullDate}
                   onClick={() => setSelectedDate(item.fullDate)}
-                  className={`py-2 px-1 rounded-lg text-center transition ${
-                    selectedDate === item.fullDate
+                  className={`py-2 px-1 rounded-lg text-center transition ${selectedDate === item.fullDate
                       ? "bg-blue-500 text-white"
                       : "bg-white border border-gray-200 text-gray-700 hover:border-blue-300"
-                  }`}
+                    }`}
                 >
                   <div className="text-xs mb-1">{item.day}</div>
                   <div className="text-base font-medium">{item.date}</div>
@@ -82,11 +81,10 @@ function BookingModal({ doctor, onClose, onConfirm }) {
                 <button
                   key={time}
                   onClick={() => setSelectedTime(time)}
-                  className={`py-2.5 rounded-lg text-sm font-medium transition ${
-                    selectedTime === time
+                  className={`py-2.5 rounded-lg text-sm font-medium transition ${selectedTime === time
                       ? "bg-blue-500 text-white"
                       : "bg-white border border-gray-200 text-gray-700 hover:border-blue-300"
-                  }`}
+                    }`}
                 >
                   {time}
                 </button>
@@ -136,7 +134,8 @@ function BookingPage() {
     async function fetchDoctors() {
       try {
         const response = await fetch("/api/doctors");
-        const data = await response.json();
+        const text = await response.text(); // 先拿文字
+        const data = text ? JSON.parse(text) : []; // 再安全解析 JSON
         setDoctors(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("無法取得醫生資料:", error);
@@ -149,18 +148,32 @@ function BookingPage() {
     async function fetchFavorites() {
       try {
         const res = await fetch(`/api/favorites?user_id=${userId}`);
-        const data = await res.json();
+
+        if (!res.ok) {
+          console.error("Fetch favorites 錯誤:", res.status);
+          setFavorites([]);
+          return;
+        }
+
+        const text = await res.text(); // 先讀文字
+        const data = text ? JSON.parse(text) : []; // 空字串就給空陣列
+
         if (Array.isArray(data)) {
           setFavorites(data.map((id) => Number(id)));
+        } else {
+          console.warn("Favorites 資料格式錯誤:", data);
+          setFavorites([]);
         }
       } catch (err) {
         console.error("無法取得收藏資料", err);
+        setFavorites([]);
       }
     }
 
     fetchDoctors();
     fetchFavorites();
   }, []);
+
 
   const specialties =
     doctors.length > 0
@@ -366,9 +379,8 @@ export default function App() {
       />
 
       <div
-        className={`transition-all duration-300 ${
-          isOpen ? "ml-64" : "ml-0"
-        }`}
+        className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"
+          }`}
       >
         <Navbar />
         {activeTab === "home" && <HomePage />}
