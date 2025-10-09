@@ -22,6 +22,9 @@ export default function TelemedicineAuth() {
   const [address, setAddress] = useState(''); // 住家地址
   const [verificationCode, setVerificationCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [certificate, setCertificate] = useState(null);
+  const [certificatePreview, setCertificatePreview] = useState('');
+
 
   const handleSubmit = async (e) => {
   e.preventDefault();
@@ -31,6 +34,10 @@ export default function TelemedicineAuth() {
     return;
   }
 
+  if (selectedRole === 'doctor' && !certificate) {
+  alert("請上傳執業證明");
+  return;
+  }
   setIsLoading(true);
 
   const bodyData = {
@@ -78,6 +85,13 @@ export default function TelemedicineAuth() {
     alert("請輸入帳號與密碼");
     return;
   }
+
+  if (email === 'admin@mog.com' && password === 'admin123') {
+      router.push('/admin/dashboard');  // 登入成功後跳轉
+    } else {
+      alert('帳號或密碼錯誤');
+    }
+  
 
   try {
     // ★ 改成完整的 Flask URL
@@ -436,15 +450,85 @@ const handleVerifyCode = async (e) => {
                         <select value={specialty} onChange={(e) => setSpecialty(e.target.value)}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black">
                           <option value="">請選擇科別</option>
-                          <option value="internal">內科</option>
-                          <option value="surgery">外科</option>
-                          <option value="pediatrics">小兒科</option>
+                          <option value="內科">內科</option>
+                          <option value="外科">外科</option>
+                          <option value="小兒科">小兒科</option>
                           <option value="gynecology">婦產科</option>
-                          <option value="psychiatry">精神科</option>
-                          <option value="dermatology">皮膚科</option>
+                          <option value="婦產科">精神科</option>
+                          <option value="皮膚科">皮膚科</option>
                         </select>
                       </div>
 
+                    {/* 在表單中 specialty 和 clinic 之間加入 */}
+                      {selectedRole === 'doctor' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            請上傳有效執業證明 <span className="text-red-500">*</span>
+                          </label>
+                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                            {certificatePreview ? (
+                              <div className="space-y-4">
+                                <img src={certificatePreview} alt="證照預覽" className="max-h-40 mx-auto rounded" />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCertificate(null);
+                                    setCertificatePreview('');
+                                  }}
+                                  className="text-red-600 text-sm hover:text-red-700"
+                                >
+                                  移除檔案
+                                </button>
+                              </div>
+                            ) : (
+                              <div>
+                                <input
+                                  type="file"
+                                  accept=".pdf,.png,.jpg,.jpeg"
+                                  onChange={async (e) => {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                      setCertificate(file);
+                                      if (file.type.startsWith('image/')) {
+                                        setCertificatePreview(URL.createObjectURL(file));
+                                      }
+                                      
+                                      // 立即上傳
+                                      const formData = new FormData();
+                                      formData.append('file', file);
+                                      
+                                      try {
+                                        const res = await fetch('/api/upload-certificate', {
+                                          method: 'POST',
+                                          credentials: 'include',
+                                          body: formData,
+                                        });
+                                        
+                                        if (!res.ok) {
+                                          alert('檔案上傳失敗');
+                                          setCertificate(null);
+                                          setCertificatePreview('');
+                                        }
+                                      } catch (err) {
+                                        console.error(err);
+                                        alert('檔案上傳失敗');
+                                      }
+                                    }
+                                  }}
+                                  className="hidden"
+                                  id="certificate-upload"
+                                />
+                                <label htmlFor="certificate-upload" className="cursor-pointer">
+                                  <div className="text-gray-600">
+                                    <p className="mb-2">點擊上傳或拖曳檔案至此</p>
+                                    <p className="text-xs text-gray-500">支援 PDF, PNG, JPG (最大 16MB)</p>
+                                  </div>
+                                </label>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">執業地點</label>
                         <div className="relative">

@@ -8,6 +8,8 @@ import random
 import string
 from datetime import datetime, timedelta
 from email.header import Header
+from werkzeug.utils import secure_filename
+import os
 
 app = Flask(__name__)
 app.secret_key = "your-very-secret-key-change-this"  # ⚠️ 改成更安全的密鑰
@@ -39,6 +41,23 @@ def get_db():
         password="",
         database="telemedicine"
     )
+
+
+
+# 檔案上傳設定
+UPLOAD_FOLDER = 'uploads/certificates'
+ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
+
+# 確保上傳資料夾存在
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+
 
 # 生成6位數驗證碼
 def generate_verification_code():
@@ -104,7 +123,102 @@ def send_verification_email(recipient_email, verification_code):
         import traceback
         traceback.print_exc()
         return False
-    
+
+#新增郵件發送函數 
+def send_registration_received_email(recipient_email, doctor_name):
+    """醫師註冊後發送資料已收到郵件"""
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = recipient_email
+        msg['Subject'] = Header('醫隨行 MOG - 註冊資料已收到', 'utf-8')
+        
+        html_body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #10b981;">感謝您註冊醫隨行 MOG</h2>
+            <p>親愛的 {doctor_name} 醫師,您好:</p>
+            <p>我們已收到您的註冊資料及執業證明文件。</p>
+            <p>我們的審核團隊將在 <strong>1-3 個工作天</strong> 內完成資料審核。</p>
+            <p>審核完成後,系統將自動發送通知信件到此信箱,屆時您即可開始:</p>
+            <ul>
+                <li>✓ 設定看診時段</li>
+                <li>✓ 接受病患預約</li>
+                <li>✓ 進行線上問診</li>
+            </ul>
+            <p>如有任何問題,歡迎隨時聯繫我們。</p>
+            <hr>
+            <p style="color: #666; font-size: 12px;">© 醫隨行 MOG · 保障您的健康與隱私</p>
+        </body>
+        </html>
+        """
+        
+        text_body = f"""
+        感謝您註冊醫隨行 MOG
+        
+        親愛的 {doctor_name} 醫師,您好:
+        
+        我們已收到您的註冊資料及執業證明文件。
+        我們的審核團隊將在 1-3 個工作天內完成資料審核。
+        
+        審核完成後,系統將自動發送通知信件到此信箱。
+        
+        © 醫隨行 MOG · 保障您的健康與隱私
+        """
+        
+        part1 = MIMEText(text_body, 'plain', 'utf-8')
+        part2 = MIMEText(html_body, 'html', 'utf-8')
+        msg.attach(part1)
+        msg.attach(part2)
+        
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.send_message(msg)
+        
+        return True
+    except Exception as e:
+        print(f"❌ 郵件發送失敗: {str(e)}")
+        return False
+
+def send_approval_email(recipient_email, doctor_name):
+    """醫師審核通過後發送郵件"""
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = recipient_email
+        msg['Subject'] = Header('醫隨行 MOG - 審核通過通知', 'utf-8')
+        
+        html_body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #10b981;">🎉 恭喜!您的資料已審核通過</h2>
+            <p>親愛的 {doctor_name} 醫師,您好:</p>
+            <p>您的註冊資料已通過審核,現在您可以:</p>
+            <ul>
+                <li>✓ 登入系統開始使用</li>
+                <li>✓ 設定您的看診時段</li>
+                <li>✓ 接受病患預約</li>
+                <li>✓ 進行線上問診服務</li>
+            </ul>
+            <p>立即登入開始您的醫隨行之旅!</p>
+            <a href="http://localhost:3000/auth" style="display: inline-block; padding: 12px 24px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; margin-top: 16px;">立即登入</a>
+            <hr>
+            <p style="color: #666; font-size: 12px;">© 醫隨行 MOG · 保障您的健康與隱私</p>
+        </body>
+        </html>
+        """
+        
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.send_message(msg)
+        
+        return True
+    except Exception as e:
+        print(f"❌ 郵件發送失敗: {str(e)}")
+        return False
+
 
 @app.route("/api/doctors", methods=["GET"])
 def get_doctors():
@@ -371,6 +485,195 @@ def get_appointments():
         }
     ]
     return jsonify(data)
+
+#醫師註冊檔案上傳
+@app.route("/api/upload-certificate", methods=["POST"])
+def upload_certificate():
+    """上傳醫師執業證明"""
+    if 'file' not in request.files:
+        return jsonify({'message': '未選擇檔案'}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'message': '未選擇檔案'}), 400
+    
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_filename = f"{timestamp}_{filename}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+        
+        file.save(filepath)
+        
+        # 將檔案路徑暫存到 session
+        if 'pending_registration' not in session:
+            session['pending_registration'] = {}
+        session['pending_registration']['certificate'] = filepath
+        
+        return jsonify({
+            'success': True,
+            'message': '檔案上傳成功',
+            'filename': unique_filename
+        }), 200
+    
+    return jsonify({'message': '不支援的檔案格式 (僅支援 PDF, PNG, JPG)'}), 400
+
+#管理者相關
+@app.route("/api/admin/login", methods=["POST"])
+def admin_login():
+    """管理者登入"""
+    data = request.get_json()
+    email = data.get("email")
+    password = data.get("password")
+
+    if not email or not password:
+        return jsonify({"message": "請輸入帳號與密碼"}), 400
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    try:
+        cursor.execute("SELECT * FROM admin WHERE email = %s", (email,))
+        admin = cursor.fetchone()
+
+        if not admin or admin["password_hash"] != password:
+            return jsonify({"message": "帳號或密碼錯誤"}), 401
+
+        session['admin_id'] = admin["admin_id"]
+        session['admin_email'] = email
+        session['is_admin'] = True
+
+        return jsonify({
+            "success": True,
+            "message": "登入成功",
+            "admin": {
+                "admin_id": admin["admin_id"],
+                "username": admin["username"],
+                "email": email
+            }
+        }), 200
+
+    except Exception as e:
+        return jsonify({"message": f"登入失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+@app.route("/api/admin/pending-doctors", methods=["GET"])
+def get_pending_doctors():
+    """取得待審核醫師列表"""
+    if not session.get('is_admin'):
+        return jsonify({"message": "無權限"}), 403
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    try:
+        sql = """
+            SELECT d.*, u.email, u.created_at as registration_date
+            FROM doctor d
+            JOIN users u ON d.user_id = u.user_id
+            WHERE d.approval_status = 'pending'
+            ORDER BY u.created_at DESC
+        """
+        cursor.execute(sql)
+        doctors = cursor.fetchall()
+
+        return jsonify(doctors), 200
+
+    except Exception as e:
+        return jsonify({"message": f"查詢失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+@app.route("/api/admin/approve-doctor/<int:doctor_id>", methods=["POST"])
+def approve_doctor(doctor_id):
+    """核准醫師註冊"""
+    if not session.get('is_admin'):
+        return jsonify({"message": "無權限"}), 403
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    try:
+        # 取得醫師資料
+        cursor.execute("""
+            SELECT d.*, u.email 
+            FROM doctor d
+            JOIN users u ON d.user_id = u.user_id
+            WHERE d.doctor_id = %s
+        """, (doctor_id,))
+        doctor = cursor.fetchone()
+
+        if not doctor:
+            return jsonify({"message": "找不到該醫師"}), 404
+
+        # 更新審核狀態
+        cursor.execute("""
+            UPDATE doctor 
+            SET approval_status = 'approved', approval_date = NOW()
+            WHERE doctor_id = %s
+        """, (doctor_id,))
+        db.commit()
+
+        # 發送審核通過郵件
+        doctor_name = doctor['first_name'] + doctor['last_name']
+        send_approval_email(doctor['email'], doctor_name)
+
+        return jsonify({
+            "success": True,
+            "message": "已核准並發送通知郵件"
+        }), 200
+
+    except Exception as e:
+        db.rollback()
+        return jsonify({"message": f"核准失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+@app.route("/api/admin/reject-doctor/<int:doctor_id>", methods=["POST"])
+def reject_doctor(doctor_id):
+    """拒絕醫師註冊"""
+    if not session.get('is_admin'):
+        return jsonify({"message": "無權限"}), 403
+
+    data = request.get_json()
+    reason = data.get("reason", "資料不符合要求")
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            UPDATE doctor 
+            SET approval_status = 'rejected', approval_date = NOW(), rejection_reason = %s
+            WHERE doctor_id = %s
+        """, (reason, doctor_id))
+        db.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "已拒絕該醫師註冊"
+        }), 200
+
+    except Exception as e:
+        db.rollback()
+        return jsonify({"message": f"操作失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+@app.route("/api/admin/certificate/<path:filename>", methods=["GET"])
+def get_certificate(filename):
+    """取得證照圖片"""
+    if not session.get('is_admin'):
+        return jsonify({"message": "無權限"}), 403
+    
+    from flask import send_from_directory
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
 if __name__ == "__main__":
