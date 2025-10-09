@@ -2,9 +2,9 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
-import { Menu, Filter, CheckCircle } from "lucide-react";
+import { Menu, Filter, CheckCircle, ArrowLeft } from "lucide-react";
 
-// 🟢 預約模態視窗
+// 🟢 預約模態窗口
 function BookingModal({ doctor, onClose, onConfirm }) {
   const [selectedDate, setSelectedDate] = useState("2025-10-05");
   const [selectedTime, setSelectedTime] = useState("09:00");
@@ -38,7 +38,7 @@ function BookingModal({ doctor, onClose, onConfirm }) {
         <div className="relative p-6">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            className="absolute top-4 right-4 text-black hover:text-gray-600"
           >
             ×
           </button>
@@ -49,21 +49,21 @@ function BookingModal({ doctor, onClose, onConfirm }) {
             </div>
             <div>
               <h3 className="font-bold text-base">{doctorFullName}</h3>
-              <p className="text-sm text-gray-500">{doctor.specialty}</p>
+              <p className="text-sm text-black">{doctor.specialty}</p>
             </div>
           </div>
 
           {/* 日期選擇 */}
           <div className="mb-5">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">選擇日期</h4>
+            <h4 className="text-sm font-medium text-black-700 mb-3">選擇日期</h4>
             <div className="grid grid-cols-7 gap-2">
               {weekDates.map((item) => (
                 <button
                   key={item.fullDate}
                   onClick={() => setSelectedDate(item.fullDate)}
                   className={`py-2 px-1 rounded-lg text-center transition ${selectedDate === item.fullDate
-                      ? "bg-blue-500 text-white"
-                      : "bg-white border border-gray-200 text-gray-700 hover:border-blue-300"
+                      ? "bg-blue-500 text-black"
+                      : "bg-white border border-gray-200 text-black-700 hover:border-blue-300"
                     }`}
                 >
                   <div className="text-xs mb-1">{item.day}</div>
@@ -75,15 +75,15 @@ function BookingModal({ doctor, onClose, onConfirm }) {
 
           {/* 時間選擇 */}
           <div className="mb-5">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">選擇時段</h4>
+            <h4 className="text-sm font-medium text-black-700 mb-3">選擇時段</h4>
             <div className="grid grid-cols-4 gap-2">
               {timeSlots.map((time) => (
                 <button
                   key={time}
                   onClick={() => setSelectedTime(time)}
                   className={`py-2.5 rounded-lg text-sm font-medium transition ${selectedTime === time
-                      ? "bg-blue-500 text-white"
-                      : "bg-white border border-gray-200 text-gray-700 hover:border-blue-300"
+                      ? "bg-blue-500 text-black"
+                      : "bg-white border border-gray-200 text-black-700 hover:border-blue-300"
                     }`}
                 >
                   {time}
@@ -118,15 +118,104 @@ function BookingModal({ doctor, onClose, onConfirm }) {
   );
 }
 
+// 🟢 醫師詳細資料頁面
+function DoctorDetailsPage({ doctor, onBack, onBooking }) {
+  const [showModal, setShowModal] = useState(false);
+
+  const handleBookingClick = () => {
+    setShowModal(true);
+  };
+
+  const handleConfirm = (bookingData) => {
+    setShowModal(false);
+    onBooking(bookingData);
+  };
+
+  const doctorFullName = `${doctor.last_name}${doctor.first_name}`;
+
+  return (
+    <div className="p-6 bg-gray-50 min-h-screen">
+      
+
+      <div className="bg-white rounded-lg shadow p-8 max-w-2xl mx-auto">
+        {/* 醫師基本信息 */}
+        <div className="flex gap-6 mb-8">
+          <div className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-3xl flex-shrink-0">
+            {doctor.last_name.charAt(0)}
+          </div>
+          <div>
+            <h1 className="text-black font-bold mb-2">{doctorFullName}</h1>
+            <p className="text-blue-600 text-lg mb-1">{doctor.specialty}</p>
+            <p className="text-gray-600">{doctor.practice_hospital}</p>
+          </div>
+        </div>
+
+        {/* 詳細資料 */}
+        <div className="space-y-6 border-t border-gray-200 pt-6">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">簡介</h3>
+            <p className="text-gray-600 leading-relaxed">
+              {doctor.description || "暫無介紹"}
+            </p>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">專業經歷</h3>
+            <p className="text-gray-600 leading-relaxed">
+              {doctor.experience || "暫無相關資訊"}
+            </p>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">學位與認證</h3>
+            <p className="text-gray-600 leading-relaxed">
+              {doctor.qualifications || "暫無相關資訊"}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-gray-600 text-sm">掛號費</p>
+              <p className="text-2xl font-bold text-blue-600">
+                ${doctor.consultation_fee || "暫無"}
+              </p>
+            </div>
+            
+          </div>
+
+          
+          
+        </div>
+
+        {/* 預約按鈕 */}
+        <button
+          onClick={handleBookingClick}
+          className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition mt-8"
+        >
+          立即預約
+        </button>
+      </div>
+
+      {showModal && (
+        <BookingModal
+          doctor={doctor}
+          onClose={() => setShowModal(false)}
+          onConfirm={handleConfirm}
+        />
+      )}
+    </div>
+  );
+}
+
 // 🟢 預約主頁面
-function BookingPage() {
+function BookingPage({ onSelectDoctor, selectedDoctor }) {
   const [doctors, setDoctors] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSpecialty, setSelectedSpecialty] = useState("");
-  const [selectedDoctor, setSelectedDoctor] = useState(null);
-  const [showModal, setShowModal] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showFavoriteToast, setShowFavoriteToast] = useState(false);
+  const [favoriteMessage, setFavoriteMessage] = useState("");
 
   const userId = 1; // 模擬登入使用者 ID
 
@@ -134,8 +223,8 @@ function BookingPage() {
     async function fetchDoctors() {
       try {
         const response = await fetch("/api/doctors");
-        const text = await response.text(); // 先拿文字
-        const data = text ? JSON.parse(text) : []; // 再安全解析 JSON
+        const text = await response.text();
+        const data = text ? JSON.parse(text) : [];
         setDoctors(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("無法取得醫生資料:", error);
@@ -150,22 +239,23 @@ function BookingPage() {
         const res = await fetch(`/api/favorites?user_id=${userId}`);
 
         if (!res.ok) {
-          console.error("Fetch favorites 錯誤:", res.status);
+          console.error(`取得最愛醫生失敗，狀態碼: ${res.status} ${res.statusText}`);
           setFavorites([]);
           return;
         }
 
-        const text = await res.text(); // 先讀文字
-        const data = text ? JSON.parse(text) : []; // 空字串就給空陣列
+        const data = await res.json();
 
         if (Array.isArray(data)) {
           setFavorites(data.map((id) => Number(id)));
+        } else if (typeof data === 'object' && data.favorites && Array.isArray(data.favorites)) {
+          setFavorites(data.favorites.map((id) => Number(id)));
         } else {
-          console.warn("Favorites 資料格式錯誤:", data);
+          console.warn("最愛醫生資料格式不正確:", data);
           setFavorites([]);
         }
       } catch (err) {
-        console.error("無法取得收藏資料", err);
+        console.error("無法取得最愛醫生資料:", err.message);
         setFavorites([]);
       }
     }
@@ -173,7 +263,6 @@ function BookingPage() {
     fetchDoctors();
     fetchFavorites();
   }, []);
-
 
   const specialties =
     doctors.length > 0
@@ -188,9 +277,12 @@ function BookingPage() {
     return specialtyMatch;
   });
 
+  const handleViewMore = (doctor) => {
+    onSelectDoctor(doctor);
+  };
+
   const handleBooking = (bookingData) => {
     console.log("預約資料:", bookingData);
-    setShowModal(false);
     setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 3000);
   };
@@ -207,7 +299,7 @@ function BookingPage() {
       try {
         data = await res.json();
       } catch {
-        console.error("⚠️ API 沒有回傳 JSON，操作中止。");
+        console.error("⚠️ API 沒有回傳JSON，操作中止。");
         return;
       }
 
@@ -221,6 +313,11 @@ function BookingPage() {
           ? [...prev, doctorId]
           : prev.filter((id) => id !== doctorId)
       );
+
+      // 顯示收藏提示
+      setFavoriteMessage(data.isFavorite ? "已加入收藏" : "已取消收藏");
+      setShowFavoriteToast(true);
+      setTimeout(() => setShowFavoriteToast(false), 3000);
     } catch (err) {
       console.error("收藏操作失敗", err);
     }
@@ -234,12 +331,29 @@ function BookingPage() {
     );
   }
 
+  if (selectedDoctor) {
+    return (
+      <DoctorDetailsPage
+        doctor={selectedDoctor}
+        onBack={() => onSelectDoctor(null)}
+        onBooking={handleBooking}
+      />
+    );
+  }
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {showSuccess && (
         <div className="fixed top-20 right-6 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2">
           <CheckCircle size={20} />
           <span>預約成功!</span>
+        </div>
+      )}
+
+      {showFavoriteToast && (
+        <div className="fixed top-20 right-6 bg-blue-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2">
+          <CheckCircle size={20} />
+          <span>{favoriteMessage}</span>
         </div>
       )}
 
@@ -252,13 +366,13 @@ function BookingPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-black-700 mb-2">
               選擇科別
             </label>
             <select
               value={selectedSpecialty}
               onChange={(e) => setSelectedSpecialty(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-black-700"
             >
               <option value="">所有科別</option>
               {specialties
@@ -310,26 +424,15 @@ function BookingPage() {
               </div>
 
               <button
-                onClick={() => {
-                  setSelectedDoctor(doctor);
-                  setShowModal(true);
-                }}
+                onClick={() => handleViewMore(doctor)}
                 className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
               >
-                立即預約
+                查看更多
               </button>
             </div>
           );
         })}
       </div>
-
-      {showModal && selectedDoctor && (
-        <BookingModal
-          doctor={selectedDoctor}
-          onClose={() => setShowModal(false)}
-          onConfirm={handleBooking}
-        />
-      )}
     </div>
   );
 }
@@ -340,7 +443,7 @@ function HomePage() {
     <div className="p-6 bg-gray-50 min-h-screen">
       <h2 className="text-2xl font-bold mb-4">首頁</h2>
       <div className="bg-white rounded-lg shadow p-6">
-        <p className="text-gray-600">歡迎使用遠距醫療系統</p>
+        <p className="text-gray-600">歡迎使用遠端醫療系統</p>
       </div>
     </div>
   );
@@ -359,15 +462,17 @@ function SettingsPage() {
 export default function App() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("reserve");
+  const [selectedDoctor, setSelectedDoctor] = useState(null);
 
-  return (
-    <div className="relative min-h-screen bg-gray-50">
+   return (
+    <div className="relative">
+      {/* 打開按鈕 */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed top-4 left-4 z-30 p-2 bg-white rounded-lg shadow hover:bg-gray-50"
+          className="p-3 fixed top-2 left-4 text-gray z-50"
         >
-          <Menu size={24} className="text-gray-600" />
+          <Menu size={24} />
         </button>
       )}
 
@@ -384,8 +489,18 @@ export default function App() {
       >
         <Navbar />
         {activeTab === "home" && <HomePage />}
-        {activeTab === "reserve" && <BookingPage />}
-        {activeTab === "doctorlist" && <BookingPage />}
+        {activeTab === "reserve" && (
+          <BookingPage
+            onSelectDoctor={setSelectedDoctor}
+            selectedDoctor={selectedDoctor}
+          />
+        )}
+        {activeTab === "doctorlist" && (
+          <BookingPage
+            onSelectDoctor={setSelectedDoctor}
+            selectedDoctor={selectedDoctor}
+          />
+        )}
         {activeTab === "settings" && <SettingsPage />}
       </div>
     </div>
