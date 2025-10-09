@@ -1,12 +1,12 @@
 'use client';
 import React, { use, useState } from 'react';
-import { User, UserCheck, ArrowLeft, Mail, Lock, Phone, Calendar, MapPin, House, VenusAndMars } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { User, UserCheck, ArrowLeft, Mail, Lock, Phone, Calendar, MapPin, House, Shield } from 'lucide-react';
 
 export default function TelemedicineAuth() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState('role'); // 'role', 'auth', 'register'
-  const [selectedRole, setSelectedRole] = useState(''); // 'patient', 'doctor'
+  const [currentStep, setCurrentStep] = useState('role'); // 'role', 'auth', 'register', 'verify'  const [selectedRole, setSelectedRole] = useState(''); // 'patient', 'doctor'
+  const [selectedRole, setSelectedRole] = useState('');
   const [authMode, setAuthMode] = useState('login'); // 'login', 'register'
   const [isAnimating, setIsAnimating] = useState(false);
   const [firstName, setFirstName] = useState('');
@@ -20,49 +20,56 @@ export default function TelemedicineAuth() {
   const [specialty, setSpecialty] = useState(''); // 只有醫生需要
   const [clinic, setClinic] = useState(''); // 只有醫生需要
   const [address, setAddress] = useState(''); // 住家地址
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); // 防止表單提交後頁面刷新
+  e.preventDefault();
 
-    // ★ 加入密碼驗證
   if (password !== confirmPassword) {
     alert("密碼與確認密碼不一致");
     return;
   }
 
-    // 組成要送給後端的資料
-    const bodyData = {
-      first_name: firstName,
-      last_name: lastName,
-      email,
-      password,
-      phone_number: phone,
-      date_of_birth: birthDate,
-      role: selectedRole,
-      gender,
-      specialty: selectedRole === 'doctor' ? specialty : null,
-      practice_hospital: selectedRole === 'doctor' ? clinic : null,
-      address
-    };
+  setIsLoading(true);
 
-    try {
-      const res = await fetch('/api/register', {  // 改成相對路徑
+  const bodyData = {
+    first_name: firstName,
+    last_name: lastName,
+    email,
+    password,
+    phone_number: phone,
+    date_of_birth: birthDate,
+    role: selectedRole,
+    gender,
+    specialty: selectedRole === 'doctor' ? specialty : null,
+    practice_hospital: selectedRole === 'doctor' ? clinic : null,
+    address
+  };
+
+  try {
+    const res = await fetch('/api/send-verification', {  // ⚠️ 改這裡
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',  // ⚠️ 確保有這行
       body: JSON.stringify(bodyData),
     });
 
-      const data = await res.json();
-      alert(data.message);
+    const data = await res.json();
 
-      if (res.ok) {
-        switchToLogin(); // 註冊成功後回到登入頁
-      }
-    } catch (err) {
-      console.error(err);
-      alert("發生錯誤，請稍後再試。");
+    if (res.ok) {
+      alert(data.message);
+      setCurrentStep('verify');  // ⚠️ 跳轉到驗證頁面
+    } else {
+      alert(data.message);
     }
-  };
+  } catch (err) {
+    console.error(err);
+    alert("發生錯誤,請稍後再試。");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
  const handleLogin = async (e) => {
   e.preventDefault();
@@ -100,6 +107,41 @@ export default function TelemedicineAuth() {
   }
 };
 
+
+const handleVerifyCode = async (e) => {
+  e.preventDefault();
+
+  if (!verificationCode || verificationCode.length !== 6) {
+    alert("請輸入6位數驗證碼");
+    return;
+  }
+
+  setIsLoading(true);
+
+  try {
+    const res = await fetch('/api/verify-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: verificationCode }),
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      alert("註冊成功!");
+      switchToLogin();
+    } else {
+      alert(data.message);
+    }
+  } catch (err) {
+    console.error(err);
+    alert("驗證失敗,請稍後再試");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
   const handleRoleSelect = (role) => {
     if (isAnimating) return;
     setIsAnimating(true);
@@ -116,7 +158,10 @@ export default function TelemedicineAuth() {
     setIsAnimating(true);
 
     setTimeout(() => {
-      if (currentStep === 'register') {
+      if (currentStep === 'verify') {  // ⚠️ 新增這段
+        setCurrentStep('register');
+        setVerificationCode('');
+      } else if (currentStep === 'register') {
         setCurrentStep('auth');
         setAuthMode('login');
       } else {
@@ -453,14 +498,17 @@ export default function TelemedicineAuth() {
                   </div>
 
                   <button
-                    type="submit"
-                    className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-all transform hover:scale-105 ${selectedRole === 'patient'
-                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
-                      : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
-                      }`}
-                  >
-                    完成註冊
-                  </button>
+                  type="submit"
+                  disabled={isLoading}  // ⚠️ 新增
+                  className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-all transform hover:scale-105 ${
+                    isLoading ? 'bg-gray-400 cursor-not-allowed' :  // ⚠️ 新增
+                    selectedRole === 'patient'
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
+                    : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
+                  }`}
+                >
+                  {isLoading ? '發送中...' : '發送驗證碼'}  {/* ⚠️ 改這裡 */}
+                </button>
                 </form>
 
                 <div className="mt-6 text-center">
@@ -474,6 +522,66 @@ export default function TelemedicineAuth() {
                 </div>
               </div>
             )}
+
+            {/* Verification Code Form */}
+            {currentStep === 'verify' && (
+              <div className={`transition-all duration-500 ${isAnimating ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'}`}>
+                <div className="text-center mb-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                    <Shield className="text-blue-600" size={32} />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-2">驗證您的信箱</h2>
+                  <p className="text-gray-600 text-sm">
+                    我們已將驗證碼發送至<br />
+                    <span className="font-medium text-gray-800">{email}</span>
+                  </p>
+                </div>
+
+                <form onSubmit={handleVerifyCode} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 text-center">
+                      請輸入6位數驗證碼
+                    </label>
+                    <input
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      type="text"
+                      maxLength="6"
+                      required
+                      className="w-full px-4 py-4 text-center text-2xl font-bold tracking-widest border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
+                      placeholder="000000"
+                    />
+                    <p className="text-gray-500 text-xs mt-2 text-center">
+                      驗證碼將在 10 分鐘後失效
+                    </p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isLoading || verificationCode.length !== 6}
+                    className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-all transform hover:scale-105 ${
+                      isLoading || verificationCode.length !== 6
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
+                    }`}
+                  >
+                    {isLoading ? '驗證中...' : '確認驗證碼'}
+                  </button>
+
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={handleSubmit}
+                      disabled={isLoading}
+                      className="text-blue-600 hover:text-blue-700 font-medium text-sm disabled:text-gray-400"
+                    >
+                      沒收到驗證碼？重新發送
+                    </button>
+                  </div>
+                </form>
+              </div>
+      )}
+
           </div>
         </div>
 

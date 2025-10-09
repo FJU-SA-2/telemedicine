@@ -9,9 +9,15 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
   const menuItems = [
     { id: "/", label: "首頁", icon: House, href: "/" },
+<<<<<<< HEAD
     { id: "/reserve", label: "我要預約", icon: Calendar, href: "/reserve" },
     { id: "/my reserve", label: "我的預約", icon: Calendar, href: "/record" },
+=======
+>>>>>>> 773382f66e2ccde005b060c40768e3002b041694
     { id: "/doctorlist", label: "醫生介紹", icon: ContactRound, href: "/doctorlist" },
+    { id: "/reserve", label: "線上預約", icon: Calendar, href: "/reserve" },
+    { id: "/favorite", label: "收藏列表", icon: ContactRound, href: "/favorite" },
+    { id: "/my reserve", label: "預約紀錄", icon: Calendar, href: "/record" },
     { id: "/settings", label: "以後再想", icon: Settings, href: "/settings" },
   ];
 

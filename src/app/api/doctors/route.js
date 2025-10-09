@@ -3,8 +3,8 @@ import mysql from 'mysql2/promise';
 
 const dbConfig = {
   host: 'localhost',
-  user: 'root',              // 改成你的使用者名稱
-  password: '',       // 改成你的密碼
+  user: 'root',
+  password: '',
   database: 'telemedicine'
 };
 
@@ -23,9 +23,16 @@ export async function GET(request) {
         d.specialty,
         d.practice_hospital,
         d.phone_number,
-        u.email
+        u.email,
+        di.education,
+        di.description,
+        di.experience,
+        di.qualifications,
+        di.consultation_fee,
+        di.consultation_type
       FROM doctor d
       JOIN users u ON d.user_id = u.user_id
+      LEFT JOIN doctor_info di ON d.doctor_id = di.doctor_id
       WHERE u.role = 'doctor'
     `);
     
