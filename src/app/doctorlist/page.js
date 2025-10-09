@@ -30,7 +30,7 @@ function BookingModal({ doctor, onClose, onConfirm }) {
     return dateObj ? dateObj.day : "";
   };
 
-  const doctorFullName = `${doctor.last_name}${doctor.first_name}`;
+  const doctorFullName = `${doctor.first_name}${doctor.last_name}`;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
@@ -396,7 +396,7 @@ function BookingPage({ onSelectDoctor, selectedDoctor }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredDoctors.map((doctor) => {
-          const fullName = `${doctor.last_name}${doctor.first_name}`;
+          const fullName = `${doctor.first_name}${doctor.last_name}`;
           return (
             <div
               key={doctor.doctor_id}
