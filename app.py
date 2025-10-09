@@ -356,8 +356,6 @@ def logout_user():
     session.clear()
     return jsonify({"message": "登出成功"}), 200
 
-    from flask import Flask, jsonify
-app = Flask(__name__)
 
 @app.route("/api/appointments")
 def get_appointments():
