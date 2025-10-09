@@ -199,5 +199,24 @@ def logout_user():
     session.clear()
     return jsonify({"message": "登出成功"}), 200
 
+    from flask import Flask, jsonify
+app = Flask(__name__)
+
+@app.route("/api/appointments")
+def get_appointments():
+    # 從資料庫抓資料
+    data = [
+        {
+            "appointment_id": 1,
+            "appointment_date": "2025-10-12",
+            "appointment_time": "09:30:00",
+            "status": "已確認",
+            "doctor_name": "林美玲",
+            "doctor_specialty": "小兒科"
+        }
+    ]
+    return jsonify(data)
+
+
 if __name__ == "__main__":
     app.run(debug=True)
