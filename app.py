@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request, session
 from flask_cors import CORS
+from mysql.connector import Error
 import mysql.connector
 import smtplib
 from email.mime.text import MIMEText
@@ -666,15 +667,250 @@ def reject_doctor(doctor_id):
         cursor.close()
         db.close()
 
-@app.route("/api/admin/certificate/<path:filename>", methods=["GET"])
-def get_certificate(filename):
-    """取得證照圖片"""
-    if not session.get('is_admin'):
-        return jsonify({"message": "無權限"}), 403
-    
-    from flask import send_from_directory
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+# 將這些代碼替換到 app.py 中
 
+# 1. 新增取得醫師 Profile 的 API
+@app.route("/api/doctor/profile", methods=["GET"])
+def get_doctor_profile():
+    """取得醫師的 doctor_id 和基本資料"""
+    user_id = request.args.get('user_id')
+    
+    if not user_id:
+        return jsonify({"message": "缺少 user_id"}), 400
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        print(f"🔍 查詢 user_id={user_id} 的醫師資料")
+        
+        cursor.execute("""
+            SELECT doctor_id, user_id, first_name, last_name, 
+                   gender, phone_number, specialty, practice_hospital, 
+                   approval_status
+            FROM doctor 
+            WHERE user_id = %s
+        """, (user_id,))
+        
+        doctor = cursor.fetchone()
+        
+        if not doctor:
+            print(f"❌ 找不到 user_id={user_id} 的醫師資料")
+            return jsonify({"message": "找不到醫師資料"}), 404
+        
+        print(f"✅ 找到醫師: doctor_id={doctor['doctor_id']}, {doctor['first_name']}{doctor['last_name']}")
+        return jsonify(doctor), 200
+        
+    except Exception as e:
+        print(f"❌ 查詢失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"message": f"查詢失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+# 2. 取得排班資料
+@app.route('/api/schedules/<int:doctor_id>', methods=['GET'])
+def get_schedules(doctor_id):
+    """取得醫師排班資料 - 只返回可預約的時段,並自動刪除過期排班"""
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    print("=" * 60)
+    print(f"📥 收到排班查詢請求")
+    print(f"   doctor_id: {doctor_id}")
+    print(f"   start_date: {start_date}")
+    print(f"   end_date: {end_date}")
+    
+    if not start_date or not end_date: 
+        return jsonify({'error': '需要提供 start_date 和 end_date'}), 400
+    
+    connection = get_db()
+    
+    try:
+        cursor = connection.cursor(dictionary=True)
+        
+        # 檢查醫師是否存在
+        cursor.execute("SELECT doctor_id, first_name, last_name FROM doctor WHERE doctor_id = %s", (doctor_id,))
+        doctor = cursor.fetchone()
+        if not doctor:
+            print(f"❌ doctor_id={doctor_id} 不存在")
+            return jsonify({'error': '醫師不存在'}), 404
+        
+        print(f"✅ 醫師存在: {doctor['first_name']}{doctor['last_name']}")
+        
+        # 刪除過期排班
+        today = datetime.now().date()
+        delete_query = """
+            DELETE FROM schedules 
+            WHERE doctor_id = %s AND schedule_date < %s
+        """
+        cursor.execute(delete_query, (doctor_id, today))
+        deleted_count = cursor.rowcount
+        connection.commit()
+        if deleted_count > 0:
+            print(f"🗑️  刪除了 {deleted_count} 筆過期排班")
+        
+        # 查詢排班
+        query = """
+            SELECT schedule_id, doctor_id, schedule_date, time_slot, is_available
+            FROM schedules
+            WHERE doctor_id = %s 
+            AND schedule_date BETWEEN %s AND %s
+            ORDER BY schedule_date, time_slot
+        """
+        cursor.execute(query, (doctor_id, start_date, end_date))
+        schedules = cursor.fetchall()
+        
+        print(f"📊 查詢到 {len(schedules)} 筆排班資料")
+        
+        # 格式化資料
+        formatted_schedules = []
+        for s in schedules:
+            date_str = s['schedule_date'].strftime('%Y-%m-%d') if hasattr(s['schedule_date'], 'strftime') else str(s['schedule_date'])
+            time_str = str(s['time_slot'])
+            if len(time_str) > 5:
+                time_str = time_str[:5]
+            
+            formatted_schedules.append({
+                'schedule_id': s['schedule_id'],
+                'doctor_id': s['doctor_id'],
+                'schedule_date': date_str,
+                'time_slot': time_str,
+                'is_available': s['is_available']  # ✅ 加回來
+            })
+            print(f"   - {date_str} {time_str} (schedule_id={s['schedule_id']}, available={s['is_available']})")
+        
+        print(f"✅ 返回 {len(formatted_schedules)} 筆排班資料")
+        print("=" * 60)
+        return jsonify(formatted_schedules)
+    
+    except Error as e:
+        print(f"❌ 查詢錯誤: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'查詢失敗: {str(e)}'}), 500
+    
+    finally:
+        cursor.close()
+        connection.close()
+
+
+
+# 3. 儲存排班
+@app.route('/api/schedules', methods=['POST'])
+def save_schedules():
+    """儲存醫師排班資料 - 只儲存可預約時段,刪除不可預約時段,防止排過去的班"""
+    data = request.get_json()
+    doctor_id = data.get('doctor_id')
+    schedules = data.get('schedules')
+    
+    print("=" * 60)
+    print(f"💾 收到排班儲存請求")
+    print(f"   doctor_id: {doctor_id}")
+    print(f"   schedules 數量: {len(schedules) if schedules else 0}")
+    
+    if not doctor_id or not schedules:
+        return jsonify({'error': '缺少必要參數'}), 400
+    
+    connection = get_db()
+    
+    try:
+        cursor = connection.cursor(dictionary=True)
+        
+        # 檢查醫師是否存在
+        cursor.execute("SELECT doctor_id, first_name, last_name FROM doctor WHERE doctor_id = %s", (doctor_id,))
+        doctor = cursor.fetchone()
+        if not doctor:
+            print(f"❌ doctor_id={doctor_id} 不存在")
+            return jsonify({'error': '醫師不存在'}), 404
+        
+        print(f"✅ 醫師: {doctor['first_name']}{doctor['last_name']}")
+        
+        # 獲取今天的日期
+        today = datetime.now().date()
+        
+        # 分離可預約和不可預約的時段
+        available_schedules = []
+        unavailable_schedules = []
+        past_dates_count = 0
+        
+        for s in schedules:
+            date_str = s['date']
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+            
+            # 檢查是否為過去的日期
+            if date_obj < today:
+                past_dates_count += 1
+                continue  # 跳過過去的日期
+            
+            time_slot = s['time_slot']
+            # 如果前端傳 "HH:MM",加上秒數
+            if len(time_slot) == 5:
+                time_slot += ":00"
+            
+            if s['is_available']:
+                available_schedules.append((doctor_id, date_str, time_slot))
+                print(f"   ✅ 可預約: {date_str} {time_slot}")
+            else:
+                unavailable_schedules.append((doctor_id, date_str, time_slot))
+                print(f"   ❌ 刪除: {date_str} {time_slot}")
+        
+        # 1. 插入或更新可預約的時段
+        inserted_count = 0
+        if available_schedules:
+            insert_query = """
+                INSERT INTO schedules (doctor_id, schedule_date, time_slot, is_available)
+                VALUES (%s, %s, %s, 1)
+                ON DUPLICATE KEY UPDATE is_available = 1, updated_at = NOW()
+            """
+            cursor.executemany(insert_query, available_schedules)
+            inserted_count = cursor.rowcount
+        
+        # 2. 刪除不可預約的時段
+        deleted_count = 0
+        if unavailable_schedules:
+            delete_query = """
+                DELETE FROM schedules 
+                WHERE doctor_id = %s AND schedule_date = %s AND time_slot = %s
+            """
+            cursor.executemany(delete_query, unavailable_schedules)
+            deleted_count = cursor.rowcount
+        
+        connection.commit()
+        
+        message = '排班儲存成功'
+        if past_dates_count > 0:
+            message += f' (已忽略 {past_dates_count} 個過去的時段)'
+        
+        result = {
+            'success': True,
+            'message': message,
+            'inserted': inserted_count,
+            'deleted': deleted_count,
+            'ignored_past': past_dates_count
+        }
+        
+        print(f"✅ 儲存成功")
+        print(f"   - 新增/更新: {inserted_count} 筆")
+        print(f"   - 刪除: {deleted_count} 筆")
+        print(f"   - 忽略過期: {past_dates_count} 筆")
+        print("=" * 60)
+        
+        return jsonify(result), 200
+    
+    except Error as e:
+        connection.rollback()
+        print(f"❌ 儲存錯誤: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'儲存失敗: {str(e)}'}), 500
+    
+    finally:
+        cursor.close()
+        connection.close()
 
 if __name__ == "__main__":
     app.run(debug=True)
