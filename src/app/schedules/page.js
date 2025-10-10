@@ -320,7 +320,7 @@ export default function DoctorSchedulePage() {
                             <ChevronLeft size={20} /> 上一週
                         </button>
                         <div className="text-center">
-                            <div className="text-lg font-semibold">{getWeekRangeText()}</div>
+                            <div className="text-lg font-semibold text-gray-800">{getWeekRangeText()}</div>
                             <button onClick={goToCurrentWeek} className="text-sm text-blue-600 hover:text-blue-700 mt-1">回到本週</button>
                         </div>
                         <button onClick={nextWeek} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
@@ -330,7 +330,7 @@ export default function DoctorSchedulePage() {
 
                     <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-lg font-semibold">週排班表</h2>
+                            <h2 className="text-lg font-semibold text-gray-800">週排班表</h2>
                             <button onClick={saveSchedules} disabled={loading || !doctor_id}
                                 className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed">
                                 <Save size={18} /> {loading ? "儲存中..." : "儲存排班"}
