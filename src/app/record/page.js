@@ -1,45 +1,46 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, User, Stethoscope, RefreshCw } from 'lucide-react';
+import { Calendar, Clock, User, Stethoscope, RefreshCw, Menu } from 'lucide-react';
+import Sidebar from "../components/Sidebar";
+import Navbar from "../components/Navbar";
 
 export default function AppointmentRecords() {
+  const [isOpen, setIsOpen] = useState(false);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
 
-  // 模擬從 API 獲取資料
   useEffect(() => {
     fetchAppointments();
   }, []);
 
- const fetchAppointments = async () => {
-  setLoading(true);
-  try {
-    const res = await fetch("/api/appointments"); // 你的 API
-    if (!res.ok) throw new Error("API 取得資料失敗");
-    const data = await res.json();
+  const fetchAppointments = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("http://127.0.0.1:5000/api/appointments");
+      if (!res.ok) throw new Error("API 取得資料失敗");
+      const data = await res.json();
 
-    const formattedData = data.map((item) => ({
-      appointment_id: item.appointment_id,
-      appointment_date: item.appointment_date,
-      appointment_time: item.appointment_time,
-      status: item.status,
-      doctor: {
-        first_name: item.doctor_name.slice(-1), // 後端直接傳姓名時拆分
-        last_name: item.doctor_name.slice(0, -1),
-        specialty: item.doctor_specialty,
-      },
-    }));
+      const formattedData = data.map((item) => ({
+        appointment_id: item.appointment_id,
+        appointment_date: item.appointment_date,
+        appointment_time: item.appointment_time,
+        status: item.status,
+        doctor: {
+          first_name: item.last_name,
+          last_name: item.first_name,
+          specialty: item.doctor_specialty,
+        },
+      }));
 
-    setAppointments(formattedData);
-  } catch (error) {
-    console.error(error);
-    setAppointments([]);
-  } finally {
-    setLoading(false);
-  }
-};
-
+      setAppointments(formattedData);
+    } catch (error) {
+      console.error(error);
+      setAppointments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -70,10 +71,7 @@ export default function AppointmentRecords() {
     return timeString.slice(0, 5);
   };
 
-  const filteredAppointments = appointments.filter(apt => {
-    if (filter === 'all') return true;
-    return apt.status === filter;
-  });
+  const filteredAppointments = appointments.filter(apt => filter === 'all' || apt.status === filter);
 
   if (loading) {
     return (
@@ -87,67 +85,42 @@ export default function AppointmentRecords() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
-      <div className="max-w-6xl mx-auto">
-        {/* 標題 */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">我的預約紀錄</h1>
-          <p className="text-gray-600">查看和管理您的醫療預約</p>
-        </div>
+    <div className="relative ">
+      {/* 只在 Sidebar 關閉時顯示打開按鈕 */}
+      {!isOpen && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="p-3 fixed top-2 left-4 text-gray z-50"
+        >
+          <Menu size={24} />
+        </button>
+      )}
+
+      {/* 側邊欄 */}
+      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+
+      {/* 主內容 */}
+      <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"} max-w-6xl mx-auto`}>
+        <Navbar />
+
+      
 
         {/* 篩選器 */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-full font-medium transition-all ${
-                filter === 'all'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              全部
-            </button>
-            <button
-              onClick={() => setFilter('待確認')}
-              className={`px-4 py-2 rounded-full font-medium transition-all ${
-                filter === '待確認'
-                  ? 'bg-yellow-600 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              待確認
-            </button>
-            <button
-              onClick={() => setFilter('已確認')}
-              className={`px-4 py-2 rounded-full font-medium transition-all ${
-                filter === '已確認'
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              已確認
-            </button>
-            <button
-              onClick={() => setFilter('已完成')}
-              className={`px-4 py-2 rounded-full font-medium transition-all ${
-                filter === '已完成'
-                  ? 'bg-green-600 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              已完成
-            </button>
-            <button
-              onClick={() => setFilter('已取消')}
-              className={`px-4 py-2 rounded-full font-medium transition-all ${
-                filter === '已取消'
-                  ? 'bg-gray-600 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              已取消
-            </button>
+            {['all', '待確認', '已確認', '已完成', '已取消'].map((status) => (
+              <button
+                key={status}
+                onClick={() => setFilter(status)}
+                className={`px-4 py-2 rounded-full font-medium transition-all ${
+                  filter === status
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {status === 'all' ? '全部' : status}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -196,25 +169,17 @@ export default function AppointmentRecords() {
                   <div className="space-y-2 bg-gray-50 rounded-lg p-4">
                     <div className="flex items-center text-gray-700">
                       <Calendar className="w-5 h-5 mr-3 text-blue-600" />
-                      <span className="font-medium">
-                        {formatDate(appointment.appointment_date)}
-                      </span>
+                      <span className="font-medium">{formatDate(appointment.appointment_date)}</span>
                     </div>
                     <div className="flex items-center text-gray-700">
                       <Clock className="w-5 h-5 mr-3 text-blue-600" />
-                      <span className="font-medium">
-                        {formatTime(appointment.appointment_time)}
-                      </span>
+                      <span className="font-medium">{formatTime(appointment.appointment_time)}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* 底部操作區 */}
-                <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
-                  <p className="text-xs text-gray-500">
-                    預約編號: #{appointment.appointment_id}
-                  </p>
-                </div>
+            
+               
               </div>
             ))}
           </div>

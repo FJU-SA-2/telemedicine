@@ -10,6 +10,8 @@ from datetime import datetime, timedelta
 from email.header import Header
 from werkzeug.utils import secure_filename
 import os
+from datetime import date, datetime, time
+
 
 app = Flask(__name__)
 app.secret_key = "your-very-secret-key-change-this"  # ⚠️ 改成更安全的密鑰
@@ -469,24 +471,60 @@ def logout_user():
     """登出"""
     session.clear()
     return jsonify({"message": "登出成功"}), 200
+from datetime import date, datetime, time, timedelta
+
+def serialize_datetime(obj):
+    """將 MySQL 的 date/time/timedelta 轉換成字串"""
+    if isinstance(obj, (date, datetime)):
+        return obj.strftime('%Y-%m-%d')
+    if isinstance(obj, time):
+        return obj.strftime('%H:%M:%S')
+    if isinstance(obj, timedelta):
+        # 將 timedelta 轉換為時:分:秒格式
+        total_seconds = int(obj.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        return f"{hours:02}:{minutes:02}:{seconds:02}"
+    return obj
 
 
-@app.route("/api/appointments")
+@app.route("/api/appointments", methods=["GET"])
 def get_appointments():
-    # 從資料庫抓資料
-    data = [
-        {
-            "appointment_id": 1,
-            "appointment_date": "2025-10-12",
-            "appointment_time": "09:30:00",
-            "status": "已確認",
-            "doctor_name": "林美玲",
-            "doctor_specialty": "小兒科"
-        }
-    ]
-    return jsonify(data)
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    query = """
+        SELECT 
+            a.appointment_id,
+            a.appointment_date,
+            a.appointment_time,
+            a.status,
+            d.first_name,
+            d.last_name,
+            d.specialty as doctor_specialty
+        FROM appointments a
+        INNER JOIN doctor d ON a.doctor_id = d.doctor_id
+        ORDER BY a.appointment_date DESC, a.appointment_time DESC
+    """
+    cursor.execute(query)
+    appointments = cursor.fetchall()
+    
+    cursor.close()
+    db.close()
+    
+    for a in appointments:
+        a["appointment_date"] = serialize_datetime(a["appointment_date"])
+        a["appointment_time"] = serialize_datetime(a["appointment_time"])
+
+    return jsonify(appointments)
+
+
+   
 
 #醫師註冊檔案上傳
+
+
 @app.route("/api/upload-certificate", methods=["POST"])
 def upload_certificate():
     """上傳醫師執業證明"""
