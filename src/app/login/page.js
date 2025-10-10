@@ -80,27 +80,21 @@ export default function TelemedicineAuth() {
 
  const handleLogin = async (e) => {
   e.preventDefault();
-  
+
   if (!email || !password) {
     alert("請輸入帳號與密碼");
     return;
   }
 
-  if (email === 'admin@mog.com' && password === 'admin123') {
-      router.push('/admin/dashboard');  // 登入成功後跳轉
-    } else {
-      alert('帳號或密碼錯誤');
-    }
-  
+  setIsLoading(true);
 
   try {
-    // ★ 改成完整的 Flask URL
-    const res = await fetch("/api/login", {  // 改成相對路徑
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ email, password }),
-  });
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email, password }),
+    });
 
     const data = await res.json();
 
@@ -109,17 +103,24 @@ export default function TelemedicineAuth() {
       return;
     }
 
-    // 登入成功
-    alert("登入成功!");
-    
-    // ★ 跳轉到首頁
-    router.push("/");
-    
+    // 登入成功，依照角色導向不同頁面
+    const role = data.user?.role; // 後端需回傳 user.role
+    if (role === 'doctor') {
+      router.push('/doctorpage');
+    } else if (role === 'patient') {
+      router.push('/');
+    } else {
+      router.push('/admin'); // fallback
+    }
+
   } catch (err) {
     console.error(err);
     alert("登入失敗,請稍後再試");
+  } finally {
+    setIsLoading(false);
   }
 };
+
 
 
 const handleVerifyCode = async (e) => {
