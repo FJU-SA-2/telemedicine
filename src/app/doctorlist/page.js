@@ -135,7 +135,13 @@ function DoctorDetailsPage({ doctor, onBack, onBooking }) {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      
+      <button
+        onClick={onBack}
+        className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6"
+      >
+        <ArrowLeft size={20} />
+        返回
+      </button>
 
       <div className="bg-white rounded-lg shadow p-8 max-w-2xl mx-auto">
         {/* 醫師基本信息 */}
