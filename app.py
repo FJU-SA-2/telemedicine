@@ -12,6 +12,7 @@ from email.header import Header
 from werkzeug.utils import secure_filename
 import os
 from datetime import date, datetime, time
+from flask import session
 
 
 app = Flask(__name__)
@@ -25,17 +26,17 @@ CORS(app,
      expose_headers=["Set-Cookie"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 app.url_map.strict_slashes = False
-
 # Session 設定
 app.config.update(
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_HTTPONLY=False,  # 改成 False，允許前端存取
+    SESSION_COOKIE_SAMESITE="None",
     SESSION_COOKIE_SECURE=False,  # 本地開發用 False
     SESSION_COOKIE_NAME="telemedicine_session",
     SESSION_COOKIE_PATH="/",
-    PERMANENT_SESSION_LIFETIME=timedelta(minutes=10)  # Session 10分鐘過期
+    SESSION_COOKIE_DOMAIN=None,  # 允許跨域
+    PERMANENT_SESSION_LIFETIME=timedelta(minutes=30),  # Session 30分鐘過期
+    SESSION_REFRESH_EACH_REQUEST=True  # 每次請求都重新整理 Session 過期時間
 )
-
 # 連接 MySQL
 def get_db():
     return mysql.connector.connect(
@@ -429,7 +430,8 @@ def login_user():
         if profile:
             session['first_name'] = profile.get("first_name", "")
             session['last_name'] = profile.get("last_name", "")
-
+        session.modified = True
+        session.permanent = True  # 設定為持久 Session
         return jsonify({
             "success": True,
             "message": "登入成功",
@@ -490,8 +492,16 @@ def serialize_datetime(obj):
     return obj
 
 
+
+
 @app.route("/api/appointments", methods=["GET"])
 def get_appointments():
+    # 從 Session 取得當前使用者的 user_id
+    user_id = session.get('user_id')
+    
+    if not user_id:
+        return jsonify({"error": "未授權"}), 401
+    
     db = get_db()
     cursor = db.cursor(dictionary=True)
     
@@ -506,6 +516,45 @@ def get_appointments():
             d.specialty as doctor_specialty
         FROM appointments a
         INNER JOIN doctor d ON a.doctor_id = d.doctor_id
+        INNER JOIN patient p ON a.patient_id = p.patient_id
+        WHERE p.user_id = %s
+        ORDER BY a.appointment_date DESC, a.appointment_time DESC
+    """
+    cursor.execute(query, (user_id,))
+    appointments = cursor.fetchall()
+    
+    cursor.close()
+    db.close()
+
+    for a in appointments:
+        a["appointment_date"] = serialize_datetime(a["appointment_date"])
+        a["appointment_time"] = serialize_datetime(a["appointment_time"])
+
+    return jsonify(appointments)
+@app.route("/api/doctor/appointments", methods=["GET"])
+def get_appointments():
+    # 從 Session 取得當前使用者的 user_id
+    user_id = session.get('user_id')
+    
+    if not user_id:
+        return jsonify({"error": "未授權"}), 401
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    query = """
+        SELECT 
+            a.appointment_id,
+            a.appointment_date,
+            a.appointment_time,
+            a.status,
+            d.first_name,
+            d.last_name,
+            d.specialty as doctor_specialty
+        FROM appointments a
+        INNER JOIN doctor d ON a.doctor_id = d.doctor_id
+        INNER JOIN patient p ON a.patient_id = p.patient_id
+       
         ORDER BY a.appointment_date DESC, a.appointment_time DESC
     """
     cursor.execute(query)
@@ -513,13 +562,12 @@ def get_appointments():
     
     cursor.close()
     db.close()
-    
+
     for a in appointments:
         a["appointment_date"] = serialize_datetime(a["appointment_date"])
         a["appointment_time"] = serialize_datetime(a["appointment_time"])
 
     return jsonify(appointments)
-
 
    
 
