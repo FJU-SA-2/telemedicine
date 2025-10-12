@@ -532,7 +532,7 @@ def get_appointments():
 
     return jsonify(appointments)
 @app.route("/api/doctor/appointments", methods=["GET"])
-def get_appointments():
+def get_doctor_appointments():
     # 從 Session 取得當前使用者的 user_id
     user_id = session.get('user_id')
     
