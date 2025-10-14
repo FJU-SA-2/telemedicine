@@ -23,7 +23,7 @@ export default function AdminDashboard() {
       if (!res.ok) {
         if (res.status === 403) {
           alert('請先登入管理者帳號');
-          router.push('/admin/login');
+          router.push('/');
           return;
         }
         throw new Error('Failed to fetch');
@@ -97,7 +97,7 @@ export default function AdminDashboard() {
 
   const handleLogout = () => {
     if (confirm('確定要登出嗎?')) {
-      router.push('/admin/login');
+      router.push('/');
     }
   };
 
