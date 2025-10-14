@@ -17,13 +17,13 @@ export default function AppointmentRecords() {
   const fetchAppointments = async () => {
     setLoading(true);
     try {
-        const res = await fetch("http://127.0.0.1:5000/api/appointments", {
+        const res = await fetch("http://127.0.0.1:5000/api/record", {
       credentials: 'include'  // 很重要！允許跨域時發送 Cookie/Session
     });
-    
+     
       if (!res.ok) throw new Error("API 取得資料失敗");
       const data = await res.json();
-
+   
       const formattedData = data.map((item) => ({
         appointment_id: item.appointment_id,
         appointment_date: item.appointment_date,
