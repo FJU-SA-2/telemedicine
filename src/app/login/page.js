@@ -165,13 +165,19 @@ const handleVerifyCode = async (e) => {
     const res = await fetch('/api/verify-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',  // ⭐ 確保有這行
       body: JSON.stringify({ code: verificationCode }),
     });
 
     const data = await res.json();
 
     if (res.ok) {
-      alert("註冊成功!");
+      // ⭐ 根據角色顯示不同訊息
+      if (data.role === 'doctor') {
+        alert("註冊成功！您的資料已送出，我們將在 1-3 個工作天內完成審核，審核結果將以郵件通知。");
+      } else {
+        alert("註冊成功！");
+      }
       switchToLogin();
     } else {
       alert(data.message);

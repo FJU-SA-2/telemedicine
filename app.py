@@ -33,7 +33,8 @@ app.config.update(
     SESSION_COOKIE_SECURE=False,  # 本地開發用 False
     SESSION_COOKIE_NAME="telemedicine_session",
     SESSION_COOKIE_PATH="/",
-    PERMANENT_SESSION_LIFETIME=timedelta(minutes=10)  # Session 10分鐘過期
+    PERMANENT_SESSION_LIFETIME=timedelta(minutes=30),  # Session 30分鐘過期
+    SESSION_REFRESH_EACH_REQUEST=True
 )
 
 # 連接 MySQL
@@ -261,13 +262,26 @@ def send_verification():
     if not send_verification_email(email, verification_code):
         return jsonify({'message': '驗證碼發送失敗，請稍後再試'}), 500
     
+    # ⭐ 關鍵修改：保留已上傳的 certificate
+    existing_certificate = None
+    if 'pending_registration' in session and 'certificate' in session['pending_registration']:
+        existing_certificate = session['pending_registration']['certificate']
+        print(f"🔍 保留已上傳的證明檔案: {existing_certificate}")
+    
     # 將驗證碼和過期時間存入 session
     session['verification_code'] = verification_code
     session['verification_email'] = email
     session['verification_expiry'] = (datetime.now() + timedelta(minutes=10)).isoformat()
     
-    # 暫存註冊資料
+    # ⭐ 暫存註冊資料，並保留 certificate
     session['pending_registration'] = data
+    if existing_certificate:
+        session['pending_registration']['certificate'] = existing_certificate
+        print(f"✅ 已將證明檔案加回 session: {existing_certificate}")
+    
+    session.modified = True  # ⭐ 強制標記 session 已修改
+
+    print(f"📦 最終 Session 內容: {session.get('pending_registration')}")
     
     return jsonify({
         'success': True,
@@ -325,6 +339,7 @@ def verify_code():
         return jsonify({'message': '註冊資料遺失,請重新註冊'}), 400
     
     certificate_filename = registration_data.get("certificate") # ⭐ 取得證明檔案名稱
+    print(f"📦 註冊資料內容: {registration_data}")  # ⭐ 查看註冊資料
 
     # 取得註冊資料
     first_name = registration_data.get("first_name")
@@ -339,6 +354,10 @@ def verify_code():
     practice_hospital = registration_data.get("practice_hospital")
     address = registration_data.get("address")
     certificate_path = registration_data.get("certificate")  # ⭐ 取得證書路徑
+    certificate_filename = registration_data.get("certificate")  # ⭐ 取得證明檔案名稱
+
+    print(f"📄 Certificate filename: {certificate_filename}")  # ⭐ 確認有沒有值
+
     
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -389,7 +408,8 @@ def verify_code():
         
         return jsonify({
             'success': True,
-            'message': '註冊成功' if role == 'patient' else '註冊成功,請等待管理員審核'
+            'message': '註冊成功，請等待管理員審核' if role == 'doctor' else '註冊成功',  # ⭐ 修改這裡
+            'role': role  # ⭐ 回傳角色給前端
         }), 200
         
     except Exception as e:
