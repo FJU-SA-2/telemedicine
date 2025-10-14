@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from email.header import Header
 from werkzeug.utils import secure_filename
 import os
-
+from flask import send_from_directory
 
 
 app = Flask(__name__)
@@ -319,12 +319,14 @@ def verify_code():
         print(f"❌ 驗證碼錯誤: 輸入 {user_code} vs 正確 {stored_code}")
         return jsonify({'message': '驗證碼錯誤'}), 400
     
-    # 驗證成功，執行註冊
+    # 驗證成功,執行註冊
     registration_data = session.get('pending_registration')
     if not registration_data:
-        return jsonify({'message': '註冊資料遺失，請重新註冊'}), 400
+        return jsonify({'message': '註冊資料遺失,請重新註冊'}), 400
     
-    # 執行註冊邏輯（複製原本的註冊代碼）
+    certificate_filename = registration_data.get("certificate") # ⭐ 取得證明檔案名稱
+
+    # 取得註冊資料
     first_name = registration_data.get("first_name")
     last_name = registration_data.get("last_name")
     email = registration_data.get("email")
@@ -336,6 +338,7 @@ def verify_code():
     specialty = registration_data.get("specialty")
     practice_hospital = registration_data.get("practice_hospital")
     address = registration_data.get("address")
+    certificate_path = registration_data.get("certificate")  # ⭐ 取得證書路徑
     
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -343,6 +346,7 @@ def verify_code():
     try:
         username = first_name + last_name
         
+        # 插入 users 表
         sql_user = """
             INSERT INTO users (username, email, password_hash, role)
             VALUES (%s, %s, %s, %s)
@@ -358,12 +362,22 @@ def verify_code():
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """
             cursor.execute(sql_patient, (user_id, first_name, last_name, gender, phone_number, date_of_birth, address))
+        
         elif role == "doctor":
-            sql_doctor = """
-                INSERT INTO doctor (user_id, first_name, last_name, gender, phone_number, specialty, practice_hospital)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            # ⭐ 修改這裡:加入 certificate_path 和 approval_status
+           sql_doctor = """
+                INSERT INTO doctor (user_id, first_name, last_name, gender, phone_number, 
+                                    specialty, practice_hospital, certificate_path, approval_status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'pending')
             """
-            cursor.execute(sql_doctor, (user_id, first_name, last_name, gender, phone_number, specialty, practice_hospital))
+        cursor.execute(sql_doctor, (
+                user_id, first_name, last_name, gender, phone_number, 
+                specialty, practice_hospital, certificate_filename  # ⭐ 這裡
+            ))
+           
+            # ⭐ 發送醫師註冊收到通知郵件
+        doctor_name = first_name + last_name
+        send_registration_received_email(email, doctor_name)
         
         db.commit()
         
@@ -375,11 +389,14 @@ def verify_code():
         
         return jsonify({
             'success': True,
-            'message': '註冊成功'
+            'message': '註冊成功' if role == 'patient' else '註冊成功,請等待管理員審核'
         }), 200
         
     except Exception as e:
         db.rollback()
+        print(f"❌ 註冊失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'message': f'註冊失敗: {str(e)}'}), 500
     finally:
         cursor.close()
@@ -524,8 +541,6 @@ def get_appointments():
    
 
 #醫師註冊檔案上傳
-
-
 @app.route("/api/upload-certificate", methods=["POST"])
 def upload_certificate():
     """上傳醫師執業證明"""
@@ -545,10 +560,16 @@ def upload_certificate():
         
         file.save(filepath)
         
-        # 將檔案路徑暫存到 session
+        # ⭐ 重點：檢查這裡
         if 'pending_registration' not in session:
             session['pending_registration'] = {}
-        session['pending_registration']['certificate'] = filepath
+        
+        # ⭐ 只儲存檔名，不要儲存完整路徑
+        session['pending_registration']['certificate'] = unique_filename
+        session.modified = True  # ⭐ 強制標記 session 已修改
+        
+        print(f"✅ 檔案已儲存: {filepath}")
+        print(f"📦 Session 內容: {session.get('pending_registration')}")
         
         return jsonify({
             'success': True,
@@ -556,7 +577,8 @@ def upload_certificate():
             'filename': unique_filename
         }), 200
     
-    return jsonify({'message': '不支援的檔案格式 (僅支援 PDF, PNG, JPG)'}), 400
+    return jsonify({'message': '不支持的檔案格式 (僅支持 PDF, PNG, JPG)'}), 400
+
 
 #管理者相關
 @app.route("/api/admin/login", methods=["POST"])
@@ -949,6 +971,23 @@ def save_schedules():
     finally:
         cursor.close()
         connection.close()
+
+#讀取證明檔案
+@app.route("/api/admin/certificate/<filename>", methods=["GET"])
+def get_certificate(filename):
+    """管理者查看醫師執業證明"""
+    if not session.get('is_admin'):
+        return jsonify({"message": "無權限"}), 403
+    
+    print(f"📂 請求檔案: {filename}")
+    print(f"📁 檔案路徑: {app.config['UPLOAD_FOLDER']}")
+    
+    try:
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    except Exception as e:
+        print(f"❌ 檔案不存在: {str(e)}")
+        return jsonify({"message": f"檔案不存在: {str(e)}"}), 404
+    
 
 if __name__ == "__main__":
     app.run(debug=True)

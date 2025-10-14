@@ -213,7 +213,7 @@ export default function AdminDashboard() {
 
                   <div className="flex items-center space-x-3">
                     <button
-                      onClick={() => setSelectedDoctor(doctor)}
+                      onClick={() => setSelectedDoctor(doctor)}  // ⭐ 只設定 selectedDoctor，不要動 rejectionReason
                       className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       <Eye size={18} />
@@ -227,15 +227,15 @@ export default function AdminDashboard() {
                       <span>核准</span>
                     </button>
                     <button
-                      onClick={() => {
-                        setSelectedDoctor(doctor);
-                        setRejectionReason('');
-                      }}
-                      className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                    >
-                      <XCircle size={18} />
-                      <span>拒絕</span>
-                    </button>
+                    onClick={() => {
+                      setSelectedDoctor(doctor);
+                      setRejectionReason('待輸入');  // ⭐ 設定一個非空值來觸發拒絕 Modal
+                    }}
+                    className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    <XCircle size={18} />
+                    <span>拒絕</span>
+                  </button>
                   </div>
                 </div>
               </div>
@@ -245,7 +245,7 @@ export default function AdminDashboard() {
       </main>
 
       {/* Modal - View Certificate */}
-      {selectedDoctor && !rejectionReason && (
+     {selectedDoctor && rejectionReason === '' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
             <div className="p-6 border-b flex items-center justify-between">
@@ -295,7 +295,7 @@ export default function AdminDashboard() {
       )}
 
       {/* Modal - Rejection Reason */}
-      {selectedDoctor && rejectionReason !== null && rejectionReason !== undefined && (
+      {selectedDoctor && rejectionReason !== '' && rejectionReason !== null && rejectionReason !== undefined && (  // ⭐ 改這裡
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-md w-full">
             <div className="p-6 border-b">

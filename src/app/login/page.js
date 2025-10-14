@@ -533,10 +533,14 @@ const handleVerifyCode = async (e) => {
                                           body: formData,
                                         });
                                         
+                                        const data = await res.json();
+
                                         if (!res.ok) {
                                           alert('檔案上傳失敗');
                                           setCertificate(null);
                                           setCertificatePreview('');
+                                        } else {
+                                          console.log('✅ 檔案上傳成功:', data);  // ⭐ 加這行除錯
                                         }
                                       } catch (err) {
                                         console.error(err);
