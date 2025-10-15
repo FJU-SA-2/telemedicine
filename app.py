@@ -573,11 +573,19 @@ def upload_certificate():
         return jsonify({'message': '未選擇檔案'}), 400
     
     if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
+        # ⭐ 修改這裡：確保檔名正確
+        original_filename = secure_filename(file.filename)
+        
+        # 分離檔名和副檔名
+        name, ext = os.path.splitext(original_filename)
+        
+        # 生成唯一檔名：時間戳_原始檔名.副檔名
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        unique_filename = f"{timestamp}_{filename}"
+        unique_filename = f"{timestamp}_{original_filename}"  # ⭐ 保留完整的檔名和副檔名
+        
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
         
+        # 儲存檔案
         file.save(filepath)
         
         # ⭐ 重點：檢查這裡
@@ -996,11 +1004,27 @@ def save_schedules():
 @app.route("/api/admin/certificate/<filename>", methods=["GET"])
 def get_certificate(filename):
     """管理者查看醫師執業證明"""
+
+    # ⭐ 加入詳細的除錯訊息
+    print("=" * 60)
+    print("📂 收到證明檔案請求")
+    print(f"   檔案名: {filename}")
+    print(f"   Session 內容: {dict(session)}")
+    print(f"   is_admin: {session.get('is_admin')}")
+    print(f"   admin_id: {session.get('admin_id')}")
+    print("=" * 60)
+
+
     if not session.get('is_admin'):
         return jsonify({"message": "無權限"}), 403
     
     print(f"📂 請求檔案: {filename}")
     print(f"📁 檔案路徑: {app.config['UPLOAD_FOLDER']}")
+
+    # ⭐ 先定義 full_path
+    full_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    print(f"📁 完整路徑: {full_path}")
+    print(f"📁 檔案是否存在: {os.path.exists(full_path)}")
     
     try:
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)

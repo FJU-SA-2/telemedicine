@@ -9,6 +9,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [certificateUrl, setCertificateUrl] = useState('');  // ⭐ 加入這行
+  const [certificateLoading, setCertificateLoading] = useState(false);  // ⭐ 加入這行
 
   useEffect(() => {
     fetchPendingDoctors();
@@ -100,6 +102,41 @@ export default function AdminDashboard() {
       router.push('/');
     }
   };
+
+
+  //載入證明
+  const loadCertificate = async (certificatePath) => {
+  if (!certificatePath) {
+    setCertificateUrl('');
+    return;
+  }
+
+  setCertificateLoading(true);
+  const filename = certificatePath.split('/').pop();
+
+  try {
+    // ⭐ 改成請求 Next.js 的 API route，不再直接請求 Flask
+    const res = await fetch(`/api/admin/certificate/${filename}`, {
+      credentials: 'include',
+    });
+
+    if (!res.ok) {
+      console.error('載入證明失敗:', res.status);
+      setCertificateUrl('');
+      setCertificateLoading(false);
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    setCertificateUrl(url);
+  } catch (err) {
+    console.error('載入證明錯誤:', err);
+    setCertificateUrl('');
+  } finally {
+    setCertificateLoading(false);
+  }
+};    
 
   const getSpecialtyText = (specialty) => {
     const map = {
@@ -213,7 +250,10 @@ export default function AdminDashboard() {
 
                   <div className="flex items-center space-x-3">
                     <button
-                      onClick={() => setSelectedDoctor(doctor)}  // ⭐ 只設定 selectedDoctor，不要動 rejectionReason
+                      onClick={() => {
+                        setSelectedDoctor(doctor);
+                        loadCertificate(doctor.certificate_path);  // ⭐ 載入證明
+                      }}
                       className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       <Eye size={18} />
@@ -245,7 +285,7 @@ export default function AdminDashboard() {
       </main>
 
       {/* Modal - View Certificate */}
-     {selectedDoctor && rejectionReason === '' && (
+      {selectedDoctor && rejectionReason === '' && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
             <div className="p-6 border-b flex items-center justify-between">
@@ -253,7 +293,13 @@ export default function AdminDashboard() {
                 {selectedDoctor.first_name}{selectedDoctor.last_name} - 執業證明
               </h3>
               <button
-                onClick={() => setSelectedDoctor(null)}
+                onClick={() => {
+                  setSelectedDoctor(null);
+                  if (certificateUrl) {
+                    URL.revokeObjectURL(certificateUrl);  // ⭐ 清理記憶體
+                  }
+                  setCertificateUrl('');
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <XCircle size={24} />
@@ -261,12 +307,22 @@ export default function AdminDashboard() {
             </div>
             
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
-              {selectedDoctor.certificate_path ? (
+              {certificateLoading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">載入中...</p>
+                </div>
+              ) : certificateUrl ? (
                 <img
-                  src={`http://127.0.0.1:5000/api/admin/certificate/${selectedDoctor.certificate_path.split('/').pop()}`}
+                  src={certificateUrl}
                   alt="執業證明"
                   className="w-full rounded-lg border"
                 />
+              ) : selectedDoctor.certificate_path ? (
+                <div className="text-center py-12">
+                  <FileText className="mx-auto text-red-300 mb-4" size={48} />
+                  <p className="text-red-500">無法載入執業證明</p>
+                </div>
               ) : (
                 <div className="text-center py-12">
                   <FileText className="mx-auto text-gray-300 mb-4" size={48} />
@@ -277,7 +333,13 @@ export default function AdminDashboard() {
 
             <div className="p-6 border-t bg-gray-50 flex justify-end space-x-3">
               <button
-                onClick={() => setSelectedDoctor(null)}
+                onClick={() => {
+                  setSelectedDoctor(null);
+                  if (certificateUrl) {
+                    URL.revokeObjectURL(certificateUrl);
+                  }
+                  setCertificateUrl('');
+                }}
                 className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
               >
                 關閉
