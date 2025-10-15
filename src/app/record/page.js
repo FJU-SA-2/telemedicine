@@ -88,24 +88,21 @@ export default function AppointmentRecords() {
   }
 
   return (
-    <div className="relative ">
-      {/* 只在 Sidebar 關閉時顯示打開按鈕 */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray z-50"
-        >
-          <Menu size={24} />
-        </button>
-      )}
-
-      {/* 側邊欄 */}
-      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+      <div className="relative min-h-screen bg-gray-50">
+        {!isOpen && (
+          <button 
+            onClick={() => setIsOpen(true)} 
+            className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
+          >
+            <Menu size={24} />
+          </button>
+        )}
+  
+        <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
       {/* 主內容 */}
-      <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"} max-w-6xl mx-auto`}>
-        <Navbar />
-
+      <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+          <Navbar />
       
 
         {/* 篩選器 */}
