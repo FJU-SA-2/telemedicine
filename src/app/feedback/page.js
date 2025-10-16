@@ -13,11 +13,11 @@ function FeedbackFormContent() {
 
 
   const categories = [
-    { id: 'login', label: '登入註冊' },
-    { id: 'booking', label: '預約' },
-    { id: 'favorite', label: '收藏' },
-    { id: 'video', label: '視訊品質' },
-    { id: 'other', label: '其他' }
+    { id: '登入註冊', label: '登入註冊' },
+    { id: '預約', label: '預約' },
+    { id: '收藏', label: '收藏' },
+    { id: '視訊品質', label: '視訊品質' },
+    { id: '其他', label: '其他' }
   ];
 
   const toggleCategory = (categoryId) => {
