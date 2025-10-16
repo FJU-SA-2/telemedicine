@@ -399,36 +399,40 @@ def login_user():
     cursor = db.cursor(dictionary=True)
 
     try:
-        # 查詢 users 表
+        # 查 users
         cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
         user = cursor.fetchone()
 
         if not user:
             return jsonify({"message": "帳號不存在"}), 401
 
-        # 密碼比對
+        # 密碼比對（建議後續改成 hash）
         if user["password_hash"] != password:
             return jsonify({"message": "密碼錯誤"}), 401
 
-        # 根據 role 取得詳細資料
         role = user["role"]
         user_id = user["user_id"]
-        
+
+        patient_id = None
+        first_name = ""
+        last_name = ""
+
         if role == "patient":
             cursor.execute("SELECT * FROM patient WHERE user_id = %s", (user_id,))
-        elif role == "doctor":
-            cursor.execute("SELECT * FROM doctor WHERE user_id = %s", (user_id,))
-        
-        profile = cursor.fetchone()
+            profile = cursor.fetchone()
+            if profile:
+                patient_id = profile.get("patient_id")
+                first_name = profile.get("first_name", "")
+                last_name = profile.get("last_name", "")
 
         # 儲存到 session
         session['user_id'] = user_id
         session['email'] = email
         session['role'] = role
         session['username'] = user["username"]
-        if profile:
-            session['first_name'] = profile.get("first_name", "")
-            session['last_name'] = profile.get("last_name", "")
+        session['patient_id'] = patient_id
+        session['first_name'] = first_name
+        session['last_name'] = last_name
 
         return jsonify({
             "success": True,
@@ -438,8 +442,9 @@ def login_user():
                 "username": user["username"],
                 "role": role,
                 "email": email,
-                "firstName": profile.get("first_name", "") if profile else "",
-                "lastName": profile.get("last_name", "") if profile else ""
+                "patient_id": patient_id,
+                "firstName": first_name,
+                "lastName": last_name
             }
         }), 200
 
@@ -448,6 +453,7 @@ def login_user():
     finally:
         cursor.close()
         db.close()
+
 
 @app.route("/api/me", methods=["GET"])
 def get_current_user():
@@ -462,10 +468,12 @@ def get_current_user():
             "username": session.get('username'),
             "email": session.get('email'),
             "role": session.get('role'),
+            "patient_id": session.get('patient_id'),
             "firstName": session.get('first_name', ''),
             "lastName": session.get('last_name', '')
         }
     }), 200
+
 
 @app.route("/api/logout", methods=["POST"])
 def logout_user():

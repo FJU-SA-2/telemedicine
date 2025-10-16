@@ -4,9 +4,9 @@ import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import BookingModal from "./BookingModal";
 import SuccessPage from "./SuccessPage";
-import { Menu, Calendar, CheckCircle, Search,Clock, X, CreditCard, FileText, ArrowRight, ArrowLeft  } from "lucide-react";
+import { Menu, Calendar, Search, Clock } from "lucide-react";
 
-function BookingPage({ doctors, schedules }) {
+function BookingPage({ doctors, schedules, setSchedules }) {
   const [selectedSpecialty, setSelectedSpecialty] = useState("all");
   const [selectedDate, setSelectedDate] = useState("");
   const [searchName, setSearchName] = useState("");
@@ -28,13 +28,9 @@ function BookingPage({ doctors, schedules }) {
   )].sort();
 
   const filteredDoctors = doctors.filter(doctor => {
-    // 必須有可預約時段
     if (!doctorsWithSchedules.has(doctor.doctor_id)) return false;
-    
-    // 科別篩選
     if (selectedSpecialty !== "all" && doctor.specialty !== selectedSpecialty) return false;
     
-    // 日期篩選
     if (selectedDate) {
       const hasAvailableSlot = schedules.some(
         s => s.doctor_id === doctor.doctor_id && 
@@ -44,7 +40,6 @@ function BookingPage({ doctors, schedules }) {
       if (!hasAvailableSlot) return false;
     }
     
-    // 姓名搜尋
     if (searchName) {
       const fullName = doctor.last_name + doctor.first_name;
       if (!fullName.includes(searchName)) return false;
@@ -64,19 +59,70 @@ function BookingPage({ doctors, schedules }) {
     return schedules.filter(s => s.doctor_id === doctorId && s.is_available === 1).length;
   };
 
-  const handleBooking = (bookingData) => {
-    // 將已預約時段標記為不可用
-    const idx = schedules.findIndex(
-      s => s.doctor_id === bookingData.doctor.doctor_id && 
-           s.schedule_date === bookingData.date && 
-           s.time_slot === bookingData.time
-    );
-    if (idx !== -1) schedules[idx].is_available = 0;
+  const handleBooking = async (bookingData) => {
+  try {
+    // 先取得登入使用者資訊
+    const meRes = await fetch("/api/me");
+    if (!meRes.ok) {
+      alert("請先登入！");
+      return;
+    }
+    const meData = await meRes.json();
+    const patientId = meData.user?.patient_id;
 
-    setBookingInfo(bookingData);
+    if (!patientId) {
+      alert("您不是病患，無法預約！");
+      return;
+    }
+
+    // 發送預約請求到後端 API
+    const response = await fetch("/api/appointments1", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        patient_id: patientId, // 從登入狀態取得
+        doctor_id: bookingData.doctor.doctor_id,
+        appointment_date: bookingData.date,
+        appointment_time: bookingData.time,
+        symptoms: bookingData.symptoms,
+        payment_method: bookingData.paymentMethod,
+        amount: 500
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      alert(result.error || "預約失敗，請稍後再試");
+      return;
+    }
+
+    // 預約成功，更新本地排程狀態
+    setSchedules(prevSchedules => 
+      prevSchedules.map(s => 
+        s.doctor_id === bookingData.doctor.doctor_id && 
+        s.schedule_date === bookingData.date && 
+        s.time_slot === bookingData.time
+          ? { ...s, is_available: 0 }
+          : s
+      )
+    );
+
+    setBookingInfo({
+      ...bookingData,
+      appointment_id: result.appointment_id
+    });
     setShowModal(false);
     setShowSuccess(true);
-  };
+
+  } catch (error) {
+    console.error("預約錯誤:", error);
+    alert("預約失敗，請檢查網路連線後再試");
+  }
+};
+
 
   const handleCloseSuccess = () => {
     setShowSuccess(false);
@@ -220,6 +266,7 @@ function BookingPage({ doctors, schedules }) {
     </div>
   );
 }
+
 // 主頁面
 export default function HomePage() {
   const [isOpen, setIsOpen] = useState(false);
@@ -228,36 +275,35 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-  async function fetchData() {
-    try {
-      setLoading(true);
-      
-      const resDoctors = await fetch("/api/doctors");
-      const doctorsData = await resDoctors.json();
-      setDoctors(doctorsData);
+    async function fetchData() {
+      try {
+        setLoading(true);
+        
+        const resDoctors = await fetch("/api/doctors");
+        const doctorsData = await resDoctors.json();
+        setDoctors(doctorsData);
 
-      const resSchedules = await fetch("/api/schedules");
-      const schedulesData = await resSchedules.json();
-      
-      // 關鍵：確保日期格式正確
-      const formattedSchedules = schedulesData.map(s => ({
-        ...s,
-        doctor_id: Number(s.doctor_id),
-        // 只取 YYYY-MM-DD 部分，移除時間和時區
-        schedule_date: s.schedule_date.split("T")[0],
-        time_slot: s.time_slot.substring(0, 5), // HH:MM
-        is_available: Number(s.is_available)
-      }));
-      
-      setSchedules(formattedSchedules);
-      setLoading(false);
-    } catch (err) {
-      console.error("載入資料錯誤:", err);
-      setLoading(false);
+        const resSchedules = await fetch("/api/schedules");
+        const schedulesData = await resSchedules.json();
+        
+        // 確保日期格式正確
+        const formattedSchedules = schedulesData.map(s => ({
+          ...s,
+          doctor_id: Number(s.doctor_id),
+          schedule_date: s.schedule_date.split("T")[0],
+          time_slot: s.time_slot.substring(0, 5),
+          is_available: Number(s.is_available)
+        }));
+        
+        setSchedules(formattedSchedules);
+        setLoading(false);
+      } catch (err) {
+        console.error("載入資料錯誤:", err);
+        setLoading(false);
+      }
     }
-  }
-  fetchData();
-}, []);
+    fetchData();
+  }, []);
 
   if (loading) {
     return (
@@ -285,7 +331,7 @@ export default function HomePage() {
       
       <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
         <Navbar />
-        <BookingPage doctors={doctors} schedules={schedules} />
+        <BookingPage doctors={doctors} schedules={schedules} setSchedules={setSchedules} />
       </div>
     </div>
   );
