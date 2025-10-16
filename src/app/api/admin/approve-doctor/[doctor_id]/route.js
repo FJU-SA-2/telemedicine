@@ -1,9 +1,10 @@
-export async function GET(request) {
+export async function POST(request, { params }) {
   try {
+    const { doctor_id } = params;
     const cookies = request.headers.get('cookie');
     
-    const res = await fetch('http://127.0.0.1:5000/api/admin/pending-doctors', {
-      method: 'GET',
+    const res = await fetch(`http://127.0.0.1:5000/api/admin/approve-doctor/${doctor_id}`, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(cookies && { 'Cookie': cookies })
@@ -12,7 +13,7 @@ export async function GET(request) {
     });
 
     const data = await res.json();
-
+    
     return new Response(JSON.stringify(data), {
       status: res.status,
       headers: {
@@ -20,7 +21,6 @@ export async function GET(request) {
       },
     });
   } catch (error) {
-    console.error('API Error:', error);
     return new Response(JSON.stringify({ message: '連接失敗' }), {
       status: 500,
     });
