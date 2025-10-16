@@ -1,6 +1,6 @@
 // components/Sidebar.jsx
 "use client";
-import { House, Calendar, ContactRound, X, Settings } from "lucide-react";
+import { House, Calendar, ContactRound, X, Settings, MessageCircleMore} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -13,7 +13,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     { id: "/reserve", label: "線上預約", icon: Calendar, href: "/reserve" },
     { id: "/favorite", label: "收藏列表", icon: ContactRound, href: "/favorite" },
     { id: "/my reserve", label: "預約紀錄", icon: Calendar, href: "/record" },
-    { id: "/feedback", label: "問題回報", icon: Calendar, href: "/feedback" },
+    { id: "/feedback", label: "問題回報", icon: MessageCircleMore, href: "/feedback" },
     { id: "/settings", label: "以後再想", icon: Settings, href: "/settings" },
   ];
 

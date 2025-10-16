@@ -76,7 +76,7 @@ function BookingPage({ doctors, schedules, setSchedules }) {
     }
 
     // 發送預約請求到後端 API
-    const response = await fetch("/api/appointments1", {
+    const response = await fetch("/api/appointments", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

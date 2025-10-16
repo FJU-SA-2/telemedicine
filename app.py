@@ -451,6 +451,7 @@ def login_user():
         user_id = user["user_id"]
 
         patient_id = None
+        doctor_id = None  # ⭐ 新增
         first_name = ""
         last_name = ""
 
@@ -461,6 +462,14 @@ def login_user():
                 patient_id = profile.get("patient_id")
                 first_name = profile.get("first_name", "")
                 last_name = profile.get("last_name", "")
+        
+        elif role == "doctor":  # ⭐ 修改這裡
+            cursor.execute("SELECT * FROM doctor WHERE user_id = %s", (user_id,))
+            profile = cursor.fetchone()
+            if profile:
+                doctor_id = profile.get("doctor_id")  # ⭐ 取得 doctor_id
+                first_name = profile.get("first_name", "")
+                last_name = profile.get("last_name", "")
 
         # 儲存到 session
         session['user_id'] = user_id
@@ -468,8 +477,11 @@ def login_user():
         session['role'] = role
         session['username'] = user["username"]
         session['patient_id'] = patient_id
+        session['doctor_id'] = doctor_id  # ⭐ 新增
         session['first_name'] = first_name
         session['last_name'] = last_name
+
+        print(f"✅ 登入成功 - Role: {role}, doctor_id: {doctor_id}, patient_id: {patient_id}")
 
         return jsonify({
             "success": True,
@@ -480,12 +492,16 @@ def login_user():
                 "role": role,
                 "email": email,
                 "patient_id": patient_id,
+                "doctor_id": doctor_id,  # ⭐ 新增
                 "firstName": first_name,
                 "lastName": last_name
             }
         }), 200
 
     except Exception as e:
+        print(f"❌ 登入錯誤: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"message": f"登入失敗: {str(e)}"}), 500
     finally:
         cursor.close()
@@ -498,6 +514,16 @@ def get_current_user():
     if 'user_id' not in session:
         return jsonify({"authenticated": False}), 401
 
+    # ⭐ 加入詳細的除錯訊息
+    print("=" * 60)
+    print("📋 /api/me 被調用")
+    print(f"Session 內容: {dict(session)}")
+    print(f"user_id: {session.get('user_id')}")
+    print(f"role: {session.get('role')}")
+    print(f"doctor_id: {session.get('doctor_id')}")
+    print(f"patient_id: {session.get('patient_id')}")
+    print("=" * 60)
+
     return jsonify({
         "authenticated": True,
         "user": {
@@ -506,6 +532,7 @@ def get_current_user():
             "email": session.get('email'),
             "role": session.get('role'),
             "patient_id": session.get('patient_id'),
+            "doctor_id": session.get('doctor_id'),  # ⭐ 新增
             "firstName": session.get('first_name', ''),
             "lastName": session.get('last_name', '')
         }
