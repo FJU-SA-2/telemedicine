@@ -527,8 +527,8 @@ def serialize_datetime(obj):
     return obj
 
 
-@app.route("/api/appointments", methods=["GET"])
-def get_appointments():
+@app.route("/api/record", methods=["GET"])
+def get_record():
     db = get_db()
     cursor = db.cursor(dictionary=True)
     
@@ -556,6 +556,39 @@ def get_appointments():
         a["appointment_time"] = serialize_datetime(a["appointment_time"])
 
     return jsonify(appointments)
+
+@app.route("/api/recordoc", methods=["GET"])
+def get_recordoc_doctor_view():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    query = """
+        SELECT 
+            a.appointment_id,
+            a.appointment_date,
+            a.appointment_time,
+            a.status,
+            p.first_name,
+            p.last_name
+        FROM appointments a
+        INNER JOIN patient p ON a.patient_id = p.patient_id
+        ORDER BY a.appointment_date DESC, a.appointment_time DESC
+    """
+    cursor.execute(query)
+    appointments = cursor.fetchall()
+    
+    cursor.close()
+    db.close()
+    
+    # 將日期時間轉成字串
+    for a in appointments:
+        a["appointment_date"] = serialize_datetime(a["appointment_date"])
+        a["appointment_time"] = serialize_datetime(a["appointment_time"])
+
+    return jsonify(appointments)
+
+
+
 
 
    
