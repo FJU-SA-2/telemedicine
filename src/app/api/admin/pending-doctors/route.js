@@ -1,19 +1,17 @@
-export async function POST(request, { params }) {
+export async function GET(request) {
   try {
-    const { id } = params;
     const cookies = request.headers.get('cookie');
     
-    const res = await fetch(`http://127.0.0.1:5000/api/admin/approve-doctor/${id}`, {
-      method: 'POST',
+    const res = await fetch('http://127.0.0.1:5000/api/admin/pending-doctors', {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
         ...(cookies && { 'Cookie': cookies })
       },
       credentials: 'include',
     });
 
     const data = await res.json();
-
+    
     return new Response(JSON.stringify(data), {
       status: res.status,
       headers: {
@@ -21,8 +19,7 @@ export async function POST(request, { params }) {
       },
     });
   } catch (error) {
-    console.error('Approve Error:', error);
-    return new Response(JSON.stringify({ message: '操作失敗' }), {
+    return new Response(JSON.stringify({ message: '連接失敗' }), {
       status: 500,
     });
   }
