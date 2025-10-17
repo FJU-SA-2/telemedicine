@@ -516,6 +516,16 @@ def get_current_user():
     user_id = session.get('user_id')
     role = session.get('role')
 
+
+    # ⭐ 加入詳細的除錯訊息
+    print("=" * 60)
+    print("📋 /api/me 被調用")
+    print(f"Session 內容: {dict(session)}")
+    print(f"user_id: {session.get('user_id')}")
+    print(f"role: {session.get('role')}")
+    print(f"doctor_id: {session.get('doctor_id')}")
+    print(f"patient_id: {session.get('patient_id')}")
+    print("=" * 60)
     db = get_db()
     cursor = db.cursor(dictionary=True)
     
@@ -525,10 +535,16 @@ def get_current_user():
             "username": session.get('username'),
             "email": session.get('email'),
             "role": role,
-            "firstName": session.get('first_name', ''),
-            "lastName": session.get('last_name', '')
-        }
-        
+            "patient_id": session.get('patient_id'),
+            "doctor_id": session.get('doctor_id'), 
+            "first_name": session.get('first_name'), 
+            "last_name": session.get('last_name')
+
+        } 
+    
+    
+
+  
         # 如果是病患,取得完整健康資料
         if role == "patient":
             cursor.execute("""
