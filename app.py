@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from email.header import Header
 from werkzeug.utils import secure_filename
 import os
-from datetime import date, datetime, time
+from flask import send_from_directory
 
 
 app = Flask(__name__)
@@ -33,7 +33,8 @@ app.config.update(
     SESSION_COOKIE_SECURE=False,  # 本地開發用 False
     SESSION_COOKIE_NAME="telemedicine_session",
     SESSION_COOKIE_PATH="/",
-    PERMANENT_SESSION_LIFETIME=timedelta(minutes=10)  # Session 10分鐘過期
+    PERMANENT_SESSION_LIFETIME=timedelta(minutes=30),  # Session 30分鐘過期
+    SESSION_REFRESH_EACH_REQUEST=True
 )
 
 # 連接 MySQL
@@ -261,13 +262,26 @@ def send_verification():
     if not send_verification_email(email, verification_code):
         return jsonify({'message': '驗證碼發送失敗，請稍後再試'}), 500
     
+    # ⭐ 關鍵修改：保留已上傳的 certificate
+    existing_certificate = None
+    if 'pending_registration' in session and 'certificate' in session['pending_registration']:
+        existing_certificate = session['pending_registration']['certificate']
+        print(f"🔍 保留已上傳的證明檔案: {existing_certificate}")
+    
     # 將驗證碼和過期時間存入 session
     session['verification_code'] = verification_code
     session['verification_email'] = email
     session['verification_expiry'] = (datetime.now() + timedelta(minutes=10)).isoformat()
     
-    # 暫存註冊資料
+    # ⭐ 暫存註冊資料，並保留 certificate
     session['pending_registration'] = data
+    if existing_certificate:
+        session['pending_registration']['certificate'] = existing_certificate
+        print(f"✅ 已將證明檔案加回 session: {existing_certificate}")
+    
+    session.modified = True  # ⭐ 強制標記 session 已修改
+
+    print(f"📦 最終 Session 內容: {session.get('pending_registration')}")
     
     return jsonify({
         'success': True,
@@ -319,12 +333,15 @@ def verify_code():
         print(f"❌ 驗證碼錯誤: 輸入 {user_code} vs 正確 {stored_code}")
         return jsonify({'message': '驗證碼錯誤'}), 400
     
-    # 驗證成功，執行註冊
+    # 驗證成功,執行註冊
     registration_data = session.get('pending_registration')
     if not registration_data:
-        return jsonify({'message': '註冊資料遺失，請重新註冊'}), 400
+        return jsonify({'message': '註冊資料遺失,請重新註冊'}), 400
     
-    # 執行註冊邏輯（複製原本的註冊代碼）
+    certificate_filename = registration_data.get("certificate") # ⭐ 取得證明檔案名稱
+    print(f"📦 註冊資料內容: {registration_data}")  # ⭐ 查看註冊資料
+
+    # 取得註冊資料
     first_name = registration_data.get("first_name")
     last_name = registration_data.get("last_name")
     email = registration_data.get("email")
@@ -336,6 +353,11 @@ def verify_code():
     specialty = registration_data.get("specialty")
     practice_hospital = registration_data.get("practice_hospital")
     address = registration_data.get("address")
+    certificate_path = registration_data.get("certificate")  # ⭐ 取得證書路徑
+    certificate_filename = registration_data.get("certificate")  # ⭐ 取得證明檔案名稱
+
+    print(f"📄 Certificate filename: {certificate_filename}")  # ⭐ 確認有沒有值
+
     
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -343,6 +365,7 @@ def verify_code():
     try:
         username = first_name + last_name
         
+        # 插入 users 表
         sql_user = """
             INSERT INTO users (username, email, password_hash, role)
             VALUES (%s, %s, %s, %s)
@@ -358,12 +381,22 @@ def verify_code():
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """
             cursor.execute(sql_patient, (user_id, first_name, last_name, gender, phone_number, date_of_birth, address))
+        
         elif role == "doctor":
-            sql_doctor = """
-                INSERT INTO doctor (user_id, first_name, last_name, gender, phone_number, specialty, practice_hospital)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            # ⭐ 修改這裡:加入 certificate_path 和 approval_status
+           sql_doctor = """
+                INSERT INTO doctor (user_id, first_name, last_name, gender, phone_number, 
+                                    specialty, practice_hospital, certificate_path, approval_status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'pending')
             """
-            cursor.execute(sql_doctor, (user_id, first_name, last_name, gender, phone_number, specialty, practice_hospital))
+        cursor.execute(sql_doctor, (
+                user_id, first_name, last_name, gender, phone_number, 
+                specialty, practice_hospital, certificate_filename  # ⭐ 這裡
+            ))
+           
+            # ⭐ 發送醫師註冊收到通知郵件
+        doctor_name = first_name + last_name
+        send_registration_received_email(email, doctor_name)
         
         db.commit()
         
@@ -375,11 +408,15 @@ def verify_code():
         
         return jsonify({
             'success': True,
-            'message': '註冊成功'
+            'message': '註冊成功，請等待管理員審核' if role == 'doctor' else '註冊成功',  # ⭐ 修改這裡
+            'role': role  # ⭐ 回傳角色給前端
         }), 200
         
     except Exception as e:
         db.rollback()
+        print(f"❌ 註冊失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'message': f'註冊失敗: {str(e)}'}), 500
     finally:
         cursor.close()
@@ -399,36 +436,52 @@ def login_user():
     cursor = db.cursor(dictionary=True)
 
     try:
-        # 查詢 users 表
+        # 查 users
         cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
         user = cursor.fetchone()
 
         if not user:
             return jsonify({"message": "帳號不存在"}), 401
 
-        # 密碼比對
+        # 密碼比對（建議後續改成 hash）
         if user["password_hash"] != password:
             return jsonify({"message": "密碼錯誤"}), 401
 
-        # 根據 role 取得詳細資料
         role = user["role"]
         user_id = user["user_id"]
-        
+
+        patient_id = None
+        doctor_id = None  # ⭐ 新增
+        first_name = ""
+        last_name = ""
+
         if role == "patient":
             cursor.execute("SELECT * FROM patient WHERE user_id = %s", (user_id,))
-        elif role == "doctor":
-            cursor.execute("SELECT * FROM doctor WHERE user_id = %s", (user_id,))
+            profile = cursor.fetchone()
+            if profile:
+                patient_id = profile.get("patient_id")
+                first_name = profile.get("first_name", "")
+                last_name = profile.get("last_name", "")
         
-        profile = cursor.fetchone()
+        elif role == "doctor":  # ⭐ 修改這裡
+            cursor.execute("SELECT * FROM doctor WHERE user_id = %s", (user_id,))
+            profile = cursor.fetchone()
+            if profile:
+                doctor_id = profile.get("doctor_id")  # ⭐ 取得 doctor_id
+                first_name = profile.get("first_name", "")
+                last_name = profile.get("last_name", "")
 
         # 儲存到 session
         session['user_id'] = user_id
         session['email'] = email
         session['role'] = role
         session['username'] = user["username"]
-        if profile:
-            session['first_name'] = profile.get("first_name", "")
-            session['last_name'] = profile.get("last_name", "")
+        session['patient_id'] = patient_id
+        session['doctor_id'] = doctor_id  # ⭐ 新增
+        session['first_name'] = first_name
+        session['last_name'] = last_name
+
+        print(f"✅ 登入成功 - Role: {role}, doctor_id: {doctor_id}, patient_id: {patient_id}")
 
         return jsonify({
             "success": True,
@@ -438,16 +491,22 @@ def login_user():
                 "username": user["username"],
                 "role": role,
                 "email": email,
-                "firstName": profile.get("first_name", "") if profile else "",
-                "lastName": profile.get("last_name", "") if profile else ""
+                "patient_id": patient_id,
+                "doctor_id": doctor_id,  # ⭐ 新增
+                "firstName": first_name,
+                "lastName": last_name
             }
         }), 200
 
     except Exception as e:
+        print(f"❌ 登入錯誤: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"message": f"登入失敗: {str(e)}"}), 500
     finally:
         cursor.close()
         db.close()
+
 
 @app.route("/api/me", methods=["GET"])
 def get_current_user():
@@ -650,6 +709,7 @@ def update_doctor_profile():
         db.close()
 
 
+
 @app.route("/api/logout", methods=["POST"])
 def logout_user():
     """登出"""
@@ -673,8 +733,8 @@ def serialize_datetime(obj):
     return obj
 
 
-@app.route("/api/appointments", methods=["GET"])
-def get_appointments():
+@app.route("/api/record", methods=["GET"])
+def get_record():
     db = get_db()
     cursor = db.cursor(dictionary=True)
     
@@ -703,12 +763,43 @@ def get_appointments():
 
     return jsonify(appointments)
 
+@app.route("/api/recordoc", methods=["GET"])
+def get_recordoc_doctor_view():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    query = """
+        SELECT 
+            a.appointment_id,
+            a.appointment_date,
+            a.appointment_time,
+            a.status,
+            p.first_name,
+            p.last_name
+        FROM appointments a
+        INNER JOIN patient p ON a.patient_id = p.patient_id
+        ORDER BY a.appointment_date DESC, a.appointment_time DESC
+    """
+    cursor.execute(query)
+    appointments = cursor.fetchall()
+    
+    cursor.close()
+    db.close()
+    
+    # 將日期時間轉成字串
+    for a in appointments:
+        a["appointment_date"] = serialize_datetime(a["appointment_date"])
+        a["appointment_time"] = serialize_datetime(a["appointment_time"])
+
+    return jsonify(appointments)
+
+
+
+
 
    
 
 #醫師註冊檔案上傳
-
-
 @app.route("/api/upload-certificate", methods=["POST"])
 def upload_certificate():
     """上傳醫師執業證明"""
@@ -721,17 +812,31 @@ def upload_certificate():
         return jsonify({'message': '未選擇檔案'}), 400
     
     if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
+        # ⭐ 修改這裡：確保檔名正確
+        original_filename = secure_filename(file.filename)
+        
+        # 分離檔名和副檔名
+        name, ext = os.path.splitext(original_filename)
+        
+        # 生成唯一檔名：時間戳_原始檔名.副檔名
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        unique_filename = f"{timestamp}_{filename}"
+        unique_filename = f"{timestamp}_{original_filename}"  # ⭐ 保留完整的檔名和副檔名
+        
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
         
+        # 儲存檔案
         file.save(filepath)
         
-        # 將檔案路徑暫存到 session
+        # ⭐ 重點：檢查這裡
         if 'pending_registration' not in session:
             session['pending_registration'] = {}
-        session['pending_registration']['certificate'] = filepath
+        
+        # ⭐ 只儲存檔名，不要儲存完整路徑
+        session['pending_registration']['certificate'] = unique_filename
+        session.modified = True  # ⭐ 強制標記 session 已修改
+        
+        print(f"✅ 檔案已儲存: {filepath}")
+        print(f"📦 Session 內容: {session.get('pending_registration')}")
         
         return jsonify({
             'success': True,
@@ -739,7 +844,8 @@ def upload_certificate():
             'filename': unique_filename
         }), 200
     
-    return jsonify({'message': '不支援的檔案格式 (僅支援 PDF, PNG, JPG)'}), 400
+    return jsonify({'message': '不支持的檔案格式 (僅支持 PDF, PNG, JPG)'}), 400
+
 
 #管理者相關
 @app.route("/api/admin/login", methods=["POST"])
@@ -1132,6 +1238,39 @@ def save_schedules():
     finally:
         cursor.close()
         connection.close()
+
+#讀取證明檔案
+@app.route("/api/admin/certificate/<filename>", methods=["GET"])
+def get_certificate(filename):
+    """管理者查看醫師執業證明"""
+
+    # ⭐ 加入詳細的除錯訊息
+    print("=" * 60)
+    print("📂 收到證明檔案請求")
+    print(f"   檔案名: {filename}")
+    print(f"   Session 內容: {dict(session)}")
+    print(f"   is_admin: {session.get('is_admin')}")
+    print(f"   admin_id: {session.get('admin_id')}")
+    print("=" * 60)
+
+
+    if not session.get('is_admin'):
+        return jsonify({"message": "無權限"}), 403
+    
+    print(f"📂 請求檔案: {filename}")
+    print(f"📁 檔案路徑: {app.config['UPLOAD_FOLDER']}")
+
+    # ⭐ 先定義 full_path
+    full_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    print(f"📁 完整路徑: {full_path}")
+    print(f"📁 檔案是否存在: {os.path.exists(full_path)}")
+    
+    try:
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    except Exception as e:
+        print(f"❌ 檔案不存在: {str(e)}")
+        return jsonify({"message": f"檔案不存在: {str(e)}"}), 404
+    
 
 if __name__ == "__main__":
     app.run(debug=True)
