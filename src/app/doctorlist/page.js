@@ -135,13 +135,20 @@ function DoctorDetailsPage({ doctor, onBack, onBooking }) {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      
-
       <div className="bg-white rounded-lg shadow p-8 max-w-2xl mx-auto">
         {/* 醫師基本信息 */}
         <div className="flex gap-6 mb-8">
-          <div className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-3xl flex-shrink-0">
-            {doctor.last_name.charAt(0)}
+          <div className="relative">
+            {/* 返回按鈕 */}
+            <button
+              onClick={onBack}
+              className="absolute -top-6 -left-7 p-1 text-gray-500 hover:text-gray-700 transition-colors flex items-center justify-center z-10"
+            >
+              <ArrowLeft size={24} />
+            </button>
+            <div className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-3xl">
+              {doctor.last_name.charAt(0)}
+            </div>
           </div>
           <div>
             <h1 className="text-black font-bold mb-2">{doctorFullName}</h1>
@@ -182,9 +189,6 @@ function DoctorDetailsPage({ doctor, onBack, onBooking }) {
             </div>
             
           </div>
-
-          
-          
         </div>
 
         {/* 預約按鈕 */}

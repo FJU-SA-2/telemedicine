@@ -3,12 +3,172 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Shield, CheckCircle, XCircle, Eye, Clock, Mail, Phone, MapPin, FileText, LogOut } from 'lucide-react';
 
+function FeedbackList() {
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    fetchFeedbacks();
+  }, []);
+
+  const fetchFeedbacks = async () => {
+    try {
+      const res = await fetch('/api/admin/feedback');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || '載入失敗');
+      setFeedbacks(data);
+      setUnreadCount(data.filter(f => f.status === 'unread').length);
+    } catch (err) {
+      console.error('載入回報錯誤:', err);
+      setError('無法載入回報資料');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const markAsRead = async (id) => {
+    if (!confirm('確認要標示為已處理嗎?')) return;
+    try {
+      const res = await fetch('/api/admin/feedback/read', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedback_id: id }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert('已標示為已處理');
+        fetchFeedbacks();
+      } else {
+        console.error('伺服器回傳錯誤:', data);
+        alert(data.message || '操作失敗');
+      }
+    } catch (err) {
+      console.error('更新狀態錯誤:', err);
+      alert('操作失敗');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm p-12 text-center border">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">載入中...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm p-6 text-center border">
+        <p className="text-red-600">{error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* 統計卡片 */}
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border">
+        <div className="flex items-center space-x-3">
+          <FileText className="text-indigo-600" size={24} />
+          <div>
+            <p className="text-sm text-gray-600">未處理回報</p>
+            <p className="text-2xl font-bold text-gray-900">{unreadCount} 筆</p>
+          </div>
+        </div>
+      </div>
+
+      {/* 回報列表 */}
+      {feedbacks.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-sm p-12 text-center border">
+          <Clock className="mx-auto text-gray-300 mb-4" size={48} />
+          <p className="text-gray-500 text-lg">目前沒有任何回報</p>
+        </div>
+      ) : (
+        <div className="grid gap-6">
+          {feedbacks.map((f) => (
+            <div
+              key={f.feedback_id}
+              className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border"
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {f.first_name}{f.last_name || ''}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {new Date(f.created_at).toLocaleString('zh-TW')}
+                    </p>
+                  </div>
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-1 ${
+                      f.status === 'unread'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-green-100 text-green-700'
+                    }`}
+                  >
+                    {f.status === 'unread' ? (
+                      <>
+                        <Clock size={14} />
+                        <span>未處理</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle size={14} />
+                        <span>已處理</span>
+                      </>
+                    )}
+                  </span>
+                </div>
+
+                <p className="text-gray-700 mb-4">{f.feedback_text}</p>
+
+                {f.categories && f.categories.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {f.categories.map((cat, index) => (
+                      <span
+                        key={index}
+                        className="inline-block bg-indigo-100 text-indigo-700 text-xs font-medium px-3 py-1 rounded-full"
+                      >
+                        {cat}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {f.status === 'unread' && (
+                  <button
+                    onClick={() => markAsRead(f.feedback_id)}
+                    className="flex items-center space-x-2 text-sm px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <CheckCircle size={16} />
+                    <span>標示為已處理</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [certificateUrl, setCertificateUrl] = useState('');
+  const [certificateLoading, setCertificateLoading] = useState(false);
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('doctors');
 
   useEffect(() => {
     fetchPendingDoctors();
@@ -23,7 +183,7 @@ export default function AdminDashboard() {
       if (!res.ok) {
         if (res.status === 403) {
           alert('請先登入管理者帳號');
-          router.push('/admin/login');
+          router.push('/');
           return;
         }
         throw new Error('Failed to fetch');
@@ -85,6 +245,7 @@ export default function AdminDashboard() {
         alert('已拒絕該醫師註冊');
         setSelectedDoctor(null);
         setRejectionReason('');
+        setShowRejectionModal(false);
         fetchPendingDoctors();
       } else {
         alert(data.message || '操作失敗');
@@ -97,7 +258,39 @@ export default function AdminDashboard() {
 
   const handleLogout = () => {
     if (confirm('確定要登出嗎?')) {
-      router.push('/admin/login');
+      router.push('/');
+    }
+  };
+
+  const loadCertificate = async (certificatePath) => {
+    if (!certificatePath) {
+      setCertificateUrl('');
+      return;
+    }
+
+    setCertificateLoading(true);
+    const filename = certificatePath.split('/').pop();
+
+    try {
+      const res = await fetch(`/api/admin/certificate/${filename}`, {
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+        console.error('載入證明失敗:', res.status);
+        setCertificateUrl('');
+        setCertificateLoading(false);
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      setCertificateUrl(url);
+    } catch (err) {
+      console.error('載入證明錯誤:', err);
+      setCertificateUrl('');
+    } finally {
+      setCertificateLoading(false);
     }
   };
 
@@ -153,99 +346,138 @@ export default function AdminDashboard() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* Stats */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border">
-          <div className="flex items-center space-x-3">
-            <Clock className="text-orange-500" size={24} />
-            <div>
-              <p className="text-sm text-gray-600">待審核醫師</p>
-              <p className="text-2xl font-bold text-gray-900">{doctors.length} 位</p>
-            </div>
-          </div>
+        {/* 導覽按鈕 */}
+        <div className="bg-white rounded-xl shadow-sm p-2 mb-6 border flex space-x-2">
+          <button
+            onClick={() => setActiveTab('doctors')}
+            className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
+              activeTab === 'doctors'
+                ? 'bg-purple-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            待審核醫師
+          </button>
+          <button
+            onClick={() => setActiveTab('feedback')}
+            className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
+              activeTab === 'feedback'
+                ? 'bg-purple-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            病患問題回報
+          </button>
         </div>
 
-        {/* Doctors List */}
-        {doctors.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm p-12 text-center border">
-            <Clock className="mx-auto text-gray-300 mb-4" size={48} />
-            <p className="text-gray-500 text-lg">目前沒有待審核的醫師</p>
-          </div>
-        ) : (
-          <div className="grid gap-6">
-            {doctors.map((doctor) => (
-              <div key={doctor.doctor_id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border">
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-1">
-                        {doctor.first_name}{doctor.last_name} 醫師
-                      </h3>
-                      <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
-                        {getSpecialtyText(doctor.specialty)}
-                      </span>
-                    </div>
-                    <span className="px-3 py-1 bg-orange-100 text-orange-700 text-sm font-medium rounded-full flex items-center space-x-1">
-                      <Clock size={14} />
-                      <span>待審核</span>
-                    </span>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4 mb-4">
-                    <div className="flex items-center space-x-2 text-gray-600">
-                      <Mail size={16} />
-                      <span className="text-sm">{doctor.email}</span>
-                    </div>
-                    <div className="flex items-center space-x-2 text-gray-600">
-                      <Phone size={16} />
-                      <span className="text-sm">{doctor.phone_number}</span>
-                    </div>
-                    <div className="flex items-center space-x-2 text-gray-600">
-                      <MapPin size={16} />
-                      <span className="text-sm">{doctor.practice_hospital}</span>
-                    </div>
-                    <div className="flex items-center space-x-2 text-gray-600">
-                      <FileText size={16} />
-                      <span className="text-sm">
-                        註冊時間: {new Date(doctor.registration_date).toLocaleDateString('zh-TW')}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-3">
-                    <button
-                      onClick={() => setSelectedDoctor(doctor)}
-                      className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      <Eye size={18} />
-                      <span>查看執照</span>
-                    </button>
-                    <button
-                      onClick={() => handleApprove(doctor.doctor_id)}
-                      className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      <CheckCircle size={18} />
-                      <span>核准</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedDoctor(doctor);
-                        setRejectionReason('');
-                      }}
-                      className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                    >
-                      <XCircle size={18} />
-                      <span>拒絕</span>
-                    </button>
-                  </div>
+        {/* 待審核醫師頁面 */}
+        {activeTab === 'doctors' && (
+          <>
+            {/* Stats */}
+            <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border">
+              <div className="flex items-center space-x-3">
+                <Clock className="text-orange-500" size={24} />
+                <div>
+                  <p className="text-sm text-gray-600">待審核醫師</p>
+                  <p className="text-2xl font-bold text-gray-900">{doctors.length} 位</p>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+
+            {/* Doctors List */}
+            {doctors.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-sm p-12 text-center border">
+                <Clock className="mx-auto text-gray-300 mb-4" size={48} />
+                <p className="text-gray-500 text-lg">目前沒有待審核的醫師</p>
+              </div>
+            ) : (
+              <div className="grid gap-6">
+                {doctors.map((doctor) => (
+                  <div key={doctor.doctor_id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border">
+                    <div className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-900 mb-1">
+                            {doctor.first_name}{doctor.last_name} 醫師
+                          </h3>
+                          <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
+                            {getSpecialtyText(doctor.specialty)}
+                          </span>
+                        </div>
+                        <span className="px-3 py-1 bg-orange-100 text-orange-700 text-sm font-medium rounded-full flex items-center space-x-1">
+                          <Clock size={14} />
+                          <span>待審核</span>
+                        </span>
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-4 mb-4">
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <Mail size={16} />
+                          <span className="text-sm">{doctor.email}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <Phone size={16} />
+                          <span className="text-sm">{doctor.phone_number}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <MapPin size={16} />
+                          <span className="text-sm">{doctor.practice_hospital}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <FileText size={16} />
+                          <span className="text-sm">
+                            註冊時間: {new Date(doctor.registration_date).toLocaleDateString('zh-TW')}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-3">
+                        <button
+                          onClick={() => {
+                            setSelectedDoctor(doctor);
+                            setShowRejectionModal(false);
+                            loadCertificate(doctor.certificate_path);
+                          }}
+                          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          <Eye size={18} />
+                          <span>查看執照</span>
+                        </button>
+                        <button
+                          onClick={() => handleApprove(doctor.doctor_id)}
+                          className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        >
+                          <CheckCircle size={18} />
+                          <span>核准</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedDoctor(doctor);
+                            setShowRejectionModal(true);
+                            setRejectionReason('');
+                          }}
+                          className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                          <XCircle size={18} />
+                          <span>拒絕</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* 病患問題回報頁面 */}
+        {activeTab === 'feedback' && (
+          <FeedbackList />
         )}
       </main>
 
       {/* Modal - View Certificate */}
-      {selectedDoctor && !rejectionReason && (
+      {selectedDoctor && !showRejectionModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
             <div className="p-6 border-b flex items-center justify-between">
@@ -253,7 +485,13 @@ export default function AdminDashboard() {
                 {selectedDoctor.first_name}{selectedDoctor.last_name} - 執業證明
               </h3>
               <button
-                onClick={() => setSelectedDoctor(null)}
+                onClick={() => {
+                  setSelectedDoctor(null);
+                  if (certificateUrl) {
+                    URL.revokeObjectURL(certificateUrl);
+                  }
+                  setCertificateUrl('');
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <XCircle size={24} />
@@ -261,12 +499,22 @@ export default function AdminDashboard() {
             </div>
             
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
-              {selectedDoctor.certificate_path ? (
+              {certificateLoading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">載入中...</p>
+                </div>
+              ) : certificateUrl ? (
                 <img
-                  src={`http://127.0.0.1:5000/api/admin/certificate/${selectedDoctor.certificate_path.split('/').pop()}`}
+                  src={certificateUrl}
                   alt="執業證明"
                   className="w-full rounded-lg border"
                 />
+              ) : selectedDoctor.certificate_path ? (
+                <div className="text-center py-12">
+                  <FileText className="mx-auto text-red-300 mb-4" size={48} />
+                  <p className="text-red-500">無法載入執業證明</p>
+                </div>
               ) : (
                 <div className="text-center py-12">
                   <FileText className="mx-auto text-gray-300 mb-4" size={48} />
@@ -277,7 +525,13 @@ export default function AdminDashboard() {
 
             <div className="p-6 border-t bg-gray-50 flex justify-end space-x-3">
               <button
-                onClick={() => setSelectedDoctor(null)}
+                onClick={() => {
+                  setSelectedDoctor(null);
+                  if (certificateUrl) {
+                    URL.revokeObjectURL(certificateUrl);
+                  }
+                  setCertificateUrl('');
+                }}
                 className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
               >
                 關閉
@@ -295,7 +549,7 @@ export default function AdminDashboard() {
       )}
 
       {/* Modal - Rejection Reason */}
-      {selectedDoctor && rejectionReason !== null && rejectionReason !== undefined && (
+      {selectedDoctor && showRejectionModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-md w-full">
             <div className="p-6 border-b">
@@ -315,6 +569,7 @@ export default function AdminDashboard() {
               <button
                 onClick={() => {
                   setSelectedDoctor(null);
+                  setShowRejectionModal(false);
                   setRejectionReason('');
                 }}
                 className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
@@ -334,3 +589,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+

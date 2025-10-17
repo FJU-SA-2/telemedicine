@@ -88,6 +88,34 @@ export default function TelemedicineAuth() {
 
   setIsLoading(true);
 
+  // ⭐ 新增：檢查是否為管理者帳號
+  if (email === 'admin@mog.com' && password === 'admin123') {
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        alert('管理者登入成功!');
+        router.push('/admin/dashboard');
+      } else {
+        alert(data.message || '管理者登入失敗');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('管理者登入失敗,請稍後再試');
+    } finally {
+      setIsLoading(false);
+    }
+    return;  // 重要：管理者登入後直接返回
+  }
+
+
   try {
     const res = await fetch("/api/login", {
       method: "POST",
@@ -137,13 +165,19 @@ const handleVerifyCode = async (e) => {
     const res = await fetch('/api/verify-code', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',  // ⭐ 確保有這行
       body: JSON.stringify({ code: verificationCode }),
     });
 
     const data = await res.json();
 
     if (res.ok) {
-      alert("註冊成功!");
+      // ⭐ 根據角色顯示不同訊息
+      if (data.role === 'doctor') {
+        alert("註冊成功！您的資料已送出，我們將在 1-3 個工作天內完成審核，審核結果將以郵件通知。");
+      } else {
+        alert("註冊成功！");
+      }
       switchToLogin();
     } else {
       alert(data.message);
@@ -505,10 +539,14 @@ const handleVerifyCode = async (e) => {
                                           body: formData,
                                         });
                                         
+                                        const data = await res.json();
+
                                         if (!res.ok) {
                                           alert('檔案上傳失敗');
                                           setCertificate(null);
                                           setCertificatePreview('');
+                                        } else {
+                                          console.log('✅ 檔案上傳成功:', data);  // ⭐ 加這行除錯
                                         }
                                       } catch (err) {
                                         console.error(err);

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, User, Stethoscope, RefreshCw, Menu } from 'lucide-react';
+import { Calendar, Clock, User, RefreshCw, Menu } from 'lucide-react';
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 
@@ -17,26 +17,26 @@ export default function AppointmentRecords() {
   const fetchAppointments = async () => {
     setLoading(true);
     try {
-        const res = await fetch("http://127.0.0.1:5000/api/record", {
-      credentials: 'include'  // 很重要！允許跨域時發送 Cookie/Session
-    });
-     
-      if (!res.ok) throw new Error("API 取得資料失敗");
-      const data = await res.json();
-   
-      const formattedData = data.map((item) => ({
-        appointment_id: item.appointment_id,
-        appointment_date: item.appointment_date,
-        appointment_time: item.appointment_time,
-        status: item.status,
-        doctor: {
-          first_name: item.last_name,
-          last_name: item.first_name,
-          specialty: item.doctor_specialty,
-        },
-      }));
+        const res = await fetch("http://127.0.0.1:5000/api/recordoc", {
+          credentials: 'include'
+        });
+        
+        if (!res.ok) throw new Error("API 取得資料失敗");
+        const data = await res.json();
 
-      setAppointments(formattedData);
+        // 將資料 mapping 成 patient
+        const formattedData = data.map((item) => ({
+          appointment_id: item.appointment_id,
+          appointment_date: item.appointment_date,
+          appointment_time: item.appointment_time,
+          status: item.status,
+          patient: {
+            first_name: item.first_name,
+            last_name: item.last_name,
+          },
+        }));
+
+        setAppointments(formattedData);
     } catch (error) {
       console.error(error);
       setAppointments([]);
@@ -88,22 +88,21 @@ export default function AppointmentRecords() {
   }
 
   return (
-      <div className="relative min-h-screen bg-gray-50">
-        {!isOpen && (
-          <button 
-            onClick={() => setIsOpen(true)} 
-            className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
-          >
-            <Menu size={24} />
-          </button>
-        )}
-  
-        <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+    <div className="relative">
+      {/* 打開側邊欄按鈕 */}
+      {!isOpen && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="p-3 fixed top-2 left-4 text-gray z-50"
+        >
+          <Menu size={24} />
+        </button>
+      )}
 
-      {/* 主內容 */}
-      <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
-          <Navbar />
-      
+      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+
+      <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"} max-w-6xl mx-auto`}>
+        <Navbar />
 
         {/* 篩選器 */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
@@ -149,19 +148,15 @@ export default function AppointmentRecords() {
                     </span>
                   </div>
 
-                  {/* 醫師資訊 */}
+                  {/* 患者資訊 */}
                   <div className="flex items-center mb-4">
                     <div className="bg-blue-100 rounded-full p-3 mr-4">
                       <User className="w-6 h-6 text-blue-600" />
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-gray-800">
-                        {appointment.doctor.last_name}{appointment.doctor.first_name} 醫師
+                        {appointment.patient.first_name}{appointment.patient.last_name} 患者
                       </h3>
-                      <div className="flex items-center text-gray-600 mt-1">
-                        <Stethoscope className="w-4 h-4 mr-1" />
-                        <span className="text-sm">{appointment.doctor.specialty}</span>
-                      </div>
                     </div>
                   </div>
 
@@ -177,9 +172,6 @@ export default function AppointmentRecords() {
                     </div>
                   </div>
                 </div>
-
-            
-               
               </div>
             ))}
           </div>

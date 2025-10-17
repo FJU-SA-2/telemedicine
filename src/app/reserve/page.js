@@ -2,374 +2,243 @@
 import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
-import { Menu, Calendar, Clock, Filter, CheckCircle, X, Search } from "lucide-react";
+import BookingModal from "./BookingModal";
+import SuccessPage from "./SuccessPage";
+import { Menu, Calendar, Search, Clock } from "lucide-react";
 
-// 模擬資料
-const mockDoctors = [
-  { doctor_id: 1, first_name: "建宏", last_name: "陳", gender: "male", specialty: "心臟內科", practice_hospital: "台大醫院", phone_number: "02-12345678" },
-  { doctor_id: 2, first_name: "怡君", last_name: "林", gender: "female", specialty: "皮膚科", practice_hospital: "榮總醫院", phone_number: "02-23456789" },
-  { doctor_id: 3, first_name: "志明", last_name: "李", gender: "male", specialty: "骨科", practice_hospital: "長庚醫院", phone_number: "02-34567890" },
-  { doctor_id: 4, first_name: "美玲", last_name: "王", gender: "female", specialty: "心臟內科", practice_hospital: "台大醫院", phone_number: "02-45678901" },
-  { doctor_id: 5, first_name: "大成", last_name: "張", gender: "male", specialty: "神經內科", practice_hospital: "榮總醫院", phone_number: "02-56789012" }
-];
-
-const mockSchedules = [
-  { schedule_id: 1, doctor_id: 1, schedule_date: "2025-10-11", time_slot: "09:00:00", is_available: 1 },
-  { schedule_id: 2, doctor_id: 1, schedule_date: "2025-10-11", time_slot: "10:00:00", is_available: 1 },
-  { schedule_id: 3, doctor_id: 1, schedule_date: "2025-10-11", time_slot: "11:00:00", is_available: 0 },
-  { schedule_id: 4, doctor_id: 1, schedule_date: "2025-10-12", time_slot: "09:00:00", is_available: 1 },
-  { schedule_id: 5, doctor_id: 1, schedule_date: "2025-10-12", time_slot: "14:00:00", is_available: 1 },
-  { schedule_id: 6, doctor_id: 2, schedule_date: "2025-10-11", time_slot: "14:00:00", is_available: 1 },
-  { schedule_id: 7, doctor_id: 2, schedule_date: "2025-10-11", time_slot: "15:00:00", is_available: 1 },
-  { schedule_id: 8, doctor_id: 2, schedule_date: "2025-10-11", time_slot: "16:00:00", is_available: 0 },
-  { schedule_id: 9, doctor_id: 2, schedule_date: "2025-10-13", time_slot: "10:00:00", is_available: 1 },
-  { schedule_id: 10, doctor_id: 3, schedule_date: "2025-10-11", time_slot: "09:00:00", is_available: 1 },
-  { schedule_id: 11, doctor_id: 3, schedule_date: "2025-10-12", time_slot: "10:00:00", is_available: 1 },
-  { schedule_id: 12, doctor_id: 3, schedule_date: "2025-10-12", time_slot: "11:00:00", is_available: 1 },
-  { schedule_id: 13, doctor_id: 3, schedule_date: "2025-10-13", time_slot: "14:00:00", is_available: 1 },
-  { schedule_id: 14, doctor_id: 4, schedule_date: "2025-10-11", time_slot: "13:00:00", is_available: 1 },
-  { schedule_id: 15, doctor_id: 4, schedule_date: "2025-10-12", time_slot: "09:00:00", is_available: 1 },
-  { schedule_id: 16, doctor_id: 4, schedule_date: "2025-10-12", time_slot: "10:00:00", is_available: 0 },
-  { schedule_id: 17, doctor_id: 5, schedule_date: "2025-10-13", time_slot: "09:00:00", is_available: 1 },
-  { schedule_id: 18, doctor_id: 5, schedule_date: "2025-10-13", time_slot: "10:00:00", is_available: 1 },
-  { schedule_id: 19, doctor_id: 5, schedule_date: "2025-10-14", time_slot: "14:00:00", is_available: 1 }
-];
-
-// 🟢 統一的預約彈窗組件（與右邊檔案格式一致）
-function BookingModal({ doctor, onClose, onConfirm }) {
-  const [selectedDate, setSelectedDate] = useState("");
-  const [selectedTime, setSelectedTime] = useState("");
-  const [symptoms, setSymptoms] = useState("");
-
-  // 獲取該醫生的可用日期
-  const availableDates = mockSchedules
-    .filter(s => s.doctor_id === doctor.doctor_id && s.is_available === 1)
-    .map(s => s.schedule_date);
-  const uniqueDates = [...new Set(availableDates)].sort();
-
-  // 生成一週的日期選項（用於顯示）
-  const weekDates = uniqueDates.slice(0, 7).map(dateStr => {
-    const date = new Date(dateStr + 'T00:00:00');
-    const dayNames = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
-    return {
-      day: dayNames[date.getDay()],
-      date: date.getDate(),
-      fullDate: dateStr
-    };
-  });
-
-  // 獲取選定日期的時間段
-  const timeSlots = selectedDate
-    ? mockSchedules
-        .filter(s => s.doctor_id === doctor.doctor_id && s.schedule_date === selectedDate)
-        .sort((a, b) => a.time_slot.localeCompare(b.time_slot))
-    : [];
-
-  const getDayName = (fullDate) => {
-    const dateObj = weekDates.find((d) => d.fullDate === fullDate);
-    return dateObj ? dateObj.day : "";
-  };
-
-  const doctorFullName = `${doctor.last_name}${doctor.first_name}`;
-
-  const handleConfirm = () => {
-    if (selectedDate && selectedTime && symptoms.trim()) {
-      onConfirm({ doctor, date: selectedDate, time: selectedTime, symptoms });
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
-      <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl pointer-events-auto">
-        <div className="relative p-6">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl"
-          >
-            ×
-          </button>
-
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-lg">
-              {doctor.last_name.charAt(0)}
-            </div>
-            <div>
-              <h3 className="font-bold text-base text-gray-800">{doctorFullName}</h3>
-              <p className="text-sm text-gray-600">{doctor.specialty}</p>
-            </div>
-          </div>
-
-          {/* 日期選擇 */}
-          <div className="mb-5">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">選擇日期</h4>
-            <div className="grid grid-cols-7 gap-2">
-              {weekDates.map((item) => (
-                <button
-                  key={item.fullDate}
-                  onClick={() => {
-                    setSelectedDate(item.fullDate);
-                    setSelectedTime("");
-                  }}
-                  className={`py-2 px-1 rounded-lg text-center transition ${
-                    selectedDate === item.fullDate
-                      ? "bg-blue-500 text-white"
-                      : "bg-white border border-gray-200 text-gray-700 hover:border-blue-300"
-                  }`}
-                >
-                  <div className="text-xs mb-1">{item.day}</div>
-                  <div className="text-base font-medium">{item.date}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 時間選擇 */}
-          {selectedDate && (
-            <div className="mb-5">
-              <h4 className="text-sm font-medium text-gray-700 mb-3">選擇時段</h4>
-              <div className="grid grid-cols-4 gap-2">
-                {timeSlots.map((slot) => (
-                  <button
-                    key={slot.schedule_id}
-                    onClick={() => slot.is_available === 1 && setSelectedTime(slot.time_slot)}
-                    disabled={slot.is_available === 0}
-                    className={`py-2.5 rounded-lg text-sm font-medium transition ${
-                      selectedTime === slot.time_slot
-                        ? "bg-blue-500 text-white"
-                        : slot.is_available === 0
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-white border border-gray-200 text-gray-700 hover:border-blue-300"
-                    }`}
-                  >
-                    {slot.time_slot.substring(0, 5)}
-                    {slot.is_available === 0 && <div className="text-xs">已滿</div>}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 症狀描述 */}
-          <div className="mb-5">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">症狀描述 *</h4>
-            <textarea
-              value={symptoms}
-              onChange={(e) => setSymptoms(e.target.value)}
-              placeholder="請簡述您的症狀或就診原因..."
-              rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm"
-            />
-          </div>
-
-          {/* 預約確認 */}
-          {selectedDate && selectedTime && (
-            <div className="bg-blue-50 rounded-lg p-4 mb-5">
-              <h4 className="text-sm font-semibold text-gray-800 mb-2">預約資訊確認</h4>
-              <div className="space-y-1 text-sm text-gray-700">
-                <p>醫師：{doctorFullName} ({doctor.specialty})</p>
-                <p>
-                  日期：{selectedDate.split("-")[1]}月{selectedDate.split("-")[2]}日{" "}
-                  {getDayName(selectedDate)}
-                </p>
-                <p>時間：{selectedTime.substring(0, 5)}</p>
-                <p>方式：視訊診療</p>
-              </div>
-            </div>
-          )}
-
-          <button
-            onClick={handleConfirm}
-            disabled={!selectedDate || !selectedTime || !symptoms.trim()}
-            className={`w-full py-3 rounded-lg font-medium transition ${
-              selectedDate && selectedTime && symptoms.trim()
-                ? "bg-blue-500 text-white hover:bg-blue-600"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
-          >
-            確認預約
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function BookingPage() {
+function BookingPage({ doctors, schedules, setSchedules }) {
   const [selectedSpecialty, setSelectedSpecialty] = useState("all");
   const [selectedDate, setSelectedDate] = useState("");
   const [searchName, setSearchName] = useState("");
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [bookingInfo, setBookingInfo] = useState(null);
 
-  const specialties = ["all", ...new Set(mockDoctors.map(d => d.specialty))];
-  const doctorsWithSchedules = new Set(mockSchedules.map(s => s.doctor_id));
+  // 只取得有可預約時段的醫師
+  const doctorsWithSchedules = new Set(
+    schedules.filter(s => s.is_available === 1).map(s => s.doctor_id)
+  );
 
-  const filteredDoctors = mockDoctors.filter(doctor => {
+  // 只顯示有可預約醫師的科別
+  const availableSpecialties = [...new Set(
+    doctors
+      .filter(d => doctorsWithSchedules.has(d.doctor_id))
+      .map(d => d.specialty)
+  )].sort();
+
+  const filteredDoctors = doctors.filter(doctor => {
     if (!doctorsWithSchedules.has(doctor.doctor_id)) return false;
     if (selectedSpecialty !== "all" && doctor.specialty !== selectedSpecialty) return false;
+    
     if (selectedDate) {
-      const hasAvailableSlot = mockSchedules.some(
+      const hasAvailableSlot = schedules.some(
         s => s.doctor_id === doctor.doctor_id && 
              s.schedule_date === selectedDate && 
              s.is_available === 1
       );
       if (!hasAvailableSlot) return false;
     }
+    
     if (searchName) {
       const fullName = doctor.last_name + doctor.first_name;
       if (!fullName.includes(searchName)) return false;
     }
+    
     return true;
   });
 
   const getDoctorAvailableDates = (doctorId) => {
-    const dates = mockSchedules
+    const dates = schedules
       .filter(s => s.doctor_id === doctorId && s.is_available === 1)
       .map(s => s.schedule_date);
     return [...new Set(dates)].sort();
   };
 
-  const openBookingModal = (doctor) => {
-    setSelectedDoctor(doctor);
-    setShowModal(true);
+  const getDoctorAvailableSlots = (doctorId) => {
+    return schedules.filter(s => s.doctor_id === doctorId && s.is_available === 1).length;
   };
 
-  const handleBooking = (bookingData) => {
-    console.log("預約資料:", bookingData);
-    
-    // 更新排班狀態
-    const scheduleIndex = mockSchedules.findIndex(
-      s => s.doctor_id === bookingData.doctor.doctor_id && 
-           s.schedule_date === bookingData.date && 
-           s.time_slot === bookingData.time
-    );
-    if (scheduleIndex !== -1) {
-      mockSchedules[scheduleIndex].is_available = 0;
+  const handleBooking = async (bookingData) => {
+  try {
+    // 先取得登入使用者資訊
+    const meRes = await fetch("/api/me");
+    if (!meRes.ok) {
+      alert("請先登入！");
+      return;
+    }
+    const meData = await meRes.json();
+    const patientId = meData.user?.patient_id;
+
+    if (!patientId) {
+      alert("您不是病患，無法預約！");
+      return;
     }
 
+    // 發送預約請求到後端 API
+    const response = await fetch("/api/appointments", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        patient_id: patientId, // 從登入狀態取得
+        doctor_id: bookingData.doctor.doctor_id,
+        appointment_date: bookingData.date,
+        appointment_time: bookingData.time,
+        symptoms: bookingData.symptoms,
+        payment_method: bookingData.paymentMethod,
+        amount: 500
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      alert(result.error || "預約失敗，請稍後再試");
+      return;
+    }
+
+    // 預約成功，更新本地排程狀態
+    setSchedules(prevSchedules => 
+      prevSchedules.map(s => 
+        s.doctor_id === bookingData.doctor.doctor_id && 
+        s.schedule_date === bookingData.date && 
+        s.time_slot === bookingData.time
+          ? { ...s, is_available: 0 }
+          : s
+      )
+    );
+
+    setBookingInfo({
+      ...bookingData,
+      appointment_id: result.appointment_id
+    });
     setShowModal(false);
     setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-      setSelectedDoctor(null);
-    }, 3000);
+
+  } catch (error) {
+    console.error("預約錯誤:", error);
+    alert("預約失敗，請檢查網路連線後再試");
+  }
+};
+
+
+  const handleCloseSuccess = () => {
+    setShowSuccess(false);
+    setBookingInfo(null);
+    setSelectedDoctor(null);
   };
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      {/* 成功提示 */}
-      {showSuccess && (
-        <div className="fixed top-24 right-6 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-2 z-50 animate-pulse">
-          <CheckCircle size={24} />
-          <span className="font-semibold">預約成功！</span>
-        </div>
-      )}
-
       {/* 篩選區 */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+        <h2 className="text-lg font-bold text-gray-800 mb-4">篩選條件</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              選擇科別
-            </label>
-            <select
-              value={selectedSpecialty}
-              onChange={(e) => setSelectedSpecialty(e.target.value)}
-              className="text-gray-800 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            <label className="block text-sm font-semibold text-gray-700 mb-2">選擇科別</label>
+            <select 
+              value={selectedSpecialty} 
+              onChange={e => setSelectedSpecialty(e.target.value)} 
+              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-800 font-medium"
             >
-              <option value="all">所有科別</option>
-              {specialties.filter(s => s !== "all").map(specialty => (
-                <option key={specialty} value={specialty}>{specialty}</option>
+              <option value="all">所有科別 ({availableSpecialties.length})</option>
+              {availableSpecialties.map(s => (
+                <option key={s} value={s}>{s}</option>
               ))}
             </select>
           </div>
-          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              選擇日期（選填）
-            </label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              min={new Date().toISOString().split('T')[0]}
-              className="text-gray-800 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            <label className="block text-sm font-semibold text-gray-700 mb-2">選擇日期（選填）</label>
+            <input 
+              type="date" 
+              value={selectedDate} 
+              onChange={e => setSelectedDate(e.target.value)} 
+              min={new Date().toISOString().split('T')[0]} 
+              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-800"
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              搜尋醫師姓名
-            </label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">搜尋醫師姓名</label>
             <div className="relative">
-              <input
-                type="text"
-                value={searchName}
-                onChange={(e) => setSearchName(e.target.value)}
-                placeholder="輸入醫師姓名"
-                className="text-gray-800 w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              <input 
+                type="text" 
+                value={searchName} 
+                onChange={e => setSearchName(e.target.value)} 
+                placeholder="輸入醫師姓名" 
+                className="w-full px-4 py-2.5 pl-10 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-800"
               />
-              <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+              <Search className="absolute left-3 top-3 text-gray-400" size={20} />
             </div>
           </div>
         </div>
+      </div>
 
-        {(selectedSpecialty !== "all" || selectedDate || searchName) && (
-          <div className="mt-4 flex items-center gap-2 text-sm text-gray-600">
-            <span>篩選結果：</span>
-            <span className="font-semibold text-blue-600">{filteredDoctors.length} 位醫師</span>
+      {/* 醫生列表 */}
+      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-gray-800">
+            可預約醫師 
+            <span className="ml-2 text-blue-600">({filteredDoctors.length})</span>
+          </h2>
+          {(selectedSpecialty !== "all" || selectedDate || searchName) && (
             <button
               onClick={() => {
                 setSelectedSpecialty("all");
                 setSelectedDate("");
                 setSearchName("");
               }}
-              className="ml-2 text-blue-600 hover:text-blue-800 underline"
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
             >
               清除篩選
             </button>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
-      {/* 醫生列表 */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-gray-800 text-xl font-bold mb-4">可預約醫師</h2>
         {filteredDoctors.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <Calendar size={48} className="mx-auto mb-4 text-gray-300" />
-            <p>目前沒有符合條件的醫師</p>
+          <div className="text-center py-16 text-gray-500">
+            <Calendar size={64} className="mx-auto mb-4 text-gray-300" />
+            <p className="text-lg font-medium mb-2">目前沒有符合條件的醫師</p>
+            <p className="text-sm">請嘗試調整篩選條件</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredDoctors.map(doctor => {
-              const availableDatesCount = getDoctorAvailableDates(doctor.doctor_id).length;
+              const availableDates = getDoctorAvailableDates(doctor.doctor_id);
+              const availableSlots = getDoctorAvailableSlots(doctor.doctor_id);
+              
               return (
-                <div
-                  key={doctor.doctor_id}
-                  className="border rounded-lg p-4 hover:border-blue-300 hover:shadow-lg transition cursor-pointer"
-                  onClick={() => openBookingModal(doctor)}
+                <div 
+                  key={doctor.doctor_id} 
+                  className="border-2 border-gray-200 rounded-xl p-5 hover:border-blue-400 hover:shadow-xl transition-all cursor-pointer bg-gradient-to-br from-white to-gray-50"
+                  onClick={() => { setSelectedDoctor(doctor); setShowModal(true); }}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md">
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg flex-shrink-0">
                       {doctor.last_name.charAt(0)}
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg text-gray-800">
-                        {doctor.last_name + doctor.first_name} 醫師
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-lg text-gray-800 truncate">
+                        {doctor.first_name + doctor.last_name} 醫師
                       </h3>
-                      <p className="text-sm text-blue-600 font-medium">{doctor.specialty}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {doctor.practice_hospital}
-                      </p>
-                      <div className="mt-2 flex items-center gap-1 text-xs text-green-600">
-                        <Calendar size={14} />
-                        <span>{availableDatesCount} 天有可預約時段</span>
-                      </div>
+                      <p className="text-sm text-blue-600 font-semibold">{doctor.specialty}</p>
+                      <p className="text-xs text-gray-500 mt-1 truncate">{doctor.practice_hospital}</p>
                     </div>
                   </div>
-                  <button className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition font-medium">
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Calendar size={16} className="text-green-600" />
+                      <span className="font-medium">{availableDates.length} 天可預約</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Clock size={16} className="text-orange-600" />
+                      <span className="font-medium">{availableSlots} 個時段可選</span>
+                    </div>
+                  </div>
+
+                  <button className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all font-semibold shadow-md hover:shadow-lg">
                     立即預約
                   </button>
                 </div>
@@ -379,39 +248,90 @@ function BookingPage() {
         )}
       </div>
 
-      {/* 預約彈窗 - 使用統一格式 */}
       {showModal && selectedDoctor && (
-        <BookingModal
-          doctor={selectedDoctor}
-          onClose={() => setShowModal(false)}
-          onConfirm={handleBooking}
+        <BookingModal 
+          doctor={selectedDoctor} 
+          schedules={schedules} 
+          onClose={() => { setShowModal(false); setSelectedDoctor(null); }} 
+          onConfirm={handleBooking} 
+        />
+      )}
+
+      {showSuccess && bookingInfo && (
+        <SuccessPage 
+          bookingInfo={bookingInfo}
+          onClose={handleCloseSuccess}
         />
       )}
     </div>
   );
 }
 
+// 主頁面
 export default function HomePage() {
   const [isOpen, setIsOpen] = useState(false);
+  const [doctors, setDoctors] = useState([]);
+  const [schedules, setSchedules] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        
+        const resDoctors = await fetch("/api/doctors");
+        const doctorsData = await resDoctors.json();
+        setDoctors(doctorsData);
+
+        const resSchedules = await fetch("/api/schedules");
+        const schedulesData = await resSchedules.json();
+        
+        // 確保日期格式正確
+        const formattedSchedules = schedulesData.map(s => ({
+          ...s,
+          doctor_id: Number(s.doctor_id),
+          schedule_date: s.schedule_date.split("T")[0],
+          time_slot: s.time_slot.substring(0, 5),
+          is_available: Number(s.is_available)
+        }));
+        
+        setSchedules(formattedSchedules);
+        setLoading(false);
+      } catch (err) {
+        console.error("載入資料錯誤:", err);
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">載入中...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="relative">
-          {/* 只在 Sidebar 關閉時顯示打開按鈕 */}
-          {!isOpen && (
-            <button
-              onClick={() => setIsOpen(true)}
-              className="p-3 fixed top-2 left-4 text-gray-800 z-50"
-            >
-              <Menu size={24} />
-            </button>
-          )}
-    
-          {/* 側邊欄 */}
-          <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+    <div className="relative min-h-screen bg-gray-50">
+      {!isOpen && (
+        <button 
+          onClick={() => setIsOpen(true)} 
+          className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
+        >
+          <Menu size={24} />
+        </button>
+      )}
 
+      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+      
       <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
         <Navbar />
-        <BookingPage />
+        <BookingPage doctors={doctors} schedules={schedules} setSchedules={setSchedules} />
       </div>
     </div>
   );
