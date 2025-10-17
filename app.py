@@ -454,18 +454,201 @@ def get_current_user():
     """取得當前登入使用者資訊"""
     if 'user_id' not in session:
         return jsonify({"authenticated": False}), 401
+    user_id = session.get('user_id')
+    role = session.get('role')
 
-    return jsonify({
-        "authenticated": True,
-        "user": {
-            "user_id": session.get('user_id'),
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        user_data = {
+            "user_id": user_id,
             "username": session.get('username'),
             "email": session.get('email'),
-            "role": session.get('role'),
+            "role": role,
             "firstName": session.get('first_name', ''),
             "lastName": session.get('last_name', '')
         }
-    }), 200
+        
+        # 如果是病患,取得完整健康資料
+        if role == "patient":
+            cursor.execute("""
+                SELECT patient_id, first_name, last_name, gender, phone_number, 
+                       date_of_birth, address, id_number, smoking_status, 
+                       drug_allergies, medical_history, emergency_contact_name, 
+                       emergency_contact_phone
+                FROM patient 
+                WHERE user_id = %s
+            """, (user_id,))
+            patient_data = cursor.fetchone()
+            
+            if patient_data:
+                user_data['patientProfile'] = {
+                    'patient_id': patient_data['patient_id'],
+                    'gender': patient_data['gender'],
+                    'phone_number': patient_data['phone_number'],
+                    'date_of_birth': serialize_datetime(patient_data['date_of_birth']),
+                    'address': patient_data['address'],
+                    'id_number': patient_data['id_number'],
+                    'smoking_status': patient_data['smoking_status'],
+                    'drug_allergies': patient_data['drug_allergies'],
+                    'medical_history': patient_data['medical_history'],
+                    'emergency_contact_name': patient_data['emergency_contact_name'],
+                    'emergency_contact_phone': patient_data['emergency_contact_phone'],
+                }
+    # 新增：如果是醫師，取得完整專業資料
+        elif role == "doctor":
+            cursor.execute("""
+                SELECT doctor_id, first_name, last_name, gender, phone_number, 
+                       specialty, practice_hospital, education, description, 
+                       experience, qualifications, consultation_fee, consultation_type,
+                       approval_status
+                FROM doctor 
+                WHERE user_id = %s
+            """, (user_id,))
+            doctor_data = cursor.fetchone()
+            
+            if doctor_data:
+                user_data['doctorProfile'] = {
+                    'doctor_id': doctor_data['doctor_id'],
+                    'gender': doctor_data['gender'],
+                    'phone_number': doctor_data['phone_number'],
+                    'specialty': doctor_data['specialty'],
+                    'practice_hospital': doctor_data['practice_hospital'],
+                    'education': doctor_data['education'],
+                    'description': doctor_data['description'],
+                    'experience': doctor_data['experience'],
+                    'qualifications': doctor_data['qualifications'],
+                    'consultation_fee': doctor_data['consultation_fee'],
+                    'consultation_type': doctor_data['consultation_type'],
+                    'approval_status': doctor_data['approval_status'],
+                }
+        
+        return jsonify({
+            "authenticated": True,
+            "user": user_data
+        }), 200
+    except Error as e:
+        # 確保有 except 區塊來捕獲資料庫錯誤
+        print(f"❌ 獲取使用者資料失敗: {e}")
+        return jsonify({"authenticated": True, "user": user_data, "error": f"資料庫錯誤: {e}"}), 200
+    finally:
+        # 確保有 finally 區塊來關閉連線
+        cursor.close()
+        db.close()
+
+
+
+
+    
+
+# 新增病患個人資料更新
+@app.route("/api/patient/profile", methods=["PUT"])
+def update_patient_profile():
+    """更新病患的健康資料"""
+    if 'user_id' not in session or session.get('role') != 'patient':
+        return jsonify({"message": "請先登入病患帳號"}), 401
+
+    data = request.get_json()
+    user_id = session.get('user_id')
+
+    # 取得要更新的欄位
+    id_number = data.get("id_number")
+    smoking_status = data.get("smoking_status")
+    drug_allergies = data.get("drug_allergies")
+    medical_history = data.get("medical_history")
+    emergency_contact_name = data.get("emergency_contact_name")
+    emergency_contact_phone = data.get("emergency_contact_phone")
+
+    db = get_db()
+    cursor = db.cursor()
+
+    try:
+        sql = """
+            UPDATE patient
+            SET 
+                id_number = %s,
+                smoking_status = %s,
+                drug_allergies = %s,
+                medical_history = %s,
+                emergency_contact_name = %s,
+                emergency_contact_phone = %s
+            WHERE user_id = %s
+        """
+        cursor.execute(sql, (
+            id_number, smoking_status, drug_allergies, medical_history,
+            emergency_contact_name, emergency_contact_phone, user_id
+        ))
+        db.commit()
+
+        if cursor.rowcount == 0:
+            return jsonify({"message": "找不到病患資料或資料無變更"}), 404
+
+        return jsonify({
+            "success": True,
+            "message": "病患資料更新成功"
+        }), 200
+
+    except Error as e:
+        db.rollback()
+        print(f"❌ 病患資料更新失敗: {e}")
+        return jsonify({"message": f"更新失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+# 新增醫師專業資料更新
+@app.route("/api/doctor/profile", methods=["PUT"])
+def update_doctor_profile():
+    """更新醫師的專業資料"""
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return jsonify({"message": "請先登入醫師帳號"}), 401
+
+    data = request.get_json()
+    user_id = session.get('user_id')
+
+    # 取得要更新的欄位 (根據 page.js 編輯模式的欄位)
+    phone_number = data.get("phone_number")
+    specialty = data.get("specialty")
+    practice_hospital = data.get("practice_hospital")
+    consultation_fee = data.get("consultation_fee")
+
+    db = get_db()
+    cursor = db.cursor()
+
+    try:
+        
+        sql = """
+            UPDATE doctor
+            SET 
+                phone_number = %s,
+                specialty = %s,
+                practice_hospital = %s,
+                consultation_fee = %s
+            WHERE user_id = %s
+        """
+        cursor.execute(sql, (
+            phone_number, specialty, practice_hospital, consultation_fee, user_id
+        ))
+        db.commit()
+
+        if cursor.rowcount == 0:
+            return jsonify({"message": "找不到醫師資料或資料無變更"}), 404
+
+        return jsonify({
+            "success": True,
+            "message": "醫師專業資料更新成功"
+        }), 200
+
+    except Error as e:
+        db.rollback()
+        print(f"❌ 醫師資料更新失敗: {e}")
+        return jsonify({"message": f"更新失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
 
 @app.route("/api/logout", methods=["POST"])
 def logout_user():
