@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, CheckCircle, XCircle, Eye, Clock, Mail, Phone, MapPin, FileText, LogOut } from 'lucide-react';
+import { Shield, CheckCircle, XCircle, Eye, Clock, Mail, Phone, MapPin, FileText, LogOut, Users } from 'lucide-react';
 
 function FeedbackList() {
   const [feedbacks, setFeedbacks] = useState([]);
@@ -15,7 +15,9 @@ function FeedbackList() {
 
   const fetchFeedbacks = async () => {
     try {
-      const res = await fetch('/api/admin/feedback');
+      const res = await fetch('/api/admin/feedback', {
+        credentials: 'include',
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || '載入失敗');
       setFeedbacks(data);
@@ -169,10 +171,18 @@ export default function AdminDashboard() {
   const [certificateLoading, setCertificateLoading] = useState(false);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [activeTab, setActiveTab] = useState('doctors');
+  const [users, setUsers] = useState([]);
+  const [userType, setUserType] = useState('doctor');
 
   useEffect(() => {
     fetchPendingDoctors();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'users') {
+      fetchUsers();
+    }
+  }, [activeTab, userType]);
 
   const fetchPendingDoctors = async () => {
     try {
@@ -196,6 +206,24 @@ export default function AdminDashboard() {
       alert('載入失敗');
     } finally {
       setLoading(false);
+    }
+  };
+
+    const fetchUsers = async () => {
+    try {
+      const res = await fetch(`/api/admin/users?type=${userType}`, {
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to fetch users');
+      }
+
+      const data = await res.json();
+      setUsers(data);
+    } catch (err) {
+      console.error(err);
+      alert('載入使用者失敗');
     }
   };
 
@@ -247,6 +275,59 @@ export default function AdminDashboard() {
         setRejectionReason('');
         setShowRejectionModal(false);
         fetchPendingDoctors();
+      } else {
+        alert(data.message || '操作失敗');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('操作失敗');
+    }
+  };
+
+  const handleDeleteUser = async (userId, role) => {
+    if (!confirm('確定要刪除此使用者嗎?此操作無法復原!')) return;
+
+    try {
+      const res = await fetch(`/api/admin/delete-user/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ role }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert('使用者已刪除');
+        fetchUsers();
+      } else {
+        alert(data.message || '刪除失敗');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('刪除失敗');
+    }
+  };
+
+  const handleToggleUserStatus = async (userId, currentStatus) => {
+    const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
+    const action = newStatus === 'suspended' ? '停用' : '啟用';
+
+    if (!confirm(`確定要${action}此使用者嗎?`)) return;
+
+    try {
+      const res = await fetch(`/api/admin/toggle-user-status/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert(`使用者已${action}`);
+        fetchUsers();
       } else {
         alert(data.message || '操作失敗');
       }
@@ -359,6 +440,16 @@ export default function AdminDashboard() {
             待審核醫師
           </button>
           <button
+            onClick={() => setActiveTab('users')}
+            className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
+              activeTab === 'users'
+                ? 'bg-purple-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            使用者管理
+          </button>
+          <button
             onClick={() => setActiveTab('feedback')}
             className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
               activeTab === 'feedback'
@@ -460,6 +551,144 @@ export default function AdminDashboard() {
                         >
                           <XCircle size={18} />
                           <span>拒絕</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+        {/* 使用者管理頁面 */}
+        {activeTab === 'users' && (
+          <>
+            <div className="bg-white rounded-xl shadow-sm p-4 mb-6 border flex space-x-2">
+              <button
+                onClick={() => setUserType('doctor')}
+                className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
+                  userType === 'doctor'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                醫師管理
+              </button>
+              <button
+                onClick={() => setUserType('patient')}
+                className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
+                  userType === 'patient'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                患者管理
+              </button>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border">
+              <div className="flex items-center space-x-3">
+                <Users className="text-blue-600" size={24} />
+                <div>
+                  <p className="text-sm text-gray-600">
+                    {userType === 'doctor' ? '已審核醫師' : '註冊患者'}
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">{users.length} 位</p>
+                </div>
+              </div>
+            </div>
+
+            {users.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-sm p-12 text-center border">
+                <Users className="mx-auto text-gray-300 mb-4" size={48} />
+                <p className="text-gray-500 text-lg">目前沒有{userType === 'doctor' ? '醫師' : '患者'}資料</p>
+              </div>
+            ) : (
+              <div className="grid gap-6">
+                {users.map((user) => (
+                  <div
+                    key={user.user_id}
+                    className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border"
+                  >
+                    <div className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {user.first_name}{user.last_name || ''} {userType === 'doctor' && '醫師'}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            註冊時間: {new Date(user.registration_date).toLocaleString('zh-TW')}
+                          </p>
+                        </div>
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            user.account_status === 'active'
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}
+                        >
+                          {user.account_status === 'active' ? '正常' : '已停用'}
+                        </span>
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-4 mb-4">
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <Mail size={16} />
+                          <span className="text-sm">{user.email}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <Phone size={16} />
+                          <span className="text-sm">{user.phone_number || '未提供'}</span>
+                        </div>
+                        {userType === 'doctor' && (
+                          <>
+                            <div className="flex items-center space-x-2 text-gray-600">
+                              <FileText size={16} />
+                              <span className="text-sm">{getSpecialtyText(user.specialty)}</span>
+                            </div>
+                            <div className="flex items-center space-x-2 text-gray-600">
+                              <MapPin size={16} />
+                              <span className="text-sm">{user.practice_hospital}</span>
+                            </div>
+                          </>
+                        )}
+                        {userType === 'patient' && user.date_of_birth && (
+                          <div className="flex items-center space-x-2 text-gray-600">
+                            <FileText size={16} />
+                            <span className="text-sm">
+                              出生日期: {new Date(user.date_of_birth).toLocaleDateString('zh-TW')}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center space-x-3">
+                        <button
+                          onClick={() => handleToggleUserStatus(user.user_id, user.account_status)}
+                          className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                            user.account_status === 'active'
+                              ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                              : 'bg-green-600 text-white hover:bg-green-700'
+                          }`}
+                        >
+                          {user.account_status === 'active' ? (
+                            <>
+                              <XCircle size={18} />
+                              <span>停用帳號</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle size={18} />
+                              <span>啟用帳號</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(user.user_id, userType)}
+                          className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                          <XCircle size={18} />
+                          <span>刪除使用者</span>
                         </button>
                       </div>
                     </div>

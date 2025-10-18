@@ -568,6 +568,70 @@ const handleSave = async () => {
         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       />
     </div>
+    {/* 個人簡介 */}
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">
+    個人簡介
+  </label>
+  <textarea
+    name="description"
+    value={doctorForm.description}
+    onChange={(e) =>
+      setDoctorForm({ ...doctorForm, description: e.target.value })
+    }
+    rows="3"
+    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+  />
+</div>
+
+{/* 專業經歷 */}
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">
+    專業經歷
+  </label>
+  <textarea
+    name="experience"
+    value={doctorForm.experience}
+    onChange={(e) =>
+      setDoctorForm({ ...doctorForm, experience: e.target.value })
+    }
+    rows="3"
+    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+  />
+</div>
+
+{/* 學位與認證 */}
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">
+    學位與認證
+  </label>
+  <textarea
+    name="qualifications"
+    value={doctorForm.qualifications}
+    onChange={(e) =>
+      setDoctorForm({ ...doctorForm, qualifications: e.target.value })
+    }
+    rows="3"
+    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+  />
+</div>
+
+{/* 學歷 */}
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">
+    學歷
+  </label>
+  <textarea
+    name="education"
+    value={doctorForm.education}
+    onChange={(e) =>
+      setDoctorForm({ ...doctorForm, education: e.target.value })
+    }
+    rows="2"
+    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+  />
+</div>
+
 
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">掛號費</label>

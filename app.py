@@ -393,6 +393,19 @@ def verify_code():
                 user_id, first_name, last_name, gender, phone_number, 
                 specialty, practice_hospital, certificate_filename  # ⭐ 這裡
             ))
+            # ⭐ 取得剛插入的 doctor_id
+        doctor_id = cursor.lastrowid
+
+        # ⭐ 同步新增 doctor_info 資料表中的對應紀錄
+        sql_doctor_info = """
+                INSERT INTO doctor_info (
+                    doctor_id, first_name, last_name, specialty, practice_hospital, phone_number
+                )
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """
+        cursor.execute(sql_doctor_info, (
+                doctor_id, first_name, last_name, specialty, practice_hospital, phone_number
+            ))
            
             # ⭐ 發送醫師註冊收到通知郵件
         doctor_name = first_name + last_name
@@ -515,17 +528,7 @@ def get_current_user():
         return jsonify({"authenticated": False}), 401
     user_id = session.get('user_id')
     role = session.get('role')
-
-
-    # ⭐ 加入詳細的除錯訊息
-    print("=" * 60)
-    print("📋 /api/me 被調用")
-    print(f"Session 內容: {dict(session)}")
-    print(f"user_id: {session.get('user_id')}")
-    print(f"role: {session.get('role')}")
-    print(f"doctor_id: {session.get('doctor_id')}")
-    print(f"patient_id: {session.get('patient_id')}")
-    print("=" * 60)
+    
     db = get_db()
     cursor = db.cursor(dictionary=True)
     
@@ -574,12 +577,14 @@ def get_current_user():
     # 新增：如果是醫師，取得完整專業資料
         elif role == "doctor":
             cursor.execute("""
-                SELECT doctor_id, first_name, last_name, gender, phone_number, 
-                       specialty, practice_hospital, education, description, 
-                       experience, qualifications, consultation_fee, consultation_type,
-                       approval_status
-                FROM doctor 
-                WHERE user_id = %s
+                SELECT  d.doctor_id, d.first_name, d.last_name, d.gender, d.phone_number, 
+                        d.specialty, d.practice_hospital, 
+                        di.education, di.description, di.experience, di.qualifications, 
+                        di.consultation_fee, di.consultation_type, 
+                        d.approval_status
+                FROM doctor d
+                LEFT JOIN doctor_info di ON d.doctor_id = di.doctor_id
+                WHERE d.user_id = %s
             """, (user_id,))
             doctor_data = cursor.fetchone()
             
@@ -680,31 +685,60 @@ def update_doctor_profile():
     if 'user_id' not in session or session.get('role') != 'doctor':
         return jsonify({"message": "請先登入醫師帳號"}), 401
 
-    data = request.get_json()
     user_id = session.get('user_id')
+    data = request.get_json()
 
     # 取得要更新的欄位 (根據 page.js 編輯模式的欄位)
     phone_number = data.get("phone_number")
     specialty = data.get("specialty")
     practice_hospital = data.get("practice_hospital")
-    consultation_fee = data.get("consultation_fee")
-
+    education = data.get("education")
+    description = data.get("description")
+    experience = data.get("experience")
+    qualifications = data.get("qualifications")
+    consultation_fee = data.get("consultation_fee", 0)
+    consultation_type = data.get("consultation_type", "現場看診")
     db = get_db()
-    cursor = db.cursor()
+    cursor = db.cursor(dictionary=True)
 
     try:
-        
-        sql = """
+        # 取得對應 doctor_id
+        cursor.execute("SELECT doctor_id FROM doctor WHERE user_id = %s", (user_id,))
+        doctor = cursor.fetchone()
+
+        if not doctor:
+            return jsonify({"message": "找不到醫師資料"}), 404
+
+        doctor_id = doctor["doctor_id"]
+
+        # 1️⃣ 更新 doctor 表中的基本資料
+        cursor.execute("""
             UPDATE doctor
-            SET 
-                phone_number = %s,
+            SET phone_number = %s,
                 specialty = %s,
                 practice_hospital = %s,
-                consultation_fee = %s
-            WHERE user_id = %s
-        """
-        cursor.execute(sql, (
-            phone_number, specialty, practice_hospital, consultation_fee, user_id
+                updated_at = CURRENT_TIMESTAMP
+            WHERE doctor_id = %s
+        """, (phone_number, specialty, practice_hospital, doctor_id))
+
+        # 2️⃣ 更新 doctor_info 表中的詳細資料
+        cursor.execute("""
+            UPDATE doctor_info
+            SET phone_number = %s,
+                specialty = %s,
+                practice_hospital = %s,
+                education = %s,
+                description = %s,
+                experience = %s,
+                qualifications = %s,
+                consultation_fee = %s,
+                consultation_type = %s,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE doctor_id = %s
+        """, (
+            phone_number, specialty, practice_hospital,
+            education, description, experience, qualifications,
+            consultation_fee, consultation_type, doctor_id
         ))
         db.commit()
 
@@ -1290,3 +1324,54 @@ def get_certificate(filename):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+@app.route("/api/admin/users", methods=["GET"])
+def get_all_users():
+    """管理員功能：獲取所有病患和已審核醫師的基本使用者資料"""
+    # 1. 檢查是否已登入且為管理員
+    if 'user_id' not in session or session.get('role') != 'admin':
+        # 403 Forbidden (權限不足)
+        return jsonify({"message": "權限不足，請先登入管理員帳號"}), 403
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    try:
+        # 聯合查詢 (JOIN) `users`, `patient`, 和 `doctor` 表格
+        sql = """
+            SELECT 
+                u.user_id, 
+                u.email, 
+                u.user_type, 
+                u.account_status, 
+                u.created_at,
+                p.patient_id,
+                d.doctor_id,
+                # 判斷名稱欄位
+                COALESCE(p.first_name, d.first_name, '未知') AS first_name,
+                COALESCE(p.last_name, d.last_name, '使用者') AS last_name
+            FROM users u
+            LEFT JOIN patient p ON u.user_id = p.user_id AND u.user_type = 'patient'
+            LEFT JOIN doctor d ON u.user_id = d.user_id AND u.user_type = 'doctor'
+            WHERE u.user_type IN ('patient', 'doctor') AND u.account_status != 'pending'
+            ORDER BY u.created_at DESC
+        """
+        cursor.execute(sql)
+        users = cursor.fetchall()
+        
+        # 轉換 datetime 物件為 ISO 格式字串以利 JSON 序列化
+        for user in users:
+            if user.get('created_at'):
+                user['created_at'] = user['created_at'].isoformat()
+
+        # 成功回傳 200 OK
+        return jsonify(users), 200
+
+    except Error as e:
+        print(f"❌ 獲取使用者資料失敗: {e}")
+        # 資料庫錯誤，回傳 500 Internal Server Error
+        return jsonify({"message": f"資料庫錯誤: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
