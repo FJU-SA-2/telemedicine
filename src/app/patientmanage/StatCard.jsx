@@ -1,4 +1,4 @@
-
+// ============ 統計卡片組件 ============
 export default function StatCard({ title, value, icon: Icon, color }) {
   return (
     <div className={`bg-white rounded-xl shadow-md p-4 border-l-4 border-${color}-500 hover:shadow-lg transition-shadow`}>
