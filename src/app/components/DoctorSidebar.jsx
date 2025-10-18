@@ -10,7 +10,7 @@ export default function DoctorSidebar({ isOpen, setIsOpen }) {
   const menuItems = [
     { id: "/doctorpage", label: "首頁", icon: House, href: "/doctorpage" },
     { id: "/schedules", label: "排班管理", icon: ContactRound, href: "/schedules" },
-    { id: "/reserve", label: "患者列表", icon: Calendar, href: "/reserve" },
+    { id: "/patientmanage", label: "患者列表", icon: Calendar, href: "/patientmanage" },
     { id: "/management", label: "預約管理", icon: ContactRound, href: "/management" },
     { id: "/record", label: "預約紀錄", icon: Calendar, href: "/recordoc" },
     { id: "/settings", label: "設定", icon: Settings, href: "/settings" },
