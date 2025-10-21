@@ -12,6 +12,9 @@ from email.header import Header
 from werkzeug.utils import secure_filename
 import os
 from flask import send_from_directory
+from datetime import datetime, timedelta
+import secrets
+from flask import send_file
 
 
 app = Flask(__name__)
@@ -1321,6 +1324,829 @@ def get_certificate(filename):
         print(f"❌ 檔案不存在: {str(e)}")
         return jsonify({"message": f"檔案不存在: {str(e)}"}), 404
     
+@app.route("/api/appointments/history", methods=["GET"])
+def get_appointment_history():
+    """獲取用戶的看診歷史記錄"""
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    
+    user_id = session.get('user_id')
+    role = session.get('role')
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        if role == 'patient':
+            patient_id = session.get('patient_id')
+            query = """
+                SELECT 
+                    a.appointment_id,
+                    a.appointment_date,
+                    a.appointment_time,
+                    a.status,
+                    a.symptoms,
+                    a.consultation_notes,
+                    a.recording_url,
+                    a.recording_duration,
+                    a.meeting_started_at,
+                    a.meeting_ended_at,
+                    d.doctor_id,
+                    d.first_name as doctor_first_name,
+                    d.last_name as doctor_last_name,
+                    d.specialty as doctor_specialty,
+                    d.practice_hospital
+                FROM appointments a
+                INNER JOIN doctor d ON a.doctor_id = d.doctor_id
+                WHERE a.patient_id = %s 
+                AND a.status = '已完成'
+                ORDER BY a.appointment_date DESC, a.appointment_time DESC
+                LIMIT 50
+            """
+            cursor.execute(query, (patient_id,))
+            
+        elif role == 'doctor':
+            doctor_id = session.get('doctor_id')
+            query = """
+                SELECT 
+                    a.appointment_id,
+                    a.appointment_date,
+                    a.appointment_time,
+                    a.status,
+                    a.symptoms,
+                    a.consultation_notes,
+                    a.recording_url,
+                    a.recording_duration,
+                    a.meeting_started_at,
+                    a.meeting_ended_at,
+                    p.patient_id,
+                    p.first_name as patient_first_name,
+                    p.last_name as patient_last_name,
+                    p.gender as patient_gender,
+                    p.date_of_birth as patient_dob
+                FROM appointments a
+                INNER JOIN patient p ON a.patient_id = p.patient_id
+                WHERE a.doctor_id = %s 
+                AND a.status = '已完成'
+                ORDER BY a.appointment_date DESC, a.appointment_time DESC
+                LIMIT 50
+            """
+            cursor.execute(query, (doctor_id,))
+        else:
+            return jsonify({"message": "無效的用戶角色"}), 400
+        
+        history = cursor.fetchall()
+        
+        # 格式化日期時間
+        for record in history:
+            record['appointment_date'] = serialize_datetime(record['appointment_date'])
+            record['appointment_time'] = serialize_datetime(record['appointment_time'])
+            if 'patient_dob' in record and record['patient_dob']:
+                record['patient_dob'] = serialize_datetime(record['patient_dob'])
+            if record.get('meeting_started_at'):
+                record['meeting_started_at'] = serialize_datetime(record['meeting_started_at'])
+            if record.get('meeting_ended_at'):
+                record['meeting_ended_at'] = serialize_datetime(record['meeting_ended_at'])
+        
+        return jsonify(history), 200
+        
+    except Exception as e:
+        print(f"❌ 獲取歷史記錄失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"message": f"獲取歷史記錄失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@app.route("/api/meeting/check/<int:appointment_id>", methods=["GET"])
+def check_meeting_room(appointment_id):
+    """檢查會議室是否已創建（供病患端使用）"""
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        # 驗證該預約屬於當前用戶
+        role = session.get('role')
+        
+        if role == 'patient':
+            patient_id = session.get('patient_id')
+            cursor.execute("""
+                SELECT 
+                    appointment_id,
+                    meeting_room_id,
+                    status,
+                    meeting_started_at,
+                    meeting_ended_at
+                FROM appointments 
+                WHERE appointment_id = %s AND patient_id = %s
+            """, (appointment_id, patient_id))
+        elif role == 'doctor':
+            doctor_id = session.get('doctor_id')
+            cursor.execute("""
+                SELECT 
+                    appointment_id,
+                    meeting_room_id,
+                    status,
+                    meeting_started_at,
+                    meeting_ended_at
+                FROM appointments 
+                WHERE appointment_id = %s AND doctor_id = %s
+            """, (appointment_id, doctor_id))
+        else:
+            return jsonify({"message": "無效的用戶角色"}), 400
+        
+        appointment = cursor.fetchone()
+        
+        if not appointment:
+            return jsonify({"message": "預約不存在或無權限"}), 404
+        
+        return jsonify({
+            "success": True,
+            "meeting_room_id": appointment['meeting_room_id'],
+            "status": appointment['status'],
+            "is_active": appointment['meeting_room_id'] is not None and appointment['meeting_ended_at'] is None,
+            "has_started": appointment['meeting_started_at'] is not None
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ 檢查會議室失敗: {str(e)}")
+        return jsonify({"message": f"檢查會議室失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@app.route("/api/meeting/start", methods=["POST"])
+def start_meeting():
+    """醫師開始會議時記錄開始時間"""
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    
+    if session.get('role') != 'doctor':
+        return jsonify({"message": "僅醫師可開始會議"}), 403
+    
+    data = request.get_json()
+    appointment_id = data.get('appointment_id')
+    
+    if not appointment_id:
+        return jsonify({"message": "缺少預約 ID"}), 400
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    try:
+        # 更新會議開始時間
+        cursor.execute("""
+            UPDATE appointments 
+            SET meeting_started_at = NOW()
+            WHERE appointment_id = %s AND meeting_started_at IS NULL
+        """, (appointment_id,))
+        
+        db.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "會議已開始"
+        }), 200
+        
+    except Exception as e:
+        db.rollback()
+        print(f"❌ 記錄會議開始時間失敗: {str(e)}")
+        return jsonify({"message": f"記錄失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+# 優化上傳錄影端點 - 增加錯誤處理和日誌
+@app.route("/api/meeting/upload-recording", methods=["POST"])
+def upload_recording_improved():
+    """上傳看診錄影（改進版）"""
+    print("=" * 60)
+    print("📤 收到錄影上傳請求")
+    
+    if 'user_id' not in session:
+        print("❌ 用戶未登入")
+        return jsonify({"message": "請先登入"}), 401
+    
+    # 檢查是否為醫師
+    if session.get('role') != 'doctor':
+        print("❌ 非醫師用戶嘗試上傳")
+        return jsonify({"message": "僅醫師可上傳錄影"}), 403
+    
+    if 'video' not in request.files:
+        print("❌ 請求中沒有 video 檔案")
+        return jsonify({'message': '未選擇錄影檔案'}), 400
+    
+    file = request.files['video']
+    appointment_id = request.form.get('appointment_id')
+    duration = request.form.get('duration', 0)
+    
+    print(f"📋 預約 ID: {appointment_id}")
+    print(f"📹 檔案名稱: {file.filename}")
+    print(f"⏱️  錄影時長: {duration} 秒")
+    
+    if not appointment_id:
+        print("❌ 缺少預約 ID")
+        return jsonify({'message': '缺少預約 ID'}), 400
+    
+    if file.filename == '':
+        print("❌ 檔案名稱為空")
+        return jsonify({'message': '未選擇檔案'}), 400
+    
+    try:
+        # 驗證預約屬於當前醫師
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        
+        doctor_id = session.get('doctor_id')
+        cursor.execute("""
+            SELECT appointment_id, doctor_id, status
+            FROM appointments 
+            WHERE appointment_id = %s AND doctor_id = %s
+        """, (appointment_id, doctor_id))
+        
+        appointment = cursor.fetchone()
+        
+        if not appointment:
+            print("❌ 預約不存在或無權限")
+            return jsonify({'message': '預約不存在或無權限'}), 404
+        
+        # 生成唯一檔名
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = secure_filename(f"recording_{appointment_id}_{timestamp}.webm")
+        filepath = os.path.join(app.config['RECORDING_FOLDER'], filename)
+        
+        print(f"💾 儲存路徑: {filepath}")
+        
+        # 儲存檔案
+        file.save(filepath)
+        
+        # 檢查檔案大小
+        file_size = os.path.getsize(filepath)
+        file_size_mb = file_size / 1024 / 1024
+        
+        print(f"✅ 檔案已儲存，大小: {file_size_mb:.2f} MB")
+        
+        if file_size == 0:
+            print("❌ 儲存的檔案大小為 0")
+            os.remove(filepath)
+            return jsonify({'message': '錄影檔案無效'}), 400
+        
+        # 更新資料庫
+        try:
+            cursor.execute("""
+                UPDATE appointments 
+                SET recording_url = %s, 
+                    recording_duration = %s,
+                    updated_at = NOW()
+                WHERE appointment_id = %s
+            """, (filename, duration, appointment_id))
+            db.commit()
+            
+            print(f"✅ 資料庫已更新")
+            print("=" * 60)
+            
+            return jsonify({
+                'success': True,
+                'message': '錄影上傳成功',
+                'filename': filename,
+                'size': file_size,
+                'size_mb': round(file_size_mb, 2)
+            }), 200
+            
+        except Exception as e:
+            db.rollback()
+            print(f"❌ 資料庫更新失敗: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            # 刪除已上傳的檔案
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            return jsonify({'message': f'儲存失敗: {str(e)}'}), 500
+            
+    except Exception as e:
+        print(f"❌ 檔案儲存失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'message': f'上傳失敗: {str(e)}'}), 500
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'db' in locals():
+            db.close()
+
+
+# 添加檢查錄影是否存在的端點
+@app.route("/api/recording/check/<int:appointment_id>", methods=["GET"])
+def check_recording(appointment_id):
+    """檢查錄影是否存在"""
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        # 驗證權限
+        role = session.get('role')
+        
+        if role == 'patient':
+            patient_id = session.get('patient_id')
+            cursor.execute("""
+                SELECT recording_url, recording_duration
+                FROM appointments 
+                WHERE appointment_id = %s AND patient_id = %s
+            """, (appointment_id, patient_id))
+        elif role == 'doctor':
+            doctor_id = session.get('doctor_id')
+            cursor.execute("""
+                SELECT recording_url, recording_duration
+                FROM appointments 
+                WHERE appointment_id = %s AND doctor_id = %s
+            """, (appointment_id, doctor_id))
+        else:
+            return jsonify({"message": "無效的用戶角色"}), 400
+        
+        result = cursor.fetchone()
+        
+        if not result:
+            return jsonify({"message": "預約不存在或無權限"}), 404
+        
+        has_recording = result['recording_url'] is not None
+        
+        return jsonify({
+            "success": True,
+            "has_recording": has_recording,
+            "recording_url": result['recording_url'],
+            "duration": result['recording_duration']
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ 檢查錄影失敗: {str(e)}")
+        return jsonify({"message": f"檢查失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+def generate_meeting_id():
+    """生成唯一的會議室 ID"""
+    return secrets.token_urlsafe(16)
+
+@app.route("/api/appointments/upcoming", methods=["GET"])
+def get_upcoming_appointments():
+    """獲取用戶即將到來的預約（10分鐘內）"""
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    
+    user_id = session.get('user_id')
+    role = session.get('role')
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        # 計算當前時間和10分鐘後的時間
+        now = datetime.now()
+        ten_minutes_later = now + timedelta(minutes=10)
+        
+        if role == 'patient':
+            patient_id = session.get('patient_id')
+            query = """
+                SELECT 
+                    a.appointment_id,
+                    a.appointment_date,
+                    a.appointment_time,
+                    a.status,
+                    a.meeting_room_id,
+                    a.symptoms,
+                    d.doctor_id,
+                    d.first_name as doctor_first_name,
+                    d.last_name as doctor_last_name,
+                    d.specialty as doctor_specialty,
+                    d.practice_hospital
+                FROM appointments a
+                INNER JOIN doctor d ON a.doctor_id = d.doctor_id
+                WHERE a.patient_id = %s 
+                AND a.status = '已確認'
+                AND a.appointment_date = CURDATE()
+                AND a.appointment_time <= %s
+                AND a.appointment_time >= %s
+                ORDER BY a.appointment_time
+            """
+            cursor.execute(query, (patient_id, ten_minutes_later.time(), now.time()))
+            
+        elif role == 'doctor':
+            doctor_id = session.get('doctor_id')
+            query = """
+                SELECT 
+                    a.appointment_id,
+                    a.appointment_date,
+                    a.appointment_time,
+                    a.status,
+                    a.meeting_room_id,
+                    a.symptoms,
+                    p.patient_id,
+                    p.first_name as patient_first_name,
+                    p.last_name as patient_last_name,
+                    p.gender as patient_gender,
+                    p.date_of_birth as patient_dob
+                FROM appointments a
+                INNER JOIN patient p ON a.patient_id = p.patient_id
+                WHERE a.doctor_id = %s 
+                AND a.status = '已確認'
+                AND a.appointment_date = CURDATE()
+                AND a.appointment_time <= %s
+                AND a.appointment_time >= %s
+                ORDER BY a.appointment_time
+            """
+            cursor.execute(query, (doctor_id, ten_minutes_later.time(), now.time()))
+        else:
+            return jsonify({"message": "無效的用戶角色"}), 400
+        
+        appointments = cursor.fetchall()
+        
+        # 格式化日期時間
+        for apt in appointments:
+            apt['appointment_date'] = serialize_datetime(apt['appointment_date'])
+            apt['appointment_time'] = serialize_datetime(apt['appointment_time'])
+            if 'patient_dob' in apt and apt['patient_dob']:
+                apt['patient_dob'] = serialize_datetime(apt['patient_dob'])
+        
+        return jsonify(appointments), 200
+        
+    except Exception as e:
+        print(f"❌ 獲取預約失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"message": f"獲取預約失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@app.route("/api/meeting/create", methods=["POST"])
+def create_meeting_room():
+    """創建或獲取會議室"""
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    
+    data = request.get_json()
+    appointment_id = data.get('appointment_id')
+    
+    if not appointment_id:
+        return jsonify({"message": "缺少預約 ID"}), 400
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        # 檢查預約是否存在
+        cursor.execute("""
+            SELECT appointment_id, meeting_room_id, status 
+            FROM appointments 
+            WHERE appointment_id = %s
+        """, (appointment_id,))
+        
+        appointment = cursor.fetchone()
+        
+        if not appointment:
+            return jsonify({"message": "預約不存在"}), 404
+        
+        if appointment['status'] != '已確認':
+            return jsonify({"message": "預約狀態不正確"}), 400
+        
+        # 如果已有會議室 ID，直接返回
+        if appointment['meeting_room_id']:
+            meeting_room_id = appointment['meeting_room_id']
+        else:
+            # 創建新的會議室 ID
+            meeting_room_id = generate_meeting_id()
+            
+            # 更新到數據庫
+            cursor.execute("""
+                UPDATE appointments 
+                SET meeting_room_id = %s 
+                WHERE appointment_id = %s
+            """, (meeting_room_id, appointment_id))
+            db.commit()
+        
+        return jsonify({
+            "success": True,
+            "meeting_room_id": meeting_room_id,
+            "appointment_id": appointment_id
+        }), 200
+        
+    except Exception as e:
+        db.rollback()
+        print(f"❌ 創建會議室失敗: {str(e)}")
+        return jsonify({"message": f"創建會議室失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+RECORDING_FOLDER = 'uploads/recordings'
+ALLOWED_VIDEO_EXTENSIONS = {'webm', 'mp4', 'avi', 'mov'}
+app.config['RECORDING_FOLDER'] = RECORDING_FOLDER
+app.config['MAX_RECORDING_SIZE'] = 500 * 1024 * 1024  # 500MB
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB
+
+# 確保錄影資料夾存在
+os.makedirs(RECORDING_FOLDER, exist_ok=True)
+
+def allowed_video_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_VIDEO_EXTENSIONS
+
+
+@app.route("/api/meeting/upload-recording", methods=["POST"])
+def upload_recording():
+    """上傳看診錄影"""
+    print("=" * 60)
+    print("📤 收到錄影上傳請求")
+    
+    if 'user_id' not in session:
+        print("❌ 用戶未登入")
+        return jsonify({"message": "請先登入"}), 401
+    
+    if 'video' not in request.files:
+        print("❌ 請求中沒有 video 檔案")
+        return jsonify({'message': '未選擇錄影檔案'}), 400
+    
+    file = request.files['video']
+    appointment_id = request.form.get('appointment_id')
+    duration = request.form.get('duration', 0)
+    
+    print(f"檔案名稱: {file.filename}")
+    print(f"檔案大小: {file.content_length if file.content_length else '未知'}")
+    print(f"預約 ID: {appointment_id}")
+    print(f"錄影時長: {duration} 秒")
+    
+    if not appointment_id:
+        print("❌ 缺少預約 ID")
+        return jsonify({'message': '缺少預約 ID'}), 400
+    
+    if file.filename == '':
+        print("❌ 檔案名稱為空")
+        return jsonify({'message': '未選擇檔案'}), 400
+    
+    try:
+        # 生成唯一檔名
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = secure_filename(f"recording_{appointment_id}_{timestamp}.webm")
+        filepath = os.path.join(app.config['RECORDING_FOLDER'], filename)
+        
+        print(f"💾 儲存路徑: {filepath}")
+        
+        # 儲存檔案
+        file.save(filepath)
+        
+        # 檢查檔案大小
+        file_size = os.path.getsize(filepath)
+        print(f"✅ 檔案已儲存，大小: {file_size / 1024 / 1024:.2f} MB")
+        
+        if file_size == 0:
+            print("❌ 儲存的檔案大小為 0")
+            os.remove(filepath)
+            return jsonify({'message': '錄影檔案無效'}), 400
+        
+        # 更新資料庫
+        db = get_db()
+        cursor = db.cursor()
+        
+        try:
+            cursor.execute("""
+                UPDATE appointments 
+                SET recording_url = %s, 
+                    recording_duration = %s,
+                    updated_at = NOW()
+                WHERE appointment_id = %s
+            """, (filename, duration, appointment_id))
+            db.commit()
+            
+            print(f"✅ 資料庫已更新")
+            print("=" * 60)
+            
+            return jsonify({
+                'success': True,
+                'message': '錄影上傳成功',
+                'filename': filename,
+                'size': file_size
+            }), 200
+            
+        except Exception as e:
+            db.rollback()
+            print(f"❌ 資料庫更新失敗: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'message': f'儲存失敗: {str(e)}'}), 500
+        finally:
+            cursor.close()
+            db.close()
+            
+    except Exception as e:
+        print(f"❌ 檔案儲存失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'message': f'上傳失敗: {str(e)}'}), 500
+
+@app.route("/api/meeting/end", methods=["POST"])
+def end_meeting():
+    """結束會議並更新預約狀態"""
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    
+    data = request.get_json()
+    appointment_id = data.get('appointment_id')
+    consultation_notes = data.get('consultation_notes', '')
+    recording_duration = data.get('recording_duration', 0)
+    
+    if not appointment_id:
+        return jsonify({"message": "缺少預約 ID"}), 400
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        # 更新預約狀態為已完成，並記錄結束時間
+        cursor.execute("""
+            UPDATE appointments 
+            SET status = '已完成',
+                meeting_ended_at = NOW(),
+                consultation_notes = %s
+            WHERE appointment_id = %s
+        """, (consultation_notes, appointment_id))
+        
+        db.commit()
+        
+        print(f"✅ 會議已結束 - appointment_id: {appointment_id}")
+        
+        return jsonify({
+            "success": True,
+            "message": "會議已結束"
+        }), 200
+        
+    except Exception as e:
+        db.rollback()
+        print(f"❌ 結束會議失敗: {str(e)}")
+        return jsonify({"message": f"結束會議失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@app.route("/api/recording/<filename>", methods=["GET"])
+def get_recording(filename):
+    """獲取錄影檔案（僅限相關醫師和患者）"""
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    
+    # 驗證權限
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        # 從檔名提取 appointment_id
+        appointment_id = filename.split('_')[1]
+        
+        cursor.execute("""
+            SELECT patient_id, doctor_id 
+            FROM appointments 
+            WHERE appointment_id = %s
+        """, (appointment_id,))
+        
+        appointment = cursor.fetchone()
+        
+        if not appointment:
+            return jsonify({"message": "找不到相關預約"}), 404
+        
+        # 檢查是否為該預約的醫師或患者
+        user_role = session.get('role')
+        if user_role == 'doctor':
+            if appointment['doctor_id'] != session.get('doctor_id'):
+                return jsonify({"message": "無權限查看"}), 403
+        elif user_role == 'patient':
+            if appointment['patient_id'] != session.get('patient_id'):
+                return jsonify({"message": "無權限查看"}), 403
+        else:
+            return jsonify({"message": "無效的用戶角色"}), 403
+        
+        # 返回檔案
+        return send_from_directory(app.config['RECORDING_FOLDER'], filename)
+        
+    except Exception as e:
+        print(f"❌ 錄影檔案存取失敗: {str(e)}")
+        return jsonify({"message": f"檔案不存在: {str(e)}"}), 404
+    finally:
+        cursor.close()
+        db.close()
+
+@app.route("/api/appointments/<int:appointment_id>/recording", methods=["GET"])
+def get_appointment_recording_info(appointment_id):
+    """獲取預約的錄影資訊"""
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        cursor.execute("""
+            SELECT 
+                appointment_id,
+                recording_url,
+                recording_duration,
+                consultation_notes,
+                meeting_started_at,
+                meeting_ended_at,
+                status
+            FROM appointments 
+            WHERE appointment_id = %s
+        """, (appointment_id,))
+        
+        appointment = cursor.fetchone()
+        
+        if not appointment:
+            return jsonify({"message": "找不到預約"}), 404
+        
+        # 驗證權限
+        cursor.execute("""
+            SELECT patient_id, doctor_id 
+            FROM appointments 
+            WHERE appointment_id = %s
+        """, (appointment_id,))
+        
+        auth_info = cursor.fetchone()
+        user_role = session.get('role')
+        
+        if user_role == 'doctor' and auth_info['doctor_id'] != session.get('doctor_id'):
+            return jsonify({"message": "無權限"}), 403
+        elif user_role == 'patient' and auth_info['patient_id'] != session.get('patient_id'):
+            return jsonify({"message": "無權限"}), 403
+        
+        # 格式化時間
+        if appointment.get('meeting_started_at'):
+            appointment['meeting_started_at'] = appointment['meeting_started_at'].isoformat()
+        if appointment.get('meeting_ended_at'):
+            appointment['meeting_ended_at'] = appointment['meeting_ended_at'].isoformat()
+        
+        return jsonify({
+            "success": True,
+            "appointment": appointment
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ 查詢錄影資訊失敗: {str(e)}")
+        return jsonify({"message": f"查詢失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+# 新增：獲取會議室狀態
+@app.route("/api/meeting/status/<int:appointment_id>", methods=["GET"])
+def get_meeting_status(appointment_id):
+    """獲取會議室狀態"""
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        cursor.execute("""
+            SELECT 
+                appointment_id,
+                meeting_room_id,
+                status,
+                meeting_started_at,
+                meeting_ended_at
+            FROM appointments 
+            WHERE appointment_id = %s
+        """, (appointment_id,))
+        
+        appointment = cursor.fetchone()
+        
+        if not appointment:
+            return jsonify({"message": "預約不存在"}), 404
+        
+        return jsonify({
+            "success": True,
+            "meeting_room_id": appointment['meeting_room_id'],
+            "status": appointment['status'],
+            "is_active": appointment['meeting_room_id'] is not None and appointment['meeting_ended_at'] is None
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ 獲取會議狀態失敗: {str(e)}")
+        return jsonify({"message": f"獲取會議狀態失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
 
 if __name__ == "__main__":
     app.run(debug=True)

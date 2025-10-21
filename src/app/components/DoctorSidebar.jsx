@@ -1,6 +1,6 @@
 // components/DoctorSidebar.jsx
 "use client";
-import { House, Calendar, ContactRound, X, Settings } from "lucide-react";
+import { House, Calendar, ContactRound, X, Settings, Video } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -13,6 +13,7 @@ export default function DoctorSidebar({ isOpen, setIsOpen }) {
     { id: "/patientmanage", label: "患者列表", icon: Calendar, href: "/patientmanage" },
     { id: "/management", label: "預約管理", icon: ContactRound, href: "/management" },
     { id: "/record", label: "預約紀錄", icon: Calendar, href: "/recordoc" },
+    { id: "/facetime", label: "視訊看診", icon: Video, href: "/facetime" },
     { id: "/settings", label: "設定", icon: Settings, href: "/settings" },
   ];
 
