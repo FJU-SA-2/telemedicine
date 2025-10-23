@@ -257,7 +257,7 @@ const handleSave = async () => {
           <div>
             <p className="text-sm text-gray-500">姓名</p>
             <p className="text-lg font-medium text-gray-800">
-              {user.lastName} {user.firstName}
+              {user.last_name} {user.first_name}
             </p>
           </div>
 

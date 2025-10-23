@@ -5,7 +5,7 @@ import { User as UserIcon } from "lucide-react";
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
-  const displayName = user ? `${user.firstName}${user.lastName}` : "訪客";
+  const displayName = user ? `${user.first_name}${user.last_name}` : "訪客";
   const href = user ? "/profile" : "/login";
 
   useEffect(() => {
