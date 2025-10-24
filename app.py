@@ -875,11 +875,21 @@ def serialize_datetime(obj):
 
 @app.route("/api/record", methods=["GET"])
 def get_record():
+   
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    
+    user_id = session.get('user_id')
+    role = session.get('role')
+    
     db = get_db()
     cursor = db.cursor(dictionary=True)
     
-    query = """
-        SELECT 
+    try:
+        if role == 'patient':
+            patient_id = session.get('patient_id')
+            query = """
+                SELECT 
             a.appointment_id,
             a.appointment_date,
             a.appointment_time,
@@ -889,19 +899,31 @@ def get_record():
             d.specialty as doctor_specialty
         FROM appointments a
         INNER JOIN doctor d ON a.doctor_id = d.doctor_id
+        INNER JOIN patient p ON a.patient_id = p.patient_id
+        WHERE a.patient_id = %s
         ORDER BY a.appointment_date DESC, a.appointment_time DESC
     """
-    cursor.execute(query)
-    appointments = cursor.fetchall()
-    
-    cursor.close()
-    db.close()
-    
-    for a in appointments:
-        a["appointment_date"] = serialize_datetime(a["appointment_date"])
-        a["appointment_time"] = serialize_datetime(a["appointment_time"])
 
-    return jsonify(appointments)
+            cursor.execute(query, (patient_id,))
+            appointments = cursor.fetchall()
+
+      
+            for a in appointments:
+              a["appointment_date"] = serialize_datetime(a["appointment_date"])
+              a["appointment_time"] = serialize_datetime(a["appointment_time"])
+
+
+        
+        return jsonify(appointments), 200
+        
+    except Exception as e:
+        print(f"❌ 獲取歷史記錄失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"message": f"獲取歷史記錄失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
 
 @app.route("/api/recordoc", methods=["GET"])
 def get_recordoc_doctor_view():
@@ -932,8 +954,6 @@ def get_recordoc_doctor_view():
         a["appointment_time"] = serialize_datetime(a["appointment_time"])
 
     return jsonify(appointments)
-
-
 
 
 
