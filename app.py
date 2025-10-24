@@ -53,16 +53,22 @@ def get_db():
 
 # 檔案上傳設定
 UPLOAD_FOLDER = 'uploads/certificates'
+PROFILE_PICTURE_FOLDER = 'uploads/profile_pictures'
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
+ALLOWED_PHOTO_EXTENSIONS = {'png', 'jpg', 'jpeg'} # 確保允許的格式存在
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
 
 # 確保上傳資料夾存在
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(PROFILE_PICTURE_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
+def allowed_photo_file(filename):
+    """檢查上傳檔案的副檔名是否為允許的照片格式"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_PHOTO_EXTENSIONS
 
 
 
@@ -584,6 +590,7 @@ def get_current_user():
                         d.specialty, d.practice_hospital, 
                         di.education, di.description, di.experience, di.qualifications, 
                         di.consultation_fee, di.consultation_type, 
+                        di.photo,
                         d.approval_status
                 FROM doctor d
                 LEFT JOIN doctor_info di ON d.doctor_id = di.doctor_id
@@ -605,6 +612,7 @@ def get_current_user():
                     'consultation_fee': doctor_data['consultation_fee'],
                     'consultation_type': doctor_data['consultation_type'],
                     'approval_status': doctor_data['approval_status'],
+                    'photo': doctor_data.get('photo') or ""
                 }
         
         return jsonify({
@@ -762,6 +770,85 @@ def update_doctor_profile():
         db.close()
 
 
+
+@app.route("/uploads/profile_pictures/<filename>", methods=["GET"])
+def get_doctor_photo(filename):
+    """從 profile_pictures 資料夾提供醫師照片檔案"""
+    return send_from_directory(PROFILE_PICTURE_FOLDER, filename)
+# app.py (新增 /api/doctor/upload-photo 路由)
+
+@app.route("/api/doctor/upload-photo", methods=["POST"])
+def upload_doctor_photo():
+    """上傳醫師個人照片，並在 doctor_info 中更新/新增 'photo' 欄位"""
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return jsonify({"message": "請先登入醫師帳號"}), 401
+        
+    doctor_id = session.get('doctor_id') # 假設 session 中有 doctor_id
+    
+    # ... (檔案檢查部分，與前次建議相同)
+    if 'photo' not in request.files or request.files['photo'].filename == '':
+        return jsonify({'message': '未選擇檔案'}), 400
+    
+    file = request.files['photo']
+    
+    if file and allowed_photo_file(file.filename):
+        original_filename = secure_filename(file.filename)
+        # 生成唯一檔名：doctor_id_時間戳_副檔名
+        name, ext = os.path.splitext(original_filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_filename = f"{doctor_id}_{timestamp}{ext}" 
+        
+        filepath = os.path.join(PROFILE_PICTURE_FOLDER, unique_filename)
+        
+        # 儲存檔案
+        file.save(filepath)
+        
+        db = get_db()
+        cursor = db.cursor()
+        
+        try:
+            # ⭐ CHECK: 檢查 doctor_info 是否存在該 doctor 的記錄
+            cursor.execute("SELECT COUNT(*) FROM doctor_info WHERE doctor_id = %s", (doctor_id,))
+        
+            info_count = cursor.fetchone()[0]
+
+            if info_count > 0:
+                # ⭐ UPDATE: 如果記錄存在 (count > 0)，則更新 photo 欄位
+                sql = """
+                    UPDATE doctor_info
+                    SET photo = %s
+                    WHERE doctor_id = %s
+                """
+                cursor.execute(sql, (unique_filename, doctor_id))
+            else:
+                # ⭐ INSERT: 如果記錄不存在 (count == 0)，則新增一條記錄
+                # 這裡假設 doctor_info 表格中的其他欄位可以為 NULL 或有預設值
+                sql = """
+                    INSERT INTO doctor_info (doctor_id, photo)
+                    VALUES (%s, %s)
+                """
+                cursor.execute(sql, (doctor_id, unique_filename))
+
+            db.commit()
+            
+            print(f"✅ 醫師照片已儲存並更新 DB: {filepath}")
+            return jsonify({
+                'success': True,
+                'message': '照片上傳成功',
+                'photo_path': unique_filename
+            }), 200
+            
+        except Exception as e: # 保持使用 Exception 處理廣泛錯誤
+            db.rollback()
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            print(f"❌ 資料庫更新失敗: {e}")
+            return jsonify({"message": f"資料庫更新失敗或伺服器錯誤: {str(e)}"}), 500
+        finally:
+            cursor.close()
+            db.close()
+            
+    return jsonify({'message': '不支持的檔案格式 (僅支持 PNG, JPG, JPEG)'}), 400
 
 @app.route("/api/logout", methods=["POST"])
 def logout_user():
