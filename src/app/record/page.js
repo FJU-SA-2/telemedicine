@@ -17,7 +17,7 @@ export default function AppointmentRecords() {
   const fetchAppointments = async () => {
     setLoading(true);
     try {
-        const res = await fetch("http://127.0.0.1:5000/api/record", {
+        const res = await fetch("/api/record", {
       credentials: 'include'  // 很重要！允許跨域時發送 Cookie/Session
     });
      
