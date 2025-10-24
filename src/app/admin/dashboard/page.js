@@ -15,9 +15,7 @@ function FeedbackList() {
 
   const fetchFeedbacks = async () => {
     try {
-      const res = await fetch('/api/admin/feedback', {
-        credentials: 'include',
-      });
+      const res = await fetch('/api/admin/feedback',);
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || '載入失敗');
       setFeedbacks(data);
@@ -226,6 +224,7 @@ export default function AdminDashboard() {
       alert('載入使用者失敗');
     }
   };
+
 
   const handleApprove = async (doctorId) => {
     if (!confirm('確定要核准此醫師的註冊嗎?')) return;

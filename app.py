@@ -467,7 +467,7 @@ def login_user():
         user_id = user["user_id"]
 
         patient_id = None
-        doctor_id = None  # ⭐ 新增
+        doctor_id = None  
         first_name = ""
         last_name = ""
 
@@ -921,8 +921,10 @@ def admin_login():
         if not admin or admin["password_hash"] != password:
             return jsonify({"message": "帳號或密碼錯誤"}), 401
 
+        session['user_id'] = admin["admin_id"]
         session['admin_id'] = admin["admin_id"]
         session['admin_email'] = email
+        session['user_id'] = admin["admin_id"]
         session['is_admin'] = True
 
         return jsonify({
@@ -1049,6 +1051,194 @@ def reject_doctor(doctor_id):
 
 # 將這些代碼替換到 app.py 中
 
+@app.route("/api/admin/users", methods=["GET"])
+def get_users():
+    """獲取已審核的醫師或註冊患者列表"""
+    if not session.get('is_admin'):
+        return jsonify({"message": "無權限"}), 403
+
+    user_type = request.args.get('type', 'doctor')
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    try:
+        if user_type == 'doctor':
+            sql = """
+                SELECT 
+                    d.doctor_id as user_id,
+                    d.first_name,
+                    d.last_name,
+                    d.gender,
+                    d.phone_number,
+                    d.specialty,
+                    d.practice_hospital,
+                    d.approval_status,
+                    u.email,
+                    u.account_status,
+                    u.created_at as registration_date
+                FROM doctor d
+                JOIN users u ON d.user_id = u.user_id
+                WHERE d.approval_status = 'approved'
+                ORDER BY u.created_at DESC
+            """
+        else:  # patient
+            sql = """
+                SELECT 
+                    p.patient_id as user_id,
+                    p.first_name,
+                    p.last_name,
+                    p.gender,
+                    p.phone_number,
+                    p.date_of_birth,
+                    u.email,
+                    u.account_status,
+                    u.created_at as registration_date
+                FROM patient p
+                JOIN users u ON p.user_id = u.user_id
+                ORDER BY u.created_at DESC
+            """
+        
+        cursor.execute(sql)
+        users = cursor.fetchall()
+
+        # 格式化日期
+        for user in users:
+            if user.get('registration_date'):
+                user['registration_date'] = serialize_datetime(user['registration_date'])
+            if user.get('date_of_birth'):
+                user['date_of_birth'] = serialize_datetime(user['date_of_birth'])
+
+        return jsonify(users), 200
+
+    except Exception as e:
+        print(f"❌ 查詢使用者失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"message": f"查詢失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@app.route("/api/admin/toggle-user-status/<int:user_id>", methods=["PATCH"])
+def toggle_user_status(user_id):
+    """啟用或停用使用者帳號"""
+    if not session.get('is_admin'):
+        return jsonify({"message": "無權限"}), 403
+
+    data = request.get_json()
+    new_status = data.get('status')  # 'active' 或 'suspended'
+    
+    if new_status not in ['active', 'suspended']:
+        return jsonify({"message": "無效的狀態"}), 400
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    try:
+        # 先找出對應的 users.user_id
+        # 前端傳來的 user_id 可能是 doctor_id 或 patient_id
+        cursor.execute("""
+            SELECT u.user_id 
+            FROM users u
+            LEFT JOIN doctor d ON u.user_id = d.user_id
+            LEFT JOIN patient p ON u.user_id = p.user_id
+            WHERE d.doctor_id = %s OR p.patient_id = %s
+        """, (user_id, user_id))
+        
+        result = cursor.fetchone()
+        
+        if not result:
+            return jsonify({"message": "找不到使用者"}), 404
+        
+        actual_user_id = result['user_id']
+        
+        # 更新帳號狀態
+        cursor.execute("""
+            UPDATE users 
+            SET account_status = %s 
+            WHERE user_id = %s
+        """, (new_status, actual_user_id))
+        
+        db.commit()
+
+        action = "已停用" if new_status == 'suspended' else "已啟用"
+        return jsonify({
+            "success": True,
+            "message": f"使用者{action}"
+        }), 200
+
+    except Exception as e:
+        db.rollback()
+        print(f"❌ 更新狀態失敗: {str(e)}")
+        return jsonify({"message": f"操作失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@app.route("/api/admin/delete-user/<int:user_id>", methods=["DELETE"])
+def delete_user(user_id):
+    """刪除使用者（包含所有相關資料）"""
+    if not session.get('is_admin'):
+        return jsonify({"message": "無權限"}), 403
+
+    data = request.get_json()
+    role = data.get('role')  # 'doctor' 或 'patient'
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    try:
+        if role == 'doctor':
+            # 先找出 users.user_id
+            cursor.execute("SELECT user_id FROM doctor WHERE doctor_id = %s", (user_id,))
+            result = cursor.fetchone()
+            
+            if not result:
+                return jsonify({"message": "找不到醫師"}), 404
+            
+            actual_user_id = result['user_id']
+            
+            # 刪除順序：先刪除外鍵關聯的資料
+            cursor.execute("DELETE FROM doctor_info WHERE doctor_id = %s", (user_id,))
+            cursor.execute("DELETE FROM schedules WHERE doctor_id = %s", (user_id,))
+            cursor.execute("DELETE FROM appointments WHERE doctor_id = %s", (user_id,))
+            cursor.execute("DELETE FROM doctor WHERE doctor_id = %s", (user_id,))
+            cursor.execute("DELETE FROM users WHERE user_id = %s", (actual_user_id,))
+            
+        else:  # patient
+            cursor.execute("SELECT user_id FROM patient WHERE patient_id = %s", (user_id,))
+            result = cursor.fetchone()
+            
+            if not result:
+                return jsonify({"message": "找不到患者"}), 404
+            
+            actual_user_id = result['user_id']
+            
+            # 刪除患者相關資料
+            cursor.execute("DELETE FROM appointments WHERE patient_id = %s", (user_id,))
+            cursor.execute("DELETE FROM patient WHERE patient_id = %s", (user_id,))
+            cursor.execute("DELETE FROM users WHERE user_id = %s", (actual_user_id,))
+        
+        db.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "使用者已刪除"
+        }), 200
+
+    except Exception as e:
+        db.rollback()
+        print(f"❌ 刪除失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"message": f"刪除失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+        
 # 1. 新增取得醫師 Profile 的 API
 @app.route("/api/doctor/profile", methods=["GET"])
 def get_doctor_profile():
@@ -2150,54 +2340,3 @@ def get_meeting_status(appointment_id):
 
 if __name__ == "__main__":
     app.run(debug=True)
-
-
-@app.route("/api/admin/users", methods=["GET"])
-def get_all_users():
-    """管理員功能：獲取所有病患和已審核醫師的基本使用者資料"""
-    # 1. 檢查是否已登入且為管理員
-    if 'user_id' not in session or session.get('role') != 'admin':
-        # 403 Forbidden (權限不足)
-        return jsonify({"message": "權限不足，請先登入管理員帳號"}), 403
-
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-
-    try:
-        # 聯合查詢 (JOIN) `users`, `patient`, 和 `doctor` 表格
-        sql = """
-            SELECT 
-                u.user_id, 
-                u.email, 
-                u.user_type, 
-                u.account_status, 
-                u.created_at,
-                p.patient_id,
-                d.doctor_id,
-                # 判斷名稱欄位
-                COALESCE(p.first_name, d.first_name, '未知') AS first_name,
-                COALESCE(p.last_name, d.last_name, '使用者') AS last_name
-            FROM users u
-            LEFT JOIN patient p ON u.user_id = p.user_id AND u.user_type = 'patient'
-            LEFT JOIN doctor d ON u.user_id = d.user_id AND u.user_type = 'doctor'
-            WHERE u.user_type IN ('patient', 'doctor') AND u.account_status != 'pending'
-            ORDER BY u.created_at DESC
-        """
-        cursor.execute(sql)
-        users = cursor.fetchall()
-        
-        # 轉換 datetime 物件為 ISO 格式字串以利 JSON 序列化
-        for user in users:
-            if user.get('created_at'):
-                user['created_at'] = user['created_at'].isoformat()
-
-        # 成功回傳 200 OK
-        return jsonify(users), 200
-
-    except Error as e:
-        print(f"❌ 獲取使用者資料失敗: {e}")
-        # 資料庫錯誤，回傳 500 Internal Server Error
-        return jsonify({"message": f"資料庫錯誤: {str(e)}"}), 500
-    finally:
-        cursor.close()
-        db.close()
