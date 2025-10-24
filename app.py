@@ -1997,7 +1997,7 @@ def generate_meeting_id():
 
 @app.route("/api/appointments/upcoming", methods=["GET"])
 def get_upcoming_appointments():
-    """獲取用戶即將到來的預約（10分鐘內）"""
+    """獲取用戶即將到來的預約(預約時間前10分鐘到後25分鐘)"""
     if 'user_id' not in session:
         return jsonify({"message": "請先登入"}), 401
     
@@ -2008,9 +2008,14 @@ def get_upcoming_appointments():
     cursor = db.cursor(dictionary=True)
     
     try:
-        # 計算當前時間和10分鐘後的時間
+        # 計算時間範圍
         now = datetime.now()
-        ten_minutes_later = now + timedelta(minutes=10)
+        ten_minutes_before = now - timedelta(minutes=10)  # 預約前10分鐘
+        twenty_five_minutes_after = now + timedelta(minutes=25)  # 預約後25分鐘
+        
+        print(f"⏰ 時間範圍:")
+        print(f"   當前時間: {now.strftime('%H:%M:%S')}")
+        print(f"   搜尋範圍: {ten_minutes_before.strftime('%H:%M:%S')} ~ {twenty_five_minutes_after.strftime('%H:%M:%S')}")
         
         if role == 'patient':
             patient_id = session.get('patient_id')
@@ -2026,17 +2031,19 @@ def get_upcoming_appointments():
                     d.first_name as doctor_first_name,
                     d.last_name as doctor_last_name,
                     d.specialty as doctor_specialty,
-                    d.practice_hospital
+                    d.practice_hospital,
+                    CONCAT(a.appointment_date, ' ', a.appointment_time) as appointment_datetime
                 FROM appointments a
                 INNER JOIN doctor d ON a.doctor_id = d.doctor_id
                 WHERE a.patient_id = %s 
                 AND a.status = '已確認'
                 AND a.appointment_date = CURDATE()
-                AND a.appointment_time <= %s
-                AND a.appointment_time >= %s
+                AND CONCAT(a.appointment_date, ' ', a.appointment_time) 
+                    BETWEEN DATE_SUB(NOW(), INTERVAL 10 MINUTE) 
+                    AND DATE_ADD(NOW(), INTERVAL 25 MINUTE)
                 ORDER BY a.appointment_time
             """
-            cursor.execute(query, (patient_id, ten_minutes_later.time(), now.time()))
+            cursor.execute(query, (patient_id,))
             
         elif role == 'doctor':
             doctor_id = session.get('doctor_id')
@@ -2052,28 +2059,45 @@ def get_upcoming_appointments():
                     p.first_name as patient_first_name,
                     p.last_name as patient_last_name,
                     p.gender as patient_gender,
-                    p.date_of_birth as patient_dob
+                    p.date_of_birth as patient_dob,
+                    CONCAT(a.appointment_date, ' ', a.appointment_time) as appointment_datetime
                 FROM appointments a
                 INNER JOIN patient p ON a.patient_id = p.patient_id
                 WHERE a.doctor_id = %s 
                 AND a.status = '已確認'
                 AND a.appointment_date = CURDATE()
-                AND a.appointment_time <= %s
-                AND a.appointment_time >= %s
+                AND CONCAT(a.appointment_date, ' ', a.appointment_time) 
+                    BETWEEN DATE_SUB(NOW(), INTERVAL 10 MINUTE) 
+                    AND DATE_ADD(NOW(), INTERVAL 25 MINUTE)
                 ORDER BY a.appointment_time
             """
-            cursor.execute(query, (doctor_id, ten_minutes_later.time(), now.time()))
+            cursor.execute(query, (doctor_id,))
         else:
             return jsonify({"message": "無效的用戶角色"}), 400
         
         appointments = cursor.fetchall()
         
-        # 格式化日期時間
+        # 格式化日期時間並添加額外信息
         for apt in appointments:
             apt['appointment_date'] = serialize_datetime(apt['appointment_date'])
             apt['appointment_time'] = serialize_datetime(apt['appointment_time'])
             if 'patient_dob' in apt and apt['patient_dob']:
                 apt['patient_dob'] = serialize_datetime(apt['patient_dob'])
+            
+            # 計算剩餘時間(分鐘)
+            if 'appointment_datetime' in apt:
+                appt_dt = datetime.strptime(str(apt['appointment_datetime']), '%Y-%m-%d %H:%M:%S')
+                time_diff = (now - appt_dt).total_seconds() / 60
+                apt['minutes_since_appointment'] = int(time_diff)
+                apt['can_join'] = apt['meeting_room_id'] is not None and -5 <= time_diff <= 25
+                # 移除臨時欄位
+                del apt['appointment_datetime']
+        
+        print(f"✅ 找到 {len(appointments)} 筆預約")
+        for apt in appointments:
+            print(f"   - ID: {apt['appointment_id']}, 時間: {apt['appointment_time']}, " 
+                  f"經過: {apt.get('minutes_since_appointment', 0)}分鐘, "
+                  f"可進入: {apt.get('can_join', False)}")
         
         return jsonify(appointments), 200
         
