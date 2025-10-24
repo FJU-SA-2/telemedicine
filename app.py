@@ -879,7 +879,7 @@ def get_record():
     if 'user_id' not in session:
         return jsonify({"message": "請先登入"}), 401
     
-    user_id = session.get('user_id')
+    user_id = session['user_id']
     role = session.get('role')
     
     db = get_db()
@@ -926,11 +926,21 @@ def get_record():
         db.close()
 
 @app.route("/api/recordoc", methods=["GET"])
-def get_recordoc_doctor_view():
+def get_recordoc():
+   
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    
+    user_id = session['user_id']
+    role = session.get('role')
+    
     db = get_db()
     cursor = db.cursor(dictionary=True)
     
-    query = """
+    try:
+        if role == 'doctor':
+            doctor_id = session.get('doctor_id')
+            query = """
         SELECT 
             a.appointment_id,
             a.appointment_date,
@@ -940,21 +950,31 @@ def get_recordoc_doctor_view():
             p.last_name
         FROM appointments a
         INNER JOIN patient p ON a.patient_id = p.patient_id
+        INNER JOIN doctor d ON a.doctor_id = d.doctor_id
+        WHERE a.doctor_id = %s
         ORDER BY a.appointment_date DESC, a.appointment_time DESC
     """
-    cursor.execute(query)
-    appointments = cursor.fetchall()
-    
-    cursor.close()
-    db.close()
-    
-    # 將日期時間轉成字串
-    for a in appointments:
-        a["appointment_date"] = serialize_datetime(a["appointment_date"])
-        a["appointment_time"] = serialize_datetime(a["appointment_time"])
 
-    return jsonify(appointments)
+            cursor.execute(query, (doctor_id,))
+            appointments = cursor.fetchall()
 
+      
+            for a in appointments:
+              a["appointment_date"] = serialize_datetime(a["appointment_date"])
+              a["appointment_time"] = serialize_datetime(a["appointment_time"])
+
+
+        
+        return jsonify(appointments), 200
+        
+    except Exception as e:
+        print(f"❌ 獲取歷史記錄失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"message": f"獲取歷史記錄失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
 
 
    

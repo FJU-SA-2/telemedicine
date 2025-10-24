@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { Calendar, Clock, User, RefreshCw, Menu } from 'lucide-react';
-import Sidebar from "../components/Sidebar";
+import DoctorSidebar from "../components/DoctorSidebar";
 import Navbar from "../components/Navbar";
 
 export default function AppointmentRecords() {
@@ -17,14 +17,14 @@ export default function AppointmentRecords() {
   const fetchAppointments = async () => {
     setLoading(true);
     try {
-        const res = await fetch("http://127.0.0.1:5000/api/recordoc", {
+        const res = await fetch("/api/recordoc", {
           credentials: 'include'
         });
         
         if (!res.ok) throw new Error("API 取得資料失敗");
         const data = await res.json();
 
-        // 將資料 mapping 成 patient
+        
         const formattedData = data.map((item) => ({
           appointment_id: item.appointment_id,
           appointment_date: item.appointment_date,
@@ -93,16 +93,16 @@ export default function AppointmentRecords() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray z-50"
+          className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
         >
           <Menu size={24} />
         </button>
       )}
 
-      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+      <DoctorSidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
-      <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"} max-w-6xl mx-auto`}>
-        <Navbar />
+      <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+                <Navbar />
 
         {/* 篩選器 */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">

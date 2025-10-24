@@ -58,7 +58,7 @@ export default function PatientVideoConsultation() {
 
   const fetchUpcomingAppointments = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/appointments/upcoming', {
+      const response = await fetch('/api/appointments/upcoming', {
         credentials: 'include'
       });
 
@@ -78,7 +78,7 @@ export default function PatientVideoConsultation() {
 
   const fetchConsultationHistory = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/appointments/history', {
+      const response = await fetch('/api/appointments/history', {
         credentials: 'include'
       });
 
