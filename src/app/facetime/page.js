@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from 'react';
-import { Menu,Video, PhoneOff, Monitor, Users, Clock, FileText, AlertCircle, User, Calendar, Stethoscope, Circle, Mic, MicOff, VideoOff as VideoOffIcon } from 'lucide-react';
+import { Menu, Video, PhoneOff, Monitor, Users, Clock, FileText, AlertCircle, User, Calendar, Stethoscope, Circle, Mic, MicOff, VideoOff as VideoOffIcon } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import DoctorSidebar from '../components/DoctorSidebar';
 
@@ -27,7 +27,7 @@ export default function DoctorVideoConsultation() {
   const recordingTimerRef = useRef(null);
   const recordingStartTimeRef = useRef(null);
 
-  // ✅ 載入 Jitsi API
+  // 載入 Jitsi API
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -45,7 +45,7 @@ export default function DoctorVideoConsultation() {
     };
     script.onerror = () => {
       console.error('❌ Jitsi API 載入失敗');
-      setError('無法載入視訊服務，請重新整理頁面');
+      setError('無法載入視訊服務,請重新整理頁面');
     };
     document.body.appendChild(script);
 
@@ -62,7 +62,6 @@ export default function DoctorVideoConsultation() {
     return () => clearInterval(interval);
   }, []);
 
-  // 清理函數
   useEffect(() => {
     return () => {
       if (recordingTimerRef.current) {
@@ -108,7 +107,7 @@ export default function DoctorVideoConsultation() {
 
   const startMeeting = async (appointment) => {
     if (!jitsiLoaded || !window.JitsiMeetExternalAPI) {
-      setError('視訊服務尚未準備好，請稍後再試');
+      setError('視訊服務尚未準備好,請稍後再試');
       return;
     }
 
@@ -135,7 +134,7 @@ export default function DoctorVideoConsultation() {
 
     } catch (err) {
       console.error('開始會議失敗:', err);
-      setError('無法開始會議，請稍後再試');
+      setError('無法開始會議,請稍後再試');
       setIsMeetingActive(false);
     } finally {
       setIsLoading(false);
@@ -199,8 +198,9 @@ export default function DoctorVideoConsultation() {
 
       api.addEventListener('videoConferenceJoined', () => {
         console.log('✅ 已加入會議');
-        // 延遲啟動錄影，確保連接穩定
+        console.log('🎬 2秒後自動啟動錄影...');
         setTimeout(() => {
+          console.log('🎬 執行 startRecording()');
           startRecording();
         }, 2000);
       });
@@ -223,29 +223,26 @@ export default function DoctorVideoConsultation() {
       });
 
       api.addEventListener('readyToClose', () => {
-        console.log('🔚 會議準備關閉');
+        console.log('📚 會議準備關閉');
         handleMeetingEnd();
       });
 
     } catch (err) {
       console.error('❌ Jitsi 初始化失敗:', err);
-      setError('視訊初始化失敗，請重新開始');
+      setError('視訊初始化失敗,請重新開始');
       setIsMeetingActive(false);
     }
   };
 
-  // 🎥 開始錄影 - 改進版本
   const startRecording = async () => {
     try {
       console.log('🎥 準備開始錄影...');
 
-      // 請求螢幕共享和音訊權限
-      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+      const userStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          cursor: 'always',
-          displaySurface: 'monitor',
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 }
         },
         audio: {
           echoCancellation: true,
@@ -255,26 +252,6 @@ export default function DoctorVideoConsultation() {
         }
       });
 
-      // 獲取麥克風音訊
-      const audioStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 48000
-        }
-      });
-
-      // 合併所有軌道
-      const tracks = [
-        ...displayStream.getVideoTracks(),
-        ...displayStream.getAudioTracks(),
-        ...audioStream.getAudioTracks()
-      ];
-
-      const combinedStream = new MediaStream(tracks);
-
-      // 選擇最佳 MIME 類型
       const mimeTypes = [
         'video/webm;codecs=vp9,opus',
         'video/webm;codecs=vp8,opus',
@@ -288,12 +265,12 @@ export default function DoctorVideoConsultation() {
         throw new Error('瀏覽器不支援錄影功能');
       }
 
-      console.log('使用 MIME 類型:', selectedMimeType);
+      console.log('✅ 使用 MIME 類型:', selectedMimeType);
 
-      const mediaRecorder = new MediaRecorder(combinedStream, {
+      const mediaRecorder = new MediaRecorder(userStream, {
         mimeType: selectedMimeType,
-        videoBitsPerSecond: 3000000, // 3 Mbps
-        audioBitsPerSecond: 128000   // 128 Kbps
+        videoBitsPerSecond: 2500000,
+        audioBitsPerSecond: 128000
       });
 
       mediaRecorderRef.current = mediaRecorder;
@@ -303,57 +280,69 @@ export default function DoctorVideoConsultation() {
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
           recordedChunksRef.current.push(event.data);
-          console.log(`📦 收集數據塊: ${(event.data.size / 1024 / 1024).toFixed(2)} MB`);
+          const sizeMB = (event.data.size / 1024 / 1024).toFixed(2);
+          console.log(`📦 收集數據塊 #${recordedChunksRef.current.length}: ${sizeMB} MB`);
+        } else {
+          console.warn('⚠️ 收到空數據塊');
         }
       };
 
       mediaRecorder.onstop = async () => {
-        console.log('⏹️ 錄影已停止，準備保存...');
+        console.log('⏹️ 錄影已停止');
         const totalSize = recordedChunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0);
-        console.log(`📊 總數據量: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
+        const totalSizeMB = (totalSize / 1024 / 1024).toFixed(2);
+        console.log(`📊 總數據量: ${totalSizeMB} MB`);
         console.log(`📊 總數據塊: ${recordedChunksRef.current.length} 個`);
-        await saveRecording();
+        
+        if (recordedChunksRef.current.length > 0) {
+          console.log('💾 開始保存錄影...');
+          await saveRecording();
+        } else {
+          console.error('❌ 沒有錄影數據可保存');
+          setError('錄影數據為空,請重新嘗試');
+        }
       };
 
       mediaRecorder.onerror = (event) => {
         console.error('❌ MediaRecorder 錯誤:', event.error);
-        setError('錄影過程發生錯誤');
+        setError('錄影過程發生錯誤: ' + event.error?.message);
       };
 
-      // 每秒收集一次數據
       mediaRecorder.start(1000);
       setIsRecording(true);
 
-      // 開始計時
       setRecordingDuration(0);
       recordingTimerRef.current = setInterval(() => {
         setRecordingDuration(prev => prev + 1);
       }, 1000);
 
-      console.log('✅ 錄影已開始');
+      console.log('✅ 錄影已開始 (狀態:', mediaRecorder.state, ')');
 
-      // 監聽用戶停止分享螢幕
-      displayStream.getVideoTracks()[0].onended = () => {
-        console.log('⚠️ 用戶停止分享螢幕');
-        stopRecording();
-      };
+      userStream.getTracks().forEach(track => {
+        track.onended = () => {
+          console.log(`⚠️ 軌道 ${track.kind} 已結束`);
+        };
+      });
 
     } catch (err) {
       console.error('❌ 錄影啟動失敗:', err);
       if (err.name === 'NotAllowedError') {
-        setError('請授予螢幕錄製和麥克風權限');
+        setError('請授予攝像頭和麥克風權限');
       } else if (err.name === 'NotFoundError') {
-        setError('找不到錄影設備');
+        setError('找不到攝像頭或麥克風');
       } else {
         setError('無法啟動錄影功能: ' + err.message);
       }
     }
   };
 
-  // 💾 儲存錄影 - 改進版本
   const saveRecording = async () => {
+    console.log('💾 saveRecording 被調用');
+    console.log('📦 recordedChunks 數量:', recordedChunksRef.current.length);
+    
     if (recordedChunksRef.current.length === 0) {
       console.warn('⚠️ 沒有錄影數據');
+      setError('沒有錄影數據可保存');
       return;
     }
 
@@ -361,7 +350,7 @@ export default function DoctorVideoConsultation() {
       console.log('💾 開始處理錄影文件...');
 
       const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-      const blobSize = blob.size / 1024 / 1024; // MB
+      const blobSize = blob.size / 1024 / 1024;
 
       console.log(`📦 Blob 大小: ${blobSize.toFixed(2)} MB`);
 
@@ -371,7 +360,6 @@ export default function DoctorVideoConsultation() {
         return;
       }
 
-      // 創建 FormData
       const formData = new FormData();
       const filename = `consultation_${currentMeeting.appointment_id}_${Date.now()}.webm`;
       formData.append('video', blob, filename);
@@ -379,6 +367,10 @@ export default function DoctorVideoConsultation() {
       formData.append('duration', recordingDuration);
 
       console.log('📤 開始上傳錄影...');
+      console.log('📋 FormData 內容:');
+      console.log('  - video:', filename, `(${blobSize.toFixed(2)} MB)`);
+      console.log('  - appointment_id:', currentMeeting.appointment_id);
+      console.log('  - duration:', recordingDuration);
 
       const response = await fetch('http://localhost:5000/api/meeting/upload-recording', {
         method: 'POST',
@@ -386,9 +378,12 @@ export default function DoctorVideoConsultation() {
         body: formData
       });
 
+      console.log('📡 伺服器回應狀態:', response.status);
+
       if (response.ok) {
         const result = await response.json();
         console.log('✅ 錄影上傳成功:', result);
+        setError(null);
       } else {
         const error = await response.json();
         console.error('❌ 錄影上傳失敗:', error);
@@ -400,40 +395,57 @@ export default function DoctorVideoConsultation() {
     }
   };
 
-  // ⏹️ 停止錄影
   const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      console.log('⏹️ 停止錄影...');
-      mediaRecorderRef.current.stop();
-
-      // 停止所有軌道
-      mediaRecorderRef.current.stream.getTracks().forEach(track => {
-        track.stop();
-        console.log(`🛑 停止軌道: ${track.kind}`);
-      });
-
-      setIsRecording(false);
-
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
+    console.log('⏹️ stopRecording 被調用');
+    
+    if (mediaRecorderRef.current) {
+      console.log('📊 MediaRecorder 狀態:', mediaRecorderRef.current.state);
+      
+      if (mediaRecorderRef.current.state === 'recording') {
+        console.log('⏹️ 正在停止錄影...');
+        
+        if (recordingTimerRef.current) {
+          clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = null;
+        }
+        
+        mediaRecorderRef.current.stop();
+        
+        mediaRecorderRef.current.stream.getTracks().forEach(track => {
+          track.stop();
+          console.log(`🛑 停止軌道: ${track.kind}`);
+        });
+        
+        setIsRecording(false);
+        console.log('✅ 錄影已停止,等待保存...');
+        
+      } else {
+        console.log(`⚠️ MediaRecorder 狀態不是 recording: ${mediaRecorderRef.current.state}`);
       }
-
-      console.log('⏹️ 錄影已停止');
+    } else {
+      console.log('⚠️ mediaRecorderRef.current 不存在');
     }
   };
 
   const handleMeetingEnd = async () => {
     if (!currentMeeting) return;
 
-    console.log('🔚 處理會議結束...');
+    console.log('📚 處理會議結束...');
+    console.log('📊 當前 isRecording 狀態:', isRecording);
+    console.log('📦 recordedChunks 數量:', recordedChunksRef.current?.length || 0);
 
-    // 先停止錄影
-    stopRecording();
-
-    // 等待錄影保存完成
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    if (isRecording) {
+      console.log('⏹️ 停止錄影中...');
+      stopRecording();
+      
+      console.log('⏳ 等待錄影保存完成 (5秒)...');
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    } else {
+      console.log('ℹ️ 沒有進行中的錄影');
+    }
 
     try {
+      console.log('📤 發送會議結束請求...');
       const response = await fetch('http://localhost:5000/api/meeting/end', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -447,6 +459,9 @@ export default function DoctorVideoConsultation() {
 
       if (response.ok) {
         console.log('✅ 會議記錄已儲存');
+      } else {
+        const error = await response.json();
+        console.error('❌ 會議記錄儲存失敗:', error);
       }
     } catch (err) {
       console.error('❌ 儲存會議記錄失敗:', err);
@@ -467,6 +482,7 @@ export default function DoctorVideoConsultation() {
     setConsultationNotes('');
     setRecordingDuration(0);
 
+    console.log('✅ 會議已完全結束');
     fetchUpcomingAppointments();
   };
 
@@ -477,7 +493,6 @@ export default function DoctorVideoConsultation() {
     handleMeetingEnd();
   };
 
-  // 格式化錄影時長
   const formatDuration = (seconds) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -485,7 +500,6 @@ export default function DoctorVideoConsultation() {
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // ====== UI 渲染 ======
   if (isLoading && appointments.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center">
@@ -516,13 +530,30 @@ export default function DoctorVideoConsultation() {
           </div>
 
           <div className="flex items-center space-x-4">
-            {/* 錄影狀態指示 */}
             {isRecording && (
               <div className="flex items-center space-x-2 bg-red-500/20 px-4 py-2 rounded-lg animate-pulse">
                 <Circle className="w-3 h-3 text-red-400 fill-current" />
                 <span className="font-mono text-sm font-semibold">{formatDuration(recordingDuration)}</span>
                 <span className="text-xs">錄影中</span>
               </div>
+            )}
+
+            {!isRecording ? (
+              <button
+                onClick={startRecording}
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-all shadow-lg"
+              >
+                <Circle className="w-4 h-4 fill-current" />
+                <span className="text-sm font-semibold">開始錄影</span>
+              </button>
+            ) : (
+              <button
+                onClick={stopRecording}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-all shadow-lg"
+              >
+                <Circle className="w-4 h-4" />
+                <span className="text-sm font-semibold">停止錄影</span>
+              </button>
             )}
 
             <button
@@ -576,8 +607,7 @@ export default function DoctorVideoConsultation() {
                 </div>
               )}
 
-              {/* 錄影狀態提示 */}
-              {isRecording && (
+              {isRecording ? (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                   <div className="flex items-center space-x-2">
                     <Circle className="w-4 h-4 text-red-500 animate-pulse fill-current" />
@@ -587,8 +617,18 @@ export default function DoctorVideoConsultation() {
                     </div>
                   </div>
                   <p className="text-xs text-red-600 mt-2">
-                    ⚠️ 請勿關閉分享螢幕，否則錄影將自動停止
+                    ⚠️ 錄影進行中,請勿關閉頁面
                   </p>
+                </div>
+              ) : (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-center space-x-2">
+                    <AlertCircle className="w-4 h-4 text-yellow-600" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-yellow-900">未開始錄影</p>
+                      <p className="text-xs text-yellow-600">請點擊上方「開始錄影」按鈕</p>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -600,7 +640,7 @@ export default function DoctorVideoConsultation() {
                 <textarea
                   value={consultationNotes}
                   onChange={(e) => setConsultationNotes(e.target.value)}
-                  placeholder="請輸入診斷、處方建議等資訊...&#10;&#10;例如：&#10;- 診斷：上呼吸道感染&#10;- 處方：止咳糖漿、退燒藥&#10;- 建議：多休息、多喝水"
+                  placeholder="請輸入診斷、處方建議等資訊...&#10;&#10;例如:&#10;- 診斷:上呼吸道感染&#10;- 處方:止咳糖漿、退燒藥&#10;- 建議:多休息、多喝水"
                   className="w-full h-64 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none text-sm"
                 />
                 <p className="text-xs text-gray-500 mt-2">
@@ -616,7 +656,6 @@ export default function DoctorVideoConsultation() {
 
   return (
     <div className="relative min-h-screen bg-gray-50">
-      {/* 側邊欄開關按鈕 */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -626,16 +665,11 @@ export default function DoctorVideoConsultation() {
         </button>
       )}
 
-      {/* 側邊欄 */}
       <DoctorSidebar isOpen={isOpen} setIsOpen={setIsOpen} activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* 主內容 */}
       <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
-        {/* 導覽列 */}
         <Navbar setIsSidebarOpen={setIsOpen} />
         <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
-          
-
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {error && (
               <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
@@ -658,7 +692,7 @@ export default function DoctorVideoConsultation() {
                 <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-yellow-800 font-medium">視訊服務載入中...</p>
-                  <p className="text-yellow-600 text-sm mt-1">請稍候，視訊功能準備中</p>
+                  <p className="text-yellow-600 text-sm mt-1">請稍候,視訊功能準備中</p>
                 </div>
               </div>
             )}
@@ -711,7 +745,7 @@ export default function DoctorVideoConsultation() {
                   <Users className="w-10 h-10 text-gray-400" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">目前沒有待看診患者</h2>
-                <p className="text-gray-500 mb-6">當有新預約時，將會顯示在此處</p>
+                <p className="text-gray-500 mb-6">當有新預約時,將會顯示在此處</p>
                 <button
                   onClick={fetchUpcomingAppointments}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg transition-colors"
@@ -787,7 +821,7 @@ export default function DoctorVideoConsultation() {
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">高清視訊通話</p>
-                    <p className="text-sm">支持 HD 畫質，確保清晰的診療體驗</p>
+                    <p className="text-sm">支援 HD 畫質,確保清晰的診療體驗</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-3">
@@ -814,7 +848,7 @@ export default function DoctorVideoConsultation() {
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">自動錄影</p>
-                    <p className="text-sm">看診過程自動錄影，保護醫病雙方權益</p>
+                    <p className="text-sm">看診過程自動錄影,保護醫病雙方權益</p>
                   </div>
                 </div>
               </div>
