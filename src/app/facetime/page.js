@@ -697,7 +697,7 @@ export default function DoctorVideoConsultation() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="bg-white rounded-xl shadow-md p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -710,19 +710,7 @@ export default function DoctorVideoConsultation() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-md p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-500 text-sm">等待中</p>
-                    <p className="text-3xl font-bold text-gray-900 mt-1">
-                      {appointments.filter(a => a.status === '已確認').length}
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Clock className="w-6 h-6 text-blue-600" />
-                  </div>
-                </div>
-              </div>
+              
 
               <div className="bg-white rounded-xl shadow-md p-6">
                 <div className="flex items-center justify-between">
