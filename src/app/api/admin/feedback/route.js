@@ -19,14 +19,21 @@ export async function GET() {
       SELECT 
         f.feedback_id,
         f.patient_id,
-        p.first_name,
-        p.last_name,
+        f.doctor_id,
+        COALESCE(p.first_name, d.first_name) AS first_name,
+        COALESCE(p.last_name, d.last_name) AS last_name,
+        CASE 
+          WHEN f.patient_id IS NOT NULL THEN 'patient'
+          WHEN f.doctor_id IS NOT NULL THEN 'doctor'
+          ELSE 'unknown'
+        END AS user_role,
         f.categories,
         f.feedback_text,
         f.status,
         f.created_at
       FROM feedback f
       LEFT JOIN patient p ON f.patient_id = p.patient_id
+      LEFT JOIN doctor d ON f.doctor_id = d.doctor_id
       ORDER BY f.created_at DESC
     `);
 

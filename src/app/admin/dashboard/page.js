@@ -13,44 +13,78 @@ function FeedbackList() {
     fetchFeedbacks();
   }, []);
 
-  const fetchFeedbacks = async () => {
-    try {
-      const res = await fetch('/api/admin/feedback',);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || '載入失敗');
-      setFeedbacks(data);
-      setUnreadCount(data.filter(f => f.status === 'unread').length);
-    } catch (err) {
-      console.error('載入回報錯誤:', err);
-      setError('無法載入回報資料');
-    } finally {
-      setLoading(false);
-    }
+  const getRoleText = (role) => {
+    const map = {
+      'patient': '患者',
+      'doctor': '醫師',
+      'unknown': '未知'
+    };
+    return map[role] || '未知';
   };
+
+  const getRoleBadgeColor = (role) => {
+    const colorMap = {
+      'patient': 'bg-blue-100 text-blue-700',
+      'doctor': 'bg-purple-100 text-purple-700',
+      'unknown': 'bg-gray-100 text-gray-700'
+    };
+    return colorMap[role] || 'bg-gray-100 text-gray-700';
+  };
+  const fetchFeedbacks = async () => {
+  try {
+    const res = await fetch('/api/admin/feedback');
+    
+    if (!res.ok) {
+      // 嘗試解析 JSON 錯誤訊息
+      try {
+        const errorData = await res.json();
+        throw new Error(errorData.message || '載入失敗');
+      } catch (parseError) {
+        // 如果不是 JSON,就讀取純文字
+        const text = await res.text();
+        throw new Error(text || '載入失敗');
+      }
+    }
+
+    const data = await res.json();
+    setFeedbacks(data);
+    setUnreadCount(data.filter(f => f.status === 'unread').length);
+  } catch (err) {
+    console.error('載入回報錯誤:', err);
+    setError('無法載入回報資料');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const markAsRead = async (id) => {
-    if (!confirm('確認要標示為已處理嗎?')) return;
-    try {
-      const res = await fetch('/api/admin/feedback/read', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ feedback_id: id }),
-      });
+  if (!confirm('確認要標示為已處理嗎?')) return;
+  try {
+    const res = await fetch('/api/admin/feedback/read', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ feedback_id: id }),
+    });
 
-      const data = await res.json();
-
-      if (res.ok) {
-        alert('已標示為已處理');
-        fetchFeedbacks();
-      } else {
-        console.error('伺服器回傳錯誤:', data);
-        alert(data.message || '操作失敗');
-      }
-    } catch (err) {
-      console.error('更新狀態錯誤:', err);
-      alert('操作失敗');
+    if (!res.ok) {
+      const text = await res.text();
+      // 若後端回 JSON 錯誤，也可以嘗試 parse
+      let message = text;
+      try {
+        const json = JSON.parse(text);
+        message = json.message || JSON.stringify(json);
+      } catch (_) {}
+      throw new Error(message || '操作失敗');
     }
-  };
+
+    const data = await res.json(); // 成功才 parse json
+    alert('已標示為已處理');
+    fetchFeedbacks();
+  } catch (err) {
+    console.error('更新狀態錯誤:', err);
+    alert(err.message || '操作失敗');
+  }
+};
 
   if (loading) {
     return (
@@ -98,9 +132,14 @@ function FeedbackList() {
               <div className="p-6">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {f.first_name}{f.last_name || ''}
-                    </h3>
+                    <div className="flex items-center space-x-2 mb-1">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {f.first_name}{f.last_name || ''}
+                      </h3>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(f.user_role)}`}>
+                        {getRoleText(f.user_role)}
+                      </span>
+                    </div>
                     <p className="text-sm text-gray-500">
                       {new Date(f.created_at).toLocaleString('zh-TW')}
                     </p>
