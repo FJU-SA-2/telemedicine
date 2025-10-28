@@ -1,22 +1,23 @@
 "use client";
-import { useState} from 'react';
-import Sidebar from "../components/Sidebar";
+import { useState } from 'react';
+import DoctorSidebar from "../components/DoctorSidebar";
 import Navbar from "../components/Navbar";
 import { Menu, AlertCircle, Send } from 'lucide-react';
 
-function FeedbackFormContent() {
+function DoctorFeedbackFormContent() {
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [feedback, setFeedback] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-
+  // 醫師專用的問題類別
   const categories = [
     { id: '登入註冊', label: '登入註冊' },
-    { id: '預約功能', label: '預約功能' },
-    { id: '收藏功能', label: '收藏功能' },
+    { id: '排班管理', label: '排班管理' },
+    { id: '預約管理', label: '預約管理' },
     { id: '視訊品質', label: '視訊品質' },
+    { id: '患者資料', label: '患者資料' },
     { id: '其他', label: '其他' }
   ];
 
@@ -29,76 +30,98 @@ function FeedbackFormContent() {
   };
 
   const handleSubmit = async () => {
-  setLoading(true);
-  setError('');
+    setLoading(true);
+    setError('');
 
-  try {
-    const user_id = localStorage.getItem('user_id'); // 👈 取得登入使用者ID
+    try {
+      const user_id = localStorage.getItem('user_id');
+      const user_type = localStorage.getItem('user_type'); // 確認你系統中的欄位名稱
+      
+      console.log('user_id:', localStorage.getItem('user_id'));
+      console.log('role:', localStorage.getItem('role'));
+      console.log('user_type:', localStorage.getItem('user_type'));
 
-    if (!user_id) {
-      setError('請先登入後再提交回報');
-      setLoading(false);
-      return;
-    }
-    const userIdNumber = parseInt(user_id, 10);
-    
-    console.log('user_id from localStorage:', user_id);
-    console.log('user_id as number:', userIdNumber);
-    console.log('發送請求到:', '/api/feedback');
-    console.log('提交數據:', {
+      if (!user_id || user_id === 'null' || user_id === 'undefined') {
+        setError('請先登入後再提交回報');
+        setLoading(false);
+        return;
+      }
+
+      const userIdNumber = parseInt(user_id, 10);
+      
+      if (isNaN(userIdNumber)) {
+        setError(`user_id 格式錯誤: ${user_id}`);
+        setLoading(false);
+        return;
+      }
+
+      if (selectedCategories.length === 0) {
+        setError('請至少選擇一個問題類別');
+        setLoading(false);
+        return;
+      }
+
+      if (!feedback || feedback.trim() === '') {
+        setError('請填寫問題描述');
+        setLoading(false);
+        return;
+      }
+
+      const requestBody = {
         user_id: userIdNumber,
+        user_type: 'doctor',  // ✅ 明確標示為醫生
         categories: selectedCategories,
         feedback_text: feedback,
-    });
+      };
 
-    const response = await fetch('/api/feedback', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: userIdNumber,  // ✅ 傳送數字型別
-        categories: selectedCategories,
-        feedback_text: feedback,
-      }),
-    });
+      console.log('發送的請求內容:', requestBody);
 
-    const data = await response.json();
-    console.log('API 回應:', data); // 👈 看錯誤訊息
-    if (!response.ok) {
-      setError(data.message || '提交失敗');
-      return;
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const data = await response.json();
+      
+      console.log('API 回應:', data);
+
+      if (!response.ok) {
+        setError(data.message || '提交失敗');
+        return;
+      }
+
+      setSubmitted(true);
+      setSelectedCategories([]);
+      setFeedback('');
+
+      setTimeout(() => setSubmitted(false), 3000);
+    } catch (err) {
+      console.error('提交錯誤:', err);
+      setError(`提交失敗: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
-
-    setSubmitted(true);
-    setSelectedCategories([]);
-    setFeedback('');
-
-    setTimeout(() => setSubmitted(false), 3000);
-  } catch (err) {
-    console.error('提交錯誤:', err);
-    setError('提交失敗,請稍後重試');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-2xl shadow-xl max-w-2xl mx-auto p-8">
         <div className="flex items-center gap-3 mb-6">
           <AlertCircle className="w-8 h-8 text-indigo-600" />
-          <h1 className="text-3xl font-bold text-gray-800">問題回報</h1>
+          <h1 className="text-3xl font-bold text-gray-800">醫師問題回報</h1>
         </div>
         
         <p className="text-gray-600 mb-8">
-          請告訴我們您遇到的問題，我們會盡快處理並改善服務品質。
+          請告訴我們您在使用系統時遇到的問題，我們會盡快處理並改善服務品質。
         </p>
 
         <div>
           <div className="mb-8">
             <h2 className="text-lg font-semibold text-gray-700 mb-4">
-              請選擇問題類別
+              請選擇問題類別 <span className="text-red-500">*</span>
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {categories.map((category) => (
@@ -106,18 +129,18 @@ function FeedbackFormContent() {
                   key={category.id}
                   className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${
                     selectedCategories.includes(category.id)
-                        ? 'border-indigo-600 bg-indigo-50'
-                        : 'border-gray-200 hover:border-indigo-300 bg-white'
-                    }`}
+                      ? 'border-indigo-600 bg-indigo-50'
+                      : 'border-gray-200 hover:border-indigo-300 bg-white'
+                  }`}
                 >
-                <input
+                  <input
                     type="checkbox"
                     name="category"
                     value={category.id}
                     checked={selectedCategories.includes(category.id)}
                     onChange={() => toggleCategory(category.id)}
                     className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 rounded"
-                />
+                  />
                   <span className="ml-3 text-gray-700 font-medium">
                     {category.label}
                   </span>
@@ -128,13 +151,13 @@ function FeedbackFormContent() {
 
           <div className="mb-6">
             <label htmlFor="feedback" className="block text-lg font-semibold text-gray-700 mb-3">
-              問題描述
+              問題描述 <span className="text-red-500">*</span>
             </label>
             <textarea
               id="feedback"
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
-              placeholder="請詳細描述您遇到的問題..."
+              placeholder="請詳細描述您遇到的問題，例如：在哪個功能、執行什麼操作時發生、錯誤訊息內容等..."
               rows="6"
               className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-indigo-600 focus:outline-none resize-none transition-colors"
               disabled={loading}
@@ -164,7 +187,7 @@ function FeedbackFormContent() {
         {submitted && (
           <div className="mt-6 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
             <p className="text-green-800 font-medium text-center">
-              ✓ 感謝您的回報！我們已收到您的意見。
+              ✓ 感謝您的回報！我們已收到您的意見，會盡快處理。
             </p>
           </div>
         )}
@@ -173,9 +196,8 @@ function FeedbackFormContent() {
   );
 }
 
-export default function FeedbackPage() {
+export default function DoctorFeedbackPage() {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("feedback");
 
   return (
     <div className="relative">
@@ -188,11 +210,9 @@ export default function FeedbackPage() {
         </button>
       )}
 
-      <Sidebar
+      <DoctorSidebar
         isOpen={isOpen}
         setIsOpen={setIsOpen}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
       />
 
       <div
@@ -201,7 +221,7 @@ export default function FeedbackPage() {
         }`}
       >
         <Navbar />
-        <FeedbackFormContent />
+        <DoctorFeedbackFormContent />
       </div>
     </div>
   );

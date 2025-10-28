@@ -131,6 +131,13 @@ export default function TelemedicineAuth() {
       return;
     }
 
+    const { user } = data;
+    if (user) {
+      localStorage.setItem('user_id', user.user_id);
+      localStorage.setItem('user_type', user.role);  // 'doctor' or 'patient'
+      localStorage.setItem('email', user.email);
+      console.log('✅ 已儲存登入使用者資訊:', user);
+    }
     // 登入成功，依照角色導向不同頁面
     const role = data.user?.role; // 後端需回傳 user.role
     if (role === 'doctor') {
