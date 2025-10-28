@@ -456,7 +456,7 @@ export default function AdminDashboard() {
                 : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
-            病患問題回報
+            問題回報
           </button>
         </div>
 
