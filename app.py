@@ -15,6 +15,8 @@ from flask import send_from_directory
 from datetime import datetime, timedelta
 import secrets
 from flask import send_file
+from functools import wraps
+
 
 
 app = Flask(__name__)
@@ -688,9 +690,59 @@ def update_patient_profile():
         cursor.close()
         db.close()
 
+def check_doctor_approval(f):
+    """裝飾器:檢查醫生是否已通過審核"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({"message": "請先登入"}), 401
+        
+        if session.get('role') != 'doctor':
+            return jsonify({"message": "僅醫生可訪問"}), 403
+        
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        
+        try:
+            user_id = session.get('user_id')
+            cursor.execute("""
+                SELECT approval_status, first_name, last_name 
+                FROM doctor 
+                WHERE user_id = %s
+            """, (user_id,))
+            
+            doctor = cursor.fetchone()
+            
+            if not doctor:
+                return jsonify({"message": "找不到醫生資料"}), 404
+            
+            if doctor['approval_status'] != 'approved':
+                status_msg = {
+                    'pending': '您的帳號尚在審核中,請耐心等待管理員審核',
+                    'rejected': '您的註冊申請已被拒絕,請聯繫管理員'
+                }
+                return jsonify({
+                    "message": status_msg.get(doctor['approval_status'], '帳號審核未通過'),
+                    "approval_status": doctor['approval_status']
+                }), 403
+            
+            # 審核通過,繼續執行原函數
+            return f(*args, **kwargs)
+            
+        except Exception as e:
+            print(f"❌ 審核狀態檢查失敗: {str(e)}")
+            return jsonify({"message": f"檢查失敗: {str(e)}"}), 500
+        finally:
+            cursor.close()
+            db.close()
+    
+    return decorated_function
+
+
 
 # 新增醫師專業資料更新
 @app.route("/api/doctor/profile", methods=["PUT"])
+@check_doctor_approval
 def update_doctor_profile():
     """更新醫師的專業資料"""
     if 'user_id' not in session or session.get('role') != 'doctor':
@@ -778,6 +830,7 @@ def get_doctor_photo(filename):
 # app.py (新增 /api/doctor/upload-photo 路由)
 
 @app.route("/api/doctor/upload-photo", methods=["POST"])
+@check_doctor_approval
 def upload_doctor_photo():
     """上傳醫師個人照片，並在 doctor_info 中更新/新增 'photo' 欄位"""
     if 'user_id' not in session or session.get('role') != 'doctor':
@@ -926,6 +979,7 @@ def get_record():
         db.close()
 
 @app.route("/api/recordoc", methods=["GET"])
+@check_doctor_approval
 def get_recordoc():
    
     if 'user_id' not in session:
@@ -1368,6 +1422,7 @@ def delete_user(user_id):
         
 # 1. 新增取得醫師 Profile 的 API
 @app.route("/api/doctor/profile", methods=["GET"])
+@check_doctor_approval
 def get_doctor_profile():
     """取得醫師的 doctor_id 和基本資料"""
     user_id = request.args.get('user_id')
@@ -1410,6 +1465,7 @@ def get_doctor_profile():
 
 # 2. 取得排班資料
 @app.route('/api/schedules/<int:doctor_id>', methods=['GET'])
+@check_doctor_approval
 def get_schedules(doctor_id):
     """取得醫師排班資料 - 只返回可預約的時段,並自動刪除過期排班"""
     start_date = request.args.get('start_date')
@@ -1498,6 +1554,7 @@ def get_schedules(doctor_id):
 
 # 3. 儲存排班
 @app.route('/api/schedules', methods=['POST'])
+@check_doctor_approval
 def save_schedules():
     """儲存醫師排班資料 - 只儲存可預約時段,刪除不可預約時段,防止排過去的班"""
     data = request.get_json()
