@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Menu,Video, PhoneOff, Monitor, Clock, FileText, AlertCircle, User, Calendar, Heart, CheckCircle, PlayCircle, Download } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
-import RatingModal from '../components/RatingModal';
 
 export default function PatientVideoConsultation() {
   const [appointments, setAppointments] = useState([]);
@@ -20,8 +19,6 @@ export default function PatientVideoConsultation() {
 
   const jitsiContainerRef = useRef(null);
   const jitsiApiRef = useRef(null);
-  const [showRatingModal, setShowRatingModal] = useState(false);
-  const [ratingAppointment, setRatingAppointment] = useState(null);
 
   // ✅ 載入 Jitsi API
   useEffect(() => {
@@ -204,10 +201,6 @@ export default function PatientVideoConsultation() {
       setIsMeetingActive(false);
     }
   };
-  const handleRatingSubmit = (ratingData) => {
-      console.log('評分已提交:', ratingData);
-      fetchConsultationHistory();
-    };
 
   const handleMeetingEnd = () => {
     console.log('🔚 處理會議結束...');
@@ -221,21 +214,12 @@ export default function PatientVideoConsultation() {
       }
     }
 
-    const appointmentToRate = currentMeeting;
-
     setIsMeetingActive(false);
     setCurrentMeeting(null);
     setSelectedDoctor(null);
     
     fetchUpcomingAppointments();
     fetchConsultationHistory();
-
-    if (appointmentToRate) {
-      setTimeout(() => {
-        setRatingAppointment(appointmentToRate);
-        setShowRatingModal(true);
-      }, 500);
-    }
   };
 
   const leaveMeeting = () => {
@@ -392,16 +376,6 @@ export default function PatientVideoConsultation() {
 
   return (
   <div className="relative min-h-screen bg-gray-50">
-    {/* 👇 新增評分彈窗 */}
-    <RatingModal
-      isOpen={showRatingModal}
-      onClose={() => {
-        setShowRatingModal(false);
-        setRatingAppointment(null);
-      }}
-      appointment={ratingAppointment}
-      onSubmit={handleRatingSubmit}
-    />
     {/* 側邊欄開關按鈕 */}
     {!isOpen && (
       <button
