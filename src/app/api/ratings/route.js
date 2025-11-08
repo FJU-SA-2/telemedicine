@@ -1,6 +1,6 @@
 // src/app/api/ratings/route.js
 import { NextResponse } from 'next/server';
-
+import { getServerSession } from 'next-auth';
 import mysql from 'mysql2/promise';
 
 // 創建資料庫連接
