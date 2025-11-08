@@ -236,52 +236,56 @@ export default function PatientVideoConsultation() {
   const handleMeetingEnd = async () => {
     console.log('📚 處理會議結束...');
 
+    // ✅ 立即儲存當前預約資訊（在清空 state 之前）
+    const appointmentToRate = currentMeeting ? { ...currentMeeting } : null;
+    console.log('💾 儲存的預約資訊:', appointmentToRate);
+
     if (jitsiApiRef.current) {
       try {
         jitsiApiRef.current.dispose();
         jitsiApiRef.current = null;
+        console.log('✅ Jitsi 實例已清理');
       } catch (err) {
         console.error('清理 Jitsi 實例失敗:', err);
       }
     }
 
-    // ✅ 儲存當前預約資訊以便評分
-    const appointmentToRate = currentMeeting;
-
     setIsMeetingActive(false);
     setCurrentMeeting(null);
     setSelectedDoctor(null);
-    
+    console.log('✅ UI 狀態已重置');
+
     // ✅ 重新獲取資料
+    console.log('🔄 開始重新獲取預約資料...');
     await fetchUpcomingAppointments();
     await fetchConsultationHistory();
+    console.log('✅ 預約資料已更新');
 
-    // ✅ 檢查是否需要評分 (預約狀態為 completed 且未評分)
-    if (appointmentToRate) {
-      try {
-        // 檢查預約狀態
-        const response = await fetch(`/api/appointments?appointment_id=${appointmentToRate.appointment_id}`, {
-          credentials: 'include'
-        });
-        
-        if (response.ok) {
-          const appointments = await response.json();
-          if (appointments.length > 0 && appointments[0].status === 'completed') {
-            // 檢查是否已評分
-            const hasRated = await checkIfRated(appointmentToRate.appointment_id);
-            
-            if (!ratingData.hasRated) {
-              setTimeout(() => {
-                setCompletedAppointment(appointmentToRate);
-                setShowRatingModal(true);
-              }, 500);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('檢查評分狀態失敗:', error);
-      }
+    if (!appointmentToRate || !appointmentToRate.appointment_id) {
+      console.warn('⚠️ 沒有預約資訊');
+      return;
     }
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    
+      const hasRated = await checkIfRated(appointmentToRate.appointment_id);
+    
+      // ✅ 修正：使用正確的變數名
+      if (!hasRated) {
+        setTimeout(() => {
+          setCompletedAppointment(appointmentToRate);
+          setShowRatingModal(true);
+        }, 500);
+      }
+    } catch (error) {
+      console.error('評分檢查失敗:', error);
+      // 容錯機制
+      setTimeout(() => {
+        setCompletedAppointment(appointmentToRate);
+        setShowRatingModal(true);
+      }, 500);
+  } 
   };
 
   const leaveMeeting = () => {
