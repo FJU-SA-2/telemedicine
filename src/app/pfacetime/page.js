@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Menu,Video, PhoneOff, Monitor, Clock, FileText, AlertCircle, User, Calendar, Heart, CheckCircle, PlayCircle, Download } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
+import RatingModal from '../components/RatingModal';
 
 export default function PatientVideoConsultation() {
   const [appointments, setAppointments] = useState([]);
@@ -16,7 +17,8 @@ export default function PatientVideoConsultation() {
   const [showHistory, setShowHistory] = useState(false);
   const [activeTab, setActiveTab] = useState("home");
   const [isOpen, setIsOpen] = useState(false);
-
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [completedAppointment, setCompletedAppointment] = useState(null);
   const jitsiContainerRef = useRef(null);
   const jitsiApiRef = useRef(null);
 
@@ -58,13 +60,19 @@ export default function PatientVideoConsultation() {
 
   const fetchUpcomingAppointments = async () => {
     try {
-      const response = await fetch('/api/appointments/upcoming', {
+      const response = await fetch('/api/appointments', {
         credentials: 'include'
       });
 
       if (response.ok) {
         const data = await response.json();
-        setAppointments(data);
+        
+        // 過濾出即將到來的預約 (狀態為「待確認」或「已確認」)
+        const upcoming = data.filter(apt => 
+          apt.status === '待確認' || apt.status === '已確認'
+        );
+        
+        setAppointments(upcoming);
       } else {
         setError('無法獲取預約資訊');
       }
@@ -78,16 +86,39 @@ export default function PatientVideoConsultation() {
 
   const fetchConsultationHistory = async () => {
     try {
-      const response = await fetch('/api/appointments/history', {
+      const response = await fetch('/api/appointments', {
         credentials: 'include'
       });
 
       if (response.ok) {
         const data = await response.json();
-        setConsultationHistory(data);
+        
+        // 過濾出已完成的看診記錄
+        const completed = data.filter(apt => 
+          apt.status === 'completed'
+        );
+        
+        setConsultationHistory(completed);
       }
     } catch (err) {
       console.error('獲取看診記錄失敗:', err);
+    }
+  };
+
+  const checkIfRated = async (appointmentId) => {
+    try {
+      const response = await fetch(`/api/ratings/check/${appointmentId}`, {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data.hasRated;
+      }
+      return false;
+    } catch (error) {
+      console.error('檢查評分狀態失敗:', error);
+      return false;
     }
   };
 
@@ -202,8 +233,8 @@ export default function PatientVideoConsultation() {
     }
   };
 
-  const handleMeetingEnd = () => {
-    console.log('🔚 處理會議結束...');
+  const handleMeetingEnd = async () => {
+    console.log('📚 處理會議結束...');
 
     if (jitsiApiRef.current) {
       try {
@@ -214,12 +245,43 @@ export default function PatientVideoConsultation() {
       }
     }
 
+    // ✅ 儲存當前預約資訊以便評分
+    const appointmentToRate = currentMeeting;
+
     setIsMeetingActive(false);
     setCurrentMeeting(null);
     setSelectedDoctor(null);
     
-    fetchUpcomingAppointments();
-    fetchConsultationHistory();
+    // ✅ 重新獲取資料
+    await fetchUpcomingAppointments();
+    await fetchConsultationHistory();
+
+    // ✅ 檢查是否需要評分 (預約狀態為 completed 且未評分)
+    if (appointmentToRate) {
+      try {
+        // 檢查預約狀態
+        const response = await fetch(`/api/appointments?appointment_id=${appointmentToRate.appointment_id}`, {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const appointments = await response.json();
+          if (appointments.length > 0 && appointments[0].status === 'completed') {
+            // 檢查是否已評分
+            const hasRated = await checkIfRated(appointmentToRate.appointment_id);
+            
+            if (!ratingData.hasRated) {
+              setTimeout(() => {
+                setCompletedAppointment(appointmentToRate);
+                setShowRatingModal(true);
+              }, 500);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('檢查評分狀態失敗:', error);
+      }
+    }
   };
 
   const leaveMeeting = () => {
@@ -227,6 +289,12 @@ export default function PatientVideoConsultation() {
       jitsiApiRef.current.executeCommand('hangup');
     }
     handleMeetingEnd();
+  };
+
+  const handleRatingSubmit = async (ratingData) => {
+    console.log('評分已提交:', ratingData);
+    // 重新獲取看診記錄以顯示最新評分
+    await fetchConsultationHistory();
   };
 
   const viewRecording = async (appointmentId) => {
@@ -374,376 +442,422 @@ export default function PatientVideoConsultation() {
     );
   }
 
+  // Main UI
   return (
-  <div className="relative min-h-screen bg-gray-50">
-    {/* 側邊欄開關按鈕 */}
-    {!isOpen && (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="p-3 fixed top-2 left-4 text-gray-700 z-50 bg-white/70 backdrop-blur-sm rounded-full hover:bg-white"
-      >
-        <Menu size={24} />
-      </button>
-    )}
+    <>
+      <div className="relative min-h-screen bg-gray-50">
+        {!isOpen && (
+          <button
+            onClick={() => setIsOpen(true)}
+            className="p-3 fixed top-2 left-4 text-gray-700 z-50 bg-white/70 backdrop-blur-sm rounded-full hover:bg-white"
+          >
+            <Menu size={24} />
+          </button>
+        )}
 
-    {/* 側邊欄 */}
-    <Sidebar
-      isOpen={isOpen}
-      setIsOpen={setIsOpen}
-      activeTab={activeTab}
-      setActiveTab={setActiveTab}
-    />
+        <Sidebar
+          isOpen={isOpen}
+          setIsOpen={setIsOpen}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+        />
 
-    {/* 主內容 */}
-    <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
-      {/* 導覽列 */}
-      <Navbar setIsSidebarOpen={setIsOpen} />
+        <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+          <Navbar setIsSidebarOpen={setIsOpen} />
 
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-        {/* 頂部工具列 */}
-        
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => setShowHistory(!showHistory)}
-                className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
-              >
-                <FileText className="w-5 h-5" />
-                <span>{showHistory ? "返回預約" : "看診記錄"}</span>
-              </button>
-            </div>
-          </div>
-        
-
-        {/* 主體內容 */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1">
-          {/* 錯誤訊息 */}
-          {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-red-800 font-medium">發生錯誤</p>
-                <p className="text-red-600 text-sm mt-1">{error}</p>
-              </div>
-              <button
-                onClick={() => setError(null)}
-                className="text-red-500 hover:text-red-700"
-              >
-                ✕
-              </button>
-            </div>
-          )}
-
-          {/* 載入中提示 */}
-          {!jitsiLoaded && (
-            <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-yellow-800 font-medium">視訊服務載入中...</p>
-                <p className="text-yellow-600 text-sm mt-1">請稍候，視訊功能準備中</p>
+          <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setShowHistory(!showHistory)}
+                  className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                >
+                  <FileText className="w-5 h-5" />
+                  <span>{showHistory ? "返回預約" : "看診記錄"}</span>
+                </button>
               </div>
             </div>
-          )}
 
-          {/* 切換區域 */}
-          {!showHistory ? (
-            <>
-              {/* 統計卡片 */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-500 text-sm">即將看診</p>
-                      <p className="text-3xl font-bold text-gray-900 mt-1">
-                        {appointments.length}
-                      </p>
-                    </div>
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <Calendar className="w-6 h-6 text-blue-600" />
-                    </div>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1">
+              {error && (
+                <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
+                  <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-red-800 font-medium">發生錯誤</p>
+                    <p className="text-red-600 text-sm mt-1">{error}</p>
                   </div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-500 text-sm">看診記錄</p>
-                      <p className="text-3xl font-bold text-gray-900 mt-1">
-                        {consultationHistory.length}
-                      </p>
-                    </div>
-                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                      <FileText className="w-6 h-6 text-green-600" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-500 text-sm">視訊狀態</p>
-                      <p className="text-3xl font-bold text-blue-600 mt-1">
-                        {jitsiLoaded ? "就緒" : "載入中"}
-                      </p>
-                    </div>
-                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                      <Video className="w-6 h-6 text-purple-600" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 預約列表 */}
-              {appointments.length === 0 ? (
-                <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Calendar className="w-10 h-10 text-gray-400" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                    目前沒有即將到來的看診預約
-                  </h2>
-                  <p className="text-gray-500 mb-6">
-                    當您預約視訊看診時，將會顯示在此處
-                  </p>
                   <button
-                    onClick={fetchUpcomingAppointments}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+                    onClick={() => setError(null)}
+                    className="text-red-500 hover:text-red-700"
                   >
-                    重新整理
+                    ✕
                   </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <h2 className="text-xl font-bold text-gray-900 mb-4">即將到來的看診</h2>
-                  {appointments.map((appointment) => (
-                    <div
-                      key={appointment.appointment_id}
-                      className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden"
-                    >
-                      <div className="flex items-center p-6">
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mr-4">
-                          <User className="w-8 h-8 text-blue-600" />
-                        </div>
-
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <h3 className="text-xl font-bold text-gray-900">
-                              {appointment.doctor_first_name}{" "}
-                              {appointment.doctor_last_name} 醫師
-                            </h3>
-                            <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">
-                              {appointment.doctor_specialty}
-                            </span>
-                          </div>
-
-                          <div className="flex flex-col space-y-1 text-sm text-gray-600">
-                            <div className="flex items-center space-x-2">
-                              <Clock className="w-4 h-4" />
-                              <span>
-                                預約時間: {appointment.appointment_date}{" "}
-                                {appointment.appointment_time}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Monitor className="w-4 h-4" />
-                              <span>{appointment.practice_hospital}</span>
-                            </div>
-                            {appointment.symptoms && (
-                              <div className="flex items-center space-x-2">
-                                <FileText className="w-4 h-4" />
-                                <span className="truncate max-w-md">
-                                  症狀: {appointment.symptoms}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col space-y-2">
-                          {appointment.meeting_room_id ? (
-                            <button
-                              onClick={() => joinMeeting(appointment)}
-                              disabled={isLoading || !jitsiLoaded}
-                              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-                            >
-                              <Video className="w-5 h-5" />
-                              <span className="font-semibold">
-                                {jitsiLoaded ? "進入看診" : "載入中..."}
-                              </span>
-                            </button>
-                          ) : (
-                            <div className="bg-yellow-50 border border-yellow-200 px-4 py-3 rounded-lg">
-                              <p className="text-yellow-800 text-sm font-medium">
-                                等待醫師開啟會議室
-                              </p>
-                              <p className="text-yellow-600 text-xs mt-1">
-                                請稍候，醫師將會在預約時間開始看診
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
                 </div>
               )}
 
-              {/* 視訊看診須知 */}
-              <div className="mt-8 bg-white rounded-2xl shadow-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <Heart className="w-5 h-5 mr-2 text-blue-600" />
-                  視訊看診須知
-                </h3>
-                <div className="grid md:grid-cols-2 gap-4 text-gray-600">
-                  {[
-                    {
-                      icon: <Video className="w-3 h-3 text-blue-600" />,
-                      title: "高品質視訊",
-                      desc: "清晰的影像和聲音確保診療品質",
-                    },
-                    {
-                      icon: <Clock className="w-3 h-3 text-blue-600" />,
-                      title: "準時看診",
-                      desc: "請在預約時間準時進入會議室",
-                    },
-                    {
-                      icon: <FileText className="w-3 h-3 text-blue-600" />,
-                      title: "看診記錄",
-                      desc: "所有診療記錄將自動保存供您查閱",
-                    },
-                    {
-                      icon: <Monitor className="w-3 h-3 text-blue-600" />,
-                      title: "錄影保護",
-                      desc: "看診過程錄影，保障您的權益",
-                    },
-                  ].map((item, idx) => (
-                    <div key={idx} className="flex items-start space-x-3">
-                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                        {item.icon}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{item.title}</p>
-                        <p className="text-sm">{item.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              {/* 看診記錄 */}
-              <div className="space-y-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">看診記錄</h2>
-                  <button
-                    onClick={fetchConsultationHistory}
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                  >
-                    重新整理
-                  </button>
-                </div>
-
-                {consultationHistory.length === 0 ? (
-                  <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <FileText className="w-10 h-10 text-gray-400" />
-                    </div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                      尚無看診記錄
-                    </h2>
-                    <p className="text-gray-500">
-                      完成視訊看診後，記錄將會顯示在此處
-                    </p>
+              {!jitsiLoaded && (
+                <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start space-x-3">
+                  <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-yellow-800 font-medium">視訊服務載入中...</p>
+                    <p className="text-yellow-600 text-sm mt-1">請稍候,視訊功能準備中</p>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {consultationHistory.map((record) => (
-                      <div
-                        key={record.appointment_id}
-                        className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden"
+                </div>
+              )}
+
+              {!showHistory ? (
+                <>
+                  {/* Statistics cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="bg-white rounded-xl shadow-md p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-500 text-sm">即將看診</p>
+                          <p className="text-3xl font-bold text-gray-900 mt-1">
+                            {appointments.length}
+                          </p>
+                        </div>
+                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <Calendar className="w-6 h-6 text-blue-600" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-md p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-500 text-sm">看診記錄</p>
+                          <p className="text-3xl font-bold text-gray-900 mt-1">
+                            {consultationHistory.length}
+                          </p>
+                        </div>
+                        <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                          <FileText className="w-6 h-6 text-green-600" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-md p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-500 text-sm">視訊狀態</p>
+                          <p className="text-3xl font-bold text-blue-600 mt-1">
+                            {jitsiLoaded ? "就緒" : "載入中"}
+                          </p>
+                        </div>
+                        <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                          <Video className="w-6 h-6 text-purple-600" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Appointments list */}
+                  {appointments.length === 0 ? (
+                    <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+                      <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Calendar className="w-10 h-10 text-gray-400" />
+                      </div>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                        目前沒有即將到來的看診預約
+                      </h2>
+                      <p className="text-gray-500 mb-6">
+                        當您預約視訊看診時,將會顯示在此處
+                      </p>
+                      <button
+                        onClick={fetchUpcomingAppointments}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
                       >
-                        <div className="p-6">
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-start space-x-4">
-                              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                                <CheckCircle className="w-6 h-6 text-green-600" />
-                              </div>
-                              <div>
-                                <h3 className="text-lg font-bold text-gray-900">
-                                  {record.doctor_first_name}{" "}
-                                  {record.doctor_last_name} 醫師
+                        重新整理
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <h2 className="text-xl font-bold text-gray-900 mb-4">即將到來的看診</h2>
+                      {appointments.map((appointment) => (
+                        <div
+                          key={appointment.appointment_id}
+                          className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden"
+                        >
+                          <div className="flex items-center p-6">
+                            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mr-4">
+                              <User className="w-8 h-8 text-blue-600" />
+                            </div>
+
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-3 mb-2">
+                                <h3 className="text-xl font-bold text-gray-900">
+                                  {appointment.doctor_first_name}{" "}
+                                  {appointment.doctor_last_name} 醫師
                                 </h3>
-                                <p className="text-sm text-gray-600">
-                                  {record.doctor_specialty} •{" "}
-                                  {record.practice_hospital}
-                                </p>
-                                <p className="text-sm text-gray-500 mt-1">
-                                  {formatDate(record.appointment_date)}{" "}
-                                  {record.appointment_time}
-                                </p>
+                                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">
+                                  {appointment.doctor_specialty}
+                                </span>
                               </div>
-                            </div>
-                            <span className="px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full">
-                              已完成
-                            </span>
-                          </div>
 
-                          {record.symptoms && (
-                            <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                              <p className="text-xs text-gray-500 mb-1">主訴症狀</p>
-                              <p className="text-sm text-gray-700">
-                                {record.symptoms}
-                              </p>
-                            </div>
-                          )}
-
-                          {record.consultation_notes && (
-                            <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                              <p className="text-xs text-gray-500 mb-1">
-                                醫師診斷與建議
-                              </p>
-                              <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                                {record.consultation_notes}
-                              </p>
-                            </div>
-                          )}
-
-                          <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                            <div className="flex items-center space-x-4 text-sm text-gray-600">
-                              {record.recording_duration && (
-                                <div className="flex items-center space-x-1">
+                              <div className="flex flex-col space-y-1 text-sm text-gray-600">
+                                <div className="flex items-center space-x-2">
                                   <Clock className="w-4 h-4" />
                                   <span>
-                                    看診時長:{" "}
-                                    {formatDuration(record.recording_duration)}
+                                    預約時間: {appointment.appointment_date}{" "}
+                                    {appointment.appointment_time}
                                   </span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Monitor className="w-4 h-4" />
+                                  <span>{appointment.practice_hospital}</span>
+                                </div>
+                                {appointment.symptoms && (
+                                  <div className="flex items-center space-x-2">
+                                    <FileText className="w-4 h-4" />
+                                    <span className="truncate max-w-md">
+                                      症狀: {appointment.symptoms}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col space-y-2">
+                              {appointment.meeting_room_id ? (
+                                <button
+                                  onClick={() => joinMeeting(appointment)}
+                                  disabled={isLoading || !jitsiLoaded}
+                                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                                >
+                                  <Video className="w-5 h-5" />
+                                  <span className="font-semibold">
+                                    {jitsiLoaded ? "進入看診" : "載入中..."}
+                                  </span>
+                                </button>
+                              ) : (
+                                <div className="bg-yellow-50 border border-yellow-200 px-4 py-3 rounded-lg">
+                                  <p className="text-yellow-800 text-sm font-medium">
+                                    等待醫師開啟會議室
+                                  </p>
+                                  <p className="text-yellow-600 text-xs mt-1">
+                                    請稍候,醫師將會在預約時間開始看診
+                                  </p>
                                 </div>
                               )}
                             </div>
-
-                            {record.recording_url && (
-                              <button
-                                onClick={() =>
-                                  viewRecording(record.appointment_id)
-                                }
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors text-sm"
-                              >
-                                <PlayCircle className="w-4 h-4" />
-                                <span>觀看錄影</span>
-                              </button>
-                            )}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Tips section */}
+                  <div className="mt-8 bg-white rounded-2xl shadow-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <Heart className="w-5 h-5 mr-2 text-blue-600" />
+                      視訊看診須知
+                    </h3>
+                    <div className="grid md:grid-cols-2 gap-4 text-gray-600">
+                      {[
+                        {
+                          icon: <Video className="w-3 h-3 text-blue-600" />,
+                          title: "高品質視訊",
+                          desc: "清晰的影像和聲音確保診療品質",
+                        },
+                        {
+                          icon: <Clock className="w-3 h-3 text-blue-600" />,
+                          title: "準時看診",
+                          desc: "請在預約時間準時進入會議室",
+                        },
+                        {
+                          icon: <FileText className="w-3 h-3 text-blue-600" />,
+                          title: "看診記錄",
+                          desc: "所有診療記錄將自動保存供您查閱",
+                        },
+                        {
+                          icon: <Monitor className="w-3 h-3 text-blue-600" />,
+                          title: "錄影保護",
+                          desc: "看診過程錄影,保障您的權益",
+                        },
+                      ].map((item, idx) => (
+                        <div key={idx} className="flex items-start space-x-3">
+                          <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                            {item.icon}
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{item.title}</p>
+                            <p className="text-sm">{item.desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                )}
-              </div>
-            </>
-          )}
+                </>
+              ) : (
+                <>
+                  {/* Consultation history */}
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-2xl font-bold text-gray-900">看診記錄</h2>
+                      <button
+                        onClick={fetchConsultationHistory}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        重新整理
+                      </button>
+                    </div>
+
+                    {consultationHistory.length === 0 ? (
+                      <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                          <FileText className="w-10 h-10 text-gray-400" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                          尚無看診記錄
+                        </h2>
+                        <p className="text-gray-500">
+                          完成視訊看診後,記錄將會顯示在此處
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {consultationHistory.map((record) => (
+                          <div
+                            key={record.appointment_id}
+                            className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden"
+                          >
+                            <div className="p-6">
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-start space-x-4">
+                                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                    <CheckCircle className="w-6 h-6 text-green-600" />
+                                  </div>
+                                  <div>
+                                    <h3 className="text-lg font-bold text-gray-900">
+                                      {record.doctor_first_name}{" "}
+                                      {record.doctor_last_name} 醫師
+                                    </h3>
+                                    <p className="text-sm text-gray-600">
+                                      {record.doctor_specialty} •{" "}
+                                      {record.practice_hospital}
+                                    </p>
+                                    <p className="text-sm text-gray-500 mt-1">
+                                      {formatDate(record.appointment_date)}{" "}
+                                      {record.appointment_time}
+                                    </p>
+                                  </div>
+                                </div>
+                                <span className="px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full">
+                                  已完成
+                                </span>
+                              </div>
+
+                              {record.symptoms && (
+                                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                                  <p className="text-xs text-gray-500 mb-1">主訴症狀</p>
+                                  <p className="text-sm text-gray-700">
+                                    {record.symptoms}
+                                  </p>
+                                </div>
+                              )}
+
+                              {record.consultation_notes && (
+                                <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                                  <p className="text-xs text-gray-500 mb-1">
+                                    醫師診斷與建議
+                                  </p>
+                                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                    {record.consultation_notes}
+                                  </p>
+                                </div>
+                              )}
+
+                              {/* ✅ 顯示評分 */}
+                              {record.rating && (
+                                <div className="bg-yellow-50 rounded-lg p-4 mb-4">
+                                  <p className="text-xs text-gray-500 mb-2">您的評分</p>
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <span
+                                        key={star}
+                                        className={`text-xl ${
+                                          star <= record.rating
+                                            ? 'text-yellow-400'
+                                            : 'text-gray-300'
+                                        }`}
+                                      >
+                                        ★
+                                      </span>
+                                    ))}
+                                  </div>
+                                  {record.rating_comment && (
+                                    <p className="text-sm text-gray-700">
+                                      {record.rating_comment}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
+                              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                                <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                  {record.recording_duration && (
+                                    <div className="flex items-center space-x-1">
+                                      <Clock className="w-4 h-4" />
+                                      <span>
+                                        看診時長:{" "}
+                                        {formatDuration(record.recording_duration)}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center space-x-2">
+                                  {/* ✅ 評分按鈕 */}
+                                  {!record.rating && (
+                                    <button
+                                      onClick={() => {
+                                        setCompletedAppointment(record);
+                                        setShowRatingModal(true);
+                                      }}
+                                      className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors text-sm"
+                                    >
+                                      <span>⭐</span>
+                                      <span>評分</span>
+                                    </button>
+                                  )}
+                                  
+                                  {record.recording_url && (
+                                    <button
+                                      onClick={() =>
+                                        viewRecording(record.appointment_id)
+                                      }
+                                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors text-sm"
+                                    >
+                                      <PlayCircle className="w-4 h-4" />
+                                      <span>觀看錄影</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  </div>
-);}
+
+      {/* ✅ 評分彈窗 */}
+      <RatingModal
+        isOpen={showRatingModal}
+        onClose={() => {
+          setShowRatingModal(false);
+          setCompletedAppointment(null);
+        }}
+        appointment={completedAppointment}
+        onSubmit={handleRatingSubmit}
+      />
+    </>
+  );
+}

@@ -22,7 +22,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "缺少必要欄位" }, { status: 400 });
     }
 
-    // 🔥 關鍵修正:統一時間格式,確保有秒數
+    // 統一時間格式,確保有秒數
     const formattedTime = appointment_time.length === 5 
       ? `${appointment_time}:00` 
       : appointment_time;
@@ -32,7 +32,7 @@ export async function POST(request) {
     connection = await mysql.createConnection(dbConfig);
     await connection.beginTransaction();
 
-    // 檢查時段是否可用 - 使用 LIKE 或確保時間格式一致
+    // 檢查時段是否可用
     const [schedules] = await connection.execute(
       `SELECT schedule_id, is_available, time_slot 
        FROM schedules 
@@ -65,7 +65,7 @@ export async function POST(request) {
       }, { status: 409 });
     }
 
-    // 新增預約,狀態設為「待確認」- 使用資料庫中實際的時間格式
+    // 新增預約,狀態設為「待確認」
     const actualTimeSlot = schedules[0].time_slot;
     
     const [result] = await connection.execute(
@@ -75,7 +75,7 @@ export async function POST(request) {
       [patient_id, doctor_id, appointment_date, actualTimeSlot, symptoms || null, payment_method || null, amount || 500]
     );
 
-    // 更新排程為不可用 - 使用實際的 schedule_id
+    // 更新排程為不可用
     await connection.execute(
       `UPDATE schedules 
        SET is_available = 0 
@@ -114,6 +114,14 @@ export async function GET(request) {
     const doctor_id = searchParams.get("doctor_id");
     const appointment_id = searchParams.get("appointment_id");
 
+    // ✅ 如果沒有提供任何參數,嘗試從 session/header 獲取 patient_id
+    let actualPatientId = patient_id;
+    if (!patient_id && !doctor_id && !appointment_id) {
+      // 從 header 或 cookie 中獲取當前登入用戶的 patient_id
+      // 這裡根據你的認證方式調整
+      actualPatientId = request.headers.get('user-id') || request.cookies.get('patient_id')?.value;
+    }
+
     connection = await mysql.createConnection(dbConfig);
 
     let query = `
@@ -121,13 +129,16 @@ export async function GET(request) {
         a.*,
         d.first_name AS doctor_first_name,
         d.last_name AS doctor_last_name,
-        d.specialty,
+        d.specialty AS doctor_specialty,
         d.practice_hospital,
         p.first_name AS patient_first_name,
-        p.last_name AS patient_last_name
+        p.last_name AS patient_last_name,
+        r.rating,
+        r.comment as rating_comment
       FROM appointments a
       LEFT JOIN doctor d ON a.doctor_id = d.doctor_id
       LEFT JOIN patient p ON a.patient_id = p.patient_id
+      LEFT JOIN ratings r ON a.appointment_id = r.appointment_id
       WHERE 1=1
     `;
     const params = [];
@@ -136,9 +147,9 @@ export async function GET(request) {
       query += " AND a.appointment_id = ?";
       params.push(appointment_id);
     }
-    if (patient_id) {
+    if (actualPatientId) {
       query += " AND a.patient_id = ?";
-      params.push(patient_id);
+      params.push(actualPatientId);
     }
     if (doctor_id) {
       query += " AND a.doctor_id = ?";
@@ -185,7 +196,7 @@ export async function PATCH(request) {
       return NextResponse.json({ error: "預約不存在" }, { status: 404 });
     }
 
-    // 如果是拒絕預約,釋放時段 - 使用 LIKE 確保能匹配
+    // 如果是拒絕預約,釋放時段
     if (release_schedule && status === "已取消" && doctor_id && appointment_date && appointment_time) {
       const formattedTime = appointment_time.length === 5 
         ? `${appointment_time}:00` 
@@ -249,7 +260,7 @@ export async function DELETE(request) {
       [appointment_id]
     );
 
-    // 釋放時段 - 使用 LIKE 確保能匹配
+    // 釋放時段
     await connection.execute(
       `UPDATE schedules 
        SET is_available = 1 
