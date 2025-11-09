@@ -7,6 +7,8 @@ const dbConfig = {
   user: "root",
   password: "",
   database: "telemedicine",
+  timezone: '+08:00',  // ⭐ 設定時區為台灣時間
+  dateStrings: true,   // ⭐ 將日期作為字串返回,避免時區轉換問題
 };
 
 // POST - 新增預約 (狀態改為「待確認」)
@@ -14,8 +16,18 @@ export async function POST(request) {
   let connection;
   try {
     const body = await request.json();
-    const { patient_id, doctor_id, appointment_date, appointment_time, symptoms, payment_method, amount } = body;
+    const { 
+      patient_id, 
+      doctor_id, 
+      appointment_date, 
+      appointment_time, 
+      symptoms, 
+      payment_method, 
+      amount, 
+      appointment_type } = body;
 
+    console.log("=" .repeat(60));
+    console.log("📝 收到預約請求");
     console.log("收到預約請求:", body);
 
     if (!patient_id || !doctor_id || !appointment_date || !appointment_time) {
@@ -34,7 +46,7 @@ export async function POST(request) {
 
     // 檢查時段是否可用
     const [schedules] = await connection.execute(
-      `SELECT schedule_id, is_available, time_slot 
+      `SELECT schedule_id, is_available, time_slot , doctor_id, schedule_date
        FROM schedules 
        WHERE doctor_id = ? 
        AND schedule_date = ? 
@@ -44,9 +56,19 @@ export async function POST(request) {
     );
 
     console.log("查詢到的排程:", schedules);
+    console.log("查詢到的排程數量:", schedules.length);
+
+    if (schedules.length > 0) {
+      console.log("第一筆排程詳細資訊:");
+      console.log("  - schedule_id:", schedules[0].schedule_id);
+      console.log("  - is_available:", schedules[0].is_available);
+      console.log("  - is_available 型別:", typeof schedules[0].is_available);
+      console.log("  - time_slot:", schedules[0].time_slot);
+    }
 
     if (schedules.length === 0) {
       await connection.rollback();
+      console.log("❌ 該時段不存在");
       return NextResponse.json({ 
         error: "該時段不存在",
         debug: {
@@ -58,21 +80,74 @@ export async function POST(request) {
       }, { status: 404 });
     }
 
-    if (schedules[0].is_available !== '1') {
+    // if (schedules[0].is_available !== '1') {
+    //   await connection.rollback();
+    //   return NextResponse.json({ 
+    //     error: "該時段已被預約" 
+    //   }, { status: 409 });
+    // }
+
+    // 新增預約,狀態設為「待確認」
+      const isAvailable = schedules[0].is_available;
+    const isAvailableCheck = isAvailable === 1 || isAvailable === '1' || isAvailable === true;
+    
+    console.log("可用性檢查:");
+    console.log("  - 原始值:", isAvailable);
+    console.log("  - 檢查結果:", isAvailableCheck);
+
+    if (!isAvailableCheck) {
       await connection.rollback();
+      console.log("❌ 該時段已被預約");
       return NextResponse.json({ 
-        error: "該時段已被預約" 
+        error: "該時段已被預約",
+        debug: {
+          is_available_value: isAvailable,
+          is_available_type: typeof isAvailable
+        }
       }, { status: 409 });
     }
 
-    // 新增預約,狀態設為「待確認」
+    // ⭐ 關鍵修正 3: 再次檢查是否有衝突的預約
+    const [existingAppointments] = await connection.execute(
+      `SELECT appointment_id, status
+       FROM appointments 
+       WHERE doctor_id = ? 
+       AND appointment_date = ? 
+       AND appointment_time = ?
+       AND status IN ('待確認', '已確認')`,
+      [doctor_id, appointment_date, schedules[0].time_slot]
+    );
+
+    console.log("🔍 檢查現有預約:", existingAppointments);
+
+    if (existingAppointments.length > 0) {
+      await connection.rollback();
+      console.log("❌ 該時段已有預約記錄");
+      return NextResponse.json({ 
+        error: "該時段已被預約",
+        debug: {
+          existing_appointment_id: existingAppointments[0].appointment_id
+        }
+      }, { status: 409 });
+    }
+
+    // 新增預約
     const actualTimeSlot = schedules[0].time_slot;
     
     const [result] = await connection.execute(
       `INSERT INTO appointments 
-       (patient_id, doctor_id, appointment_date, appointment_time, status, symptoms, payment_method, amount) 
-       VALUES (?, ?, ?, ?, '待確認', ?, ?, ?)`,
-      [patient_id, doctor_id, appointment_date, actualTimeSlot, symptoms || null, payment_method || null, amount || 500]
+       (patient_id, doctor_id, appointment_date, appointment_time, status, symptoms, payment_method, amount, appointment_type) 
+       VALUES (?, ?, ?, ?, '已確認', ?, ?, ?, ?)`,
+      [
+        patient_id, 
+        doctor_id, 
+        appointment_date, 
+        actualTimeSlot, 
+        symptoms || null, 
+        payment_method || null, 
+        amount || 500,
+        appointment_type || 'treatment'
+      ]
     );
 
     // 更新排程為不可用
@@ -86,6 +161,7 @@ export async function POST(request) {
     await connection.commit();
 
     console.log("預約成功,ID:", result.insertId);
+    console.log("=" .repeat(60));
 
     return NextResponse.json({ 
       success: true, 
