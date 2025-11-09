@@ -30,61 +30,59 @@ function FeedbackList() {
     };
     return colorMap[role] || 'bg-gray-100 text-gray-700';
   };
+  
   const fetchFeedbacks = async () => {
-  try {
-    const res = await fetch('/api/admin/feedback');
-    
-    if (!res.ok) {
-      // 嘗試解析 JSON 錯誤訊息
-      try {
-        const errorData = await res.json();
-        throw new Error(errorData.message || '載入失敗');
-      } catch (parseError) {
-        // 如果不是 JSON,就讀取純文字
-        const text = await res.text();
-        throw new Error(text || '載入失敗');
+    try {
+      const res = await fetch('/api/admin/feedback');
+      
+      if (!res.ok) {
+        try {
+          const errorData = await res.json();
+          throw new Error(errorData.message || '載入失敗');
+        } catch (parseError) {
+          const text = await res.text();
+          throw new Error(text || '載入失敗');
+        }
       }
-    }
 
-    const data = await res.json();
-    setFeedbacks(data);
-    setUnreadCount(data.filter(f => f.status === 'unread').length);
-  } catch (err) {
-    console.error('載入回報錯誤:', err);
-    setError('無法載入回報資料');
-  } finally {
-    setLoading(false);
-  }
-};
+      const data = await res.json();
+      setFeedbacks(data);
+      setUnreadCount(data.filter(f => f.status === 'unread').length);
+    } catch (err) {
+      console.error('載入回報錯誤:', err);
+      setError('無法載入回報資料');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const markAsRead = async (id) => {
-  if (!confirm('確認要標示為已處理嗎?')) return;
-  try {
-    const res = await fetch('/api/admin/feedback/read', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ feedback_id: id }),
-    });
+    if (!confirm('確認要標示為已處理嗎?')) return;
+    try {
+      const res = await fetch('/api/admin/feedback/read', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feedback_id: id }),
+      });
 
-    if (!res.ok) {
-      const text = await res.text();
-      // 若後端回 JSON 錯誤，也可以嘗試 parse
-      let message = text;
-      try {
-        const json = JSON.parse(text);
-        message = json.message || JSON.stringify(json);
-      } catch (_) {}
-      throw new Error(message || '操作失敗');
+      if (!res.ok) {
+        const text = await res.text();
+        let message = text;
+        try {
+          const json = JSON.parse(text);
+          message = json.message || JSON.stringify(json);
+        } catch (_) {}
+        throw new Error(message || '操作失敗');
+      }
+
+      const data = await res.json();
+      alert('已標示為已處理');
+      fetchFeedbacks();
+    } catch (err) {
+      console.error('更新狀態錯誤:', err);
+      alert(err.message || '操作失敗');
     }
-
-    const data = await res.json(); // 成功才 parse json
-    alert('已標示為已處理');
-    fetchFeedbacks();
-  } catch (err) {
-    console.error('更新狀態錯誤:', err);
-    alert(err.message || '操作失敗');
-  }
-};
+  };
 
   if (loading) {
     return (
@@ -210,6 +208,8 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('doctors');
   const [users, setUsers] = useState([]);
   const [userType, setUserType] = useState('doctor');
+  const [ratings, setRatings] = useState([]);
+  const [ratingsLoading, setRatingsLoading] = useState(false);
 
   useEffect(() => {
     fetchPendingDoctors();
@@ -218,6 +218,8 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeTab === 'users') {
       fetchUsers();
+    } else if (activeTab === 'ratings') {
+      fetchRatings();
     }
   }, [activeTab, userType]);
 
@@ -246,7 +248,7 @@ export default function AdminDashboard() {
     }
   };
 
-    const fetchUsers = async () => {
+  const fetchUsers = async () => {
     try {
       const res = await fetch(`/api/admin/users?type=${userType}`, {
         credentials: 'include',
@@ -264,6 +266,54 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchRatings = async () => {
+    setRatingsLoading(true);
+    try {
+      console.log('正在獲取評論資料...');
+      console.log('API URL: /api/admin/ratings');
+      
+      const res = await fetch('/api/admin/ratings', {
+        credentials: 'include',
+      });
+
+      console.log('API 回應狀態:', res.status);
+      console.log('API 回應 OK?:', res.ok);
+
+      // 先取得回應文字，看看是什麼內容
+      const responseText = await res.text();
+      console.log('API 回應內容:', responseText);
+
+      if (!res.ok) {
+        let errorData;
+        try {
+          errorData = JSON.parse(responseText);
+        } catch (e) {
+          console.error('無法解析錯誤回應:', e);
+          throw new Error(`HTTP ${res.status}: ${responseText || 'Failed to fetch ratings'}`);
+        }
+        console.error('API 錯誤:', errorData);
+        throw new Error(errorData.message || `HTTP ${res.status}: Failed to fetch ratings`);
+      }
+
+      // 解析成功的回應
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('無法解析成功回應:', e);
+        throw new Error('回應格式錯誤');
+      }
+
+      console.log('成功獲取評論:', data.length, '則');
+      setRatings(data);
+    } catch (err) {
+      console.error('載入評論錯誤:', err);
+      console.error('錯誤堆疊:', err.stack);
+      alert(`載入評論失敗: ${err.message}`);
+    } finally {
+      setRatingsLoading(false);
+    }
+  };
 
   const handleApprove = async (doctorId) => {
     if (!confirm('確定要核准此醫師的註冊嗎?')) return;
@@ -488,6 +538,16 @@ export default function AdminDashboard() {
             使用者管理
           </button>
           <button
+            onClick={() => setActiveTab('ratings')}
+            className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
+              activeTab === 'ratings'
+                ? 'bg-purple-600 text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            查看評論
+          </button>
+          <button
             onClick={() => setActiveTab('feedback')}
             className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
               activeTab === 'feedback'
@@ -598,6 +658,7 @@ export default function AdminDashboard() {
             )}
           </>
         )}
+
         {/* 使用者管理頁面 */}
         {activeTab === 'users' && (
           <>
@@ -737,6 +798,82 @@ export default function AdminDashboard() {
           </>
         )}
 
+        {/* 評論管理頁面 */}
+        {activeTab === 'ratings' && (
+          <>
+            <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border">
+              <div className="flex items-center space-x-3">
+                <FileText className="text-indigo-600" size={24} />
+                <div>
+                  <p className="text-sm text-gray-600">總評論數</p>
+                  <p className="text-2xl font-bold text-gray-900">{ratings.length} 則</p>
+                </div>
+              </div>
+            </div>
+
+            {ratingsLoading ? (
+              <div className="bg-white rounded-xl shadow-sm p-12 text-center border">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">載入中...</p>
+              </div>
+            ) : ratings.length === 0 ? (
+              <div className="bg-white rounded-xl shadow-sm p-12 text-center border">
+                <FileText className="mx-auto text-gray-300 mb-4" size={48} />
+                <p className="text-gray-500 text-lg">目前沒有任何評論</p>
+              </div>
+            ) : (
+              <div className="grid gap-6">
+                {ratings.map((rating) => (
+                  <div
+                    key={rating.rating_id}
+                    className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border"
+                  >
+                    <div className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                            患者: {rating.patient_first_name}{rating.patient_last_name || ''}
+                          </h3>
+                          <p className="text-sm text-gray-600">
+                            評價醫師: {rating.doctor_first_name}{rating.doctor_last_name} 醫師
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(rating.created_at).toLocaleString('zh-TW')}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          {[...Array(5)].map((_, i) => (
+                            <span
+                              key={i}
+                              className={`text-2xl ${
+                                i < rating.rating ? 'text-yellow-400' : 'text-gray-300'
+                              }`}
+                            >
+                              ★
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {rating.comment && (
+                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                          <p className="text-gray-700 whitespace-pre-wrap">{rating.comment}</p>
+                        </div>
+                      )}
+
+                      {rating.appointment_id && (
+                        <p className="text-xs text-gray-500 mt-3">
+                          預約編號: #{rating.appointment_id}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
         {/* 病患問題回報頁面 */}
         {activeTab === 'feedback' && (
           <FeedbackList />
@@ -856,4 +993,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
