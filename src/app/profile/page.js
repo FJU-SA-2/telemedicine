@@ -127,7 +127,7 @@ const fetchUser = async () => {
     
     try {
       // 呼叫照片上傳 API (請確保您的後端服務在 localhost:5000)
-      const res = await fetch("http://localhost:5000/api/doctor/upload-photo", {
+      const res = await fetch("/api/doctor/upload-photo", {
         method: "POST",
         credentials: "include",
         body: formData,
@@ -171,8 +171,8 @@ const handleSave = async () => {
   try {
     const isPatient = user.role === "patient";
     const endpoint = isPatient 
-      ? "http://localhost:5000/api/patient/profile"
-      : "http://localhost:5000/api/doctor/profile";
+      ? "/api/patient/profile"
+      : "/api/doctor/profile";
     
     const requestBody = isPatient ? formData : doctorForm;
 
