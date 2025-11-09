@@ -775,12 +775,12 @@ const handleSave = async () => {
 </div>
 )}
       <div className="mt-8">
-        <Link 
-          href="/" 
-          className="inline-block px-5 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors mr-4"
-        >
-          返回首頁
-        </Link>
+      <Link 
+        href={user.role === "doctor" ? "/doctorpage" : "/"} 
+        className="inline-block px-5 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors mr-4"
+      >
+        返回首頁
+      </Link>
         
          <button 
           onClick={handleLogout} 
