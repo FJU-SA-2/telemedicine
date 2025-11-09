@@ -29,7 +29,7 @@ export async function POST(request) {
       [doctor_id, appointment_date, appointment_time]
     );
 
-    if (schedules.length === 0 || schedules[0].is_available !== "1") {
+    if (schedules.length === 0 || Number(schedules[0].is_available) !== 1) {
       await connection.rollback();
       return NextResponse.json({ error: "該時段已被預約或不存在" }, { status: 409 });
     }
