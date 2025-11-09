@@ -30,7 +30,7 @@ export default function DoctorSchedulePage() {
             try {
                 console.log('🔍 開始取得醫師資料...');
 
-                const res = await fetch("http://localhost:5000/api/me", {
+                const res = await fetch("/api/me", {
                     credentials: 'include'
                 });
 
@@ -45,7 +45,7 @@ export default function DoctorSchedulePage() {
 
                         // 🔥 需要從 doctor 表取得 doctor_id
                         const doctorRes = await fetch(
-                            `http://localhost:5000/api/doctor/profile?user_id=${data.user.user_id}`,
+                            `/api/doctor/profile?user_id=${data.user.user_id}`,
                             { credentials: 'include' }
                         );
 
