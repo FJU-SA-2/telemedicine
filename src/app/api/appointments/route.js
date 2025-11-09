@@ -1,181 +1,60 @@
-// app/api/appointments/route.js
 import { NextResponse } from "next/server";
 import mysql from "mysql2/promise";
 
+// 直接寫死資料庫連線設定
 const dbConfig = {
   host: "localhost",
   user: "root",
   password: "",
   database: "telemedicine",
-  timezone: '+08:00',  // ⭐ 設定時區為台灣時間
-  dateStrings: true,   // ⭐ 將日期作為字串返回,避免時區轉換問題
 };
 
-// POST - 新增預約 (狀態改為「待確認」)
+// POST - 新增預約
 export async function POST(request) {
   let connection;
   try {
     const body = await request.json();
-    const { 
-      patient_id, 
-      doctor_id, 
-      appointment_date, 
-      appointment_time, 
-      symptoms, 
-      payment_method, 
-      amount, 
-      appointment_type } = body;
-
-    console.log("=" .repeat(60));
-    console.log("📝 收到預約請求");
-    console.log("收到預約請求:", body);
+    const { patient_id, doctor_id, appointment_date, appointment_time, symptoms, payment_method, amount } = body;
 
     if (!patient_id || !doctor_id || !appointment_date || !appointment_time) {
       return NextResponse.json({ error: "缺少必要欄位" }, { status: 400 });
     }
 
-    // 統一時間格式,確保有秒數
-    const formattedTime = appointment_time.length === 5 
-      ? `${appointment_time}:00` 
-      : appointment_time;
-
-    console.log("格式化後的時間:", formattedTime);
-
     connection = await mysql.createConnection(dbConfig);
     await connection.beginTransaction();
 
-    // 檢查時段是否可用
     const [schedules] = await connection.execute(
-      `SELECT schedule_id, is_available, time_slot , doctor_id, schedule_date
-       FROM schedules 
-       WHERE doctor_id = ? 
-       AND schedule_date = ? 
-       AND (time_slot = ? OR time_slot LIKE ?)
-       FOR UPDATE`,
-      [doctor_id, appointment_date, formattedTime, `${appointment_time}%`]
+      `SELECT is_available FROM schedules 
+       WHERE doctor_id = ? AND schedule_date = ? AND time_slot = ? FOR UPDATE`,
+      [doctor_id, appointment_date, appointment_time]
     );
 
-    console.log("查詢到的排程:", schedules);
-    console.log("查詢到的排程數量:", schedules.length);
-
-    if (schedules.length > 0) {
-      console.log("第一筆排程詳細資訊:");
-      console.log("  - schedule_id:", schedules[0].schedule_id);
-      console.log("  - is_available:", schedules[0].is_available);
-      console.log("  - is_available 型別:", typeof schedules[0].is_available);
-      console.log("  - time_slot:", schedules[0].time_slot);
-    }
-
-    if (schedules.length === 0) {
+    if (schedules.length === 0 || schedules[0].is_available !== "1") {
       await connection.rollback();
-      console.log("❌ 該時段不存在");
-      return NextResponse.json({ 
-        error: "該時段不存在",
-        debug: {
-          doctor_id,
-          appointment_date,
-          appointment_time,
-          formattedTime
-        }
-      }, { status: 404 });
+      return NextResponse.json({ error: "該時段已被預約或不存在" }, { status: 409 });
     }
 
-    // if (schedules[0].is_available !== '1') {
-    //   await connection.rollback();
-    //   return NextResponse.json({ 
-    //     error: "該時段已被預約" 
-    //   }, { status: 409 });
-    // }
-
-    // 新增預約,狀態設為「待確認」
-      const isAvailable = schedules[0].is_available;
-    const isAvailableCheck = isAvailable === 1 || isAvailable === '1' || isAvailable === true;
-    
-    console.log("可用性檢查:");
-    console.log("  - 原始值:", isAvailable);
-    console.log("  - 檢查結果:", isAvailableCheck);
-
-    if (!isAvailableCheck) {
-      await connection.rollback();
-      console.log("❌ 該時段已被預約");
-      return NextResponse.json({ 
-        error: "該時段已被預約",
-        debug: {
-          is_available_value: isAvailable,
-          is_available_type: typeof isAvailable
-        }
-      }, { status: 409 });
-    }
-
-    // ⭐ 關鍵修正 3: 再次檢查是否有衝突的預約
-    const [existingAppointments] = await connection.execute(
-      `SELECT appointment_id, status
-       FROM appointments 
-       WHERE doctor_id = ? 
-       AND appointment_date = ? 
-       AND appointment_time = ?
-       AND status IN ('待確認', '已確認')`,
-      [doctor_id, appointment_date, schedules[0].time_slot]
-    );
-
-    console.log("🔍 檢查現有預約:", existingAppointments);
-
-    if (existingAppointments.length > 0) {
-      await connection.rollback();
-      console.log("❌ 該時段已有預約記錄");
-      return NextResponse.json({ 
-        error: "該時段已被預約",
-        debug: {
-          existing_appointment_id: existingAppointments[0].appointment_id
-        }
-      }, { status: 409 });
-    }
-
-    // 新增預約
-    const actualTimeSlot = schedules[0].time_slot;
-    
     const [result] = await connection.execute(
       `INSERT INTO appointments 
-       (patient_id, doctor_id, appointment_date, appointment_time, status, symptoms, payment_method, amount, appointment_type) 
-       VALUES (?, ?, ?, ?, '已確認', ?, ?, ?, ?)`,
-      [
-        patient_id, 
-        doctor_id, 
-        appointment_date, 
-        actualTimeSlot, 
-        symptoms || null, 
-        payment_method || null, 
-        amount || 500,
-        appointment_type || 'treatment'
-      ]
+       (patient_id, doctor_id, appointment_date, appointment_time, status, symptoms, payment_method, amount) 
+       VALUES (?, ?, ?, ?, '已確認', ?, ?, ?)`,
+      [patient_id, doctor_id, appointment_date, appointment_time, symptoms || null, payment_method || null, amount || 500]
     );
 
-    // 更新排程為不可用
     await connection.execute(
       `UPDATE schedules 
-       SET is_available = 0 
-       WHERE schedule_id = ?`,
-      [schedules[0].schedule_id]
+       SET is_available = '0' 
+       WHERE doctor_id = ? AND schedule_date = ? AND time_slot = ?`,
+      [doctor_id, appointment_date, appointment_time]
     );
 
     await connection.commit();
 
-    console.log("預約成功,ID:", result.insertId);
-    console.log("=" .repeat(60));
-
-    return NextResponse.json({ 
-      success: true, 
-      appointment_id: result.insertId, 
-      message: "預約已提交,等待醫師確認" 
-    }, { status: 201 });
+    return NextResponse.json({ success: true, appointment_id: result.insertId, message: "預約成功" }, { status: 201 });
   } catch (error) {
     if (connection) await connection.rollback();
     console.error("預約創建錯誤:", error);
-    return NextResponse.json({ 
-      error: "預約失敗", 
-      details: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    }, { status: 500 });
+    return NextResponse.json({ error: "預約失敗", details: error.message }, { status: 500 });
   } finally {
     if (connection) await connection.end();
   }
@@ -190,14 +69,6 @@ export async function GET(request) {
     const doctor_id = searchParams.get("doctor_id");
     const appointment_id = searchParams.get("appointment_id");
 
-    // ✅ 如果沒有提供任何參數,嘗試從 session/header 獲取 patient_id
-    let actualPatientId = patient_id;
-    if (!patient_id && !doctor_id && !appointment_id) {
-      // 從 header 或 cookie 中獲取當前登入用戶的 patient_id
-      // 這裡根據你的認證方式調整
-      actualPatientId = request.headers.get('user-id') || request.cookies.get('patient_id')?.value;
-    }
-
     connection = await mysql.createConnection(dbConfig);
 
     let query = `
@@ -205,16 +76,13 @@ export async function GET(request) {
         a.*,
         d.first_name AS doctor_first_name,
         d.last_name AS doctor_last_name,
-        d.specialty AS doctor_specialty,
+        d.specialty,
         d.practice_hospital,
         p.first_name AS patient_first_name,
-        p.last_name AS patient_last_name,
-        r.rating,
-        r.comment as rating_comment
+        p.last_name AS patient_last_name
       FROM appointments a
       LEFT JOIN doctor d ON a.doctor_id = d.doctor_id
       LEFT JOIN patient p ON a.patient_id = p.patient_id
-      LEFT JOIN ratings r ON a.appointment_id = r.appointment_id
       WHERE 1=1
     `;
     const params = [];
@@ -223,9 +91,9 @@ export async function GET(request) {
       query += " AND a.appointment_id = ?";
       params.push(appointment_id);
     }
-    if (actualPatientId) {
+    if (patient_id) {
       query += " AND a.patient_id = ?";
-      params.push(actualPatientId);
+      params.push(patient_id);
     }
     if (doctor_id) {
       query += " AND a.doctor_id = ?";
@@ -240,119 +108,6 @@ export async function GET(request) {
   } catch (error) {
     console.error("查詢預約錯誤:", error);
     return NextResponse.json({ error: "查詢失敗", details: error.message }, { status: 500 });
-  } finally {
-    if (connection) await connection.end();
-  }
-}
-
-// PATCH - 更新預約狀態 (確認/拒絕)
-export async function PATCH(request) {
-  let connection;
-  try {
-    const body = await request.json();
-    const { appointment_id, status, release_schedule, doctor_id, appointment_date, appointment_time } = body;
-
-    if (!appointment_id || !status) {
-      return NextResponse.json({ error: "缺少必要欄位" }, { status: 400 });
-    }
-
-    connection = await mysql.createConnection(dbConfig);
-    await connection.beginTransaction();
-
-    // 更新預約狀態
-    const [result] = await connection.execute(
-      `UPDATE appointments 
-       SET status = ?, updated_at = CURRENT_TIMESTAMP 
-       WHERE appointment_id = ?`,
-      [status, appointment_id]
-    );
-
-    if (result.affectedRows === 0) {
-      await connection.rollback();
-      return NextResponse.json({ error: "預約不存在" }, { status: 404 });
-    }
-
-    // 如果是拒絕預約,釋放時段
-    if (release_schedule && status === "已取消" && doctor_id && appointment_date && appointment_time) {
-      const formattedTime = appointment_time.length === 5 
-        ? `${appointment_time}:00` 
-        : appointment_time;
-        
-      await connection.execute(
-        `UPDATE schedules 
-         SET is_available = '1' 
-         WHERE doctor_id = ? 
-         AND schedule_date = ? 
-         AND (time_slot = ? OR time_slot LIKE ?)`,
-        [doctor_id, appointment_date, formattedTime, `${appointment_time}%`]
-      );
-    }
-
-    await connection.commit();
-
-    return NextResponse.json({ 
-      success: true, 
-      message: status === "已確認" ? "預約已確認" : "預約已取消,時段已釋放" 
-    });
-  } catch (error) {
-    if (connection) await connection.rollback();
-    console.error("更新預約錯誤:", error);
-    return NextResponse.json({ error: "更新失敗", details: error.message }, { status: 500 });
-  } finally {
-    if (connection) await connection.end();
-  }
-}
-
-// DELETE - 刪除預約
-export async function DELETE(request) {
-  let connection;
-  try {
-    const { searchParams } = new URL(request.url);
-    const appointment_id = searchParams.get("appointment_id");
-
-    if (!appointment_id) {
-      return NextResponse.json({ error: "缺少預約ID" }, { status: 400 });
-    }
-
-    connection = await mysql.createConnection(dbConfig);
-    await connection.beginTransaction();
-
-    // 獲取預約資訊
-    const [appointments] = await connection.execute(
-      `SELECT doctor_id, appointment_date, appointment_time FROM appointments WHERE appointment_id = ?`,
-      [appointment_id]
-    );
-
-    if (appointments.length === 0) {
-      await connection.rollback();
-      return NextResponse.json({ error: "預約不存在" }, { status: 404 });
-    }
-
-    const { doctor_id, appointment_date, appointment_time } = appointments[0];
-
-    // 刪除預約
-    await connection.execute(
-      `DELETE FROM appointments WHERE appointment_id = ?`,
-      [appointment_id]
-    );
-
-    // 釋放時段
-    await connection.execute(
-      `UPDATE schedules 
-       SET is_available = 1 
-       WHERE doctor_id = ? 
-       AND schedule_date = ? 
-       AND time_slot LIKE ?`,
-      [doctor_id, appointment_date, `${appointment_time}%`]
-    );
-
-    await connection.commit();
-
-    return NextResponse.json({ success: true, message: "預約已刪除,時段已釋放" });
-  } catch (error) {
-    if (connection) await connection.rollback();
-    console.error("刪除預約錯誤:", error);
-    return NextResponse.json({ error: "刪除失敗", details: error.message }, { status: 500 });
   } finally {
     if (connection) await connection.end();
   }
