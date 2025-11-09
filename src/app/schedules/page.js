@@ -264,8 +264,16 @@ export default function DoctorSchedulePage() {
                 setSaveSuccess(true);
                 setTimeout(() => setSaveSuccess(false), 3000);
             } else {
-                const error = await res.json();
-                alert(`儲存失敗: ${error.error || error.message}`);
+                let errorMessage = "儲存失敗，請稍後再試";
+
+                try {
+                    const error = await res.json();
+                    errorMessage = error.error || error.message || errorMessage;
+                } catch {
+                    console.warn("⚠️ 錯誤回應非 JSON 格式，使用預設提示");
+                }
+
+                alert(errorMessage);
             }
 
         } catch (error) {
