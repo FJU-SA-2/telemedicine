@@ -131,7 +131,7 @@ export default function DoctorSchedulePage() {
 
             try {
                 const res = await fetch(
-                    `/api/schedules/${doctor_id}?start_date=${startDate}&end_date=${endDate}`,
+                    `http://localhost:5000/api/schedules/${doctor_id}?start_date=${startDate}&end_date=${endDate}`,
                     { credentials: 'include' }
                 );
 
@@ -252,7 +252,7 @@ export default function DoctorSchedulePage() {
 
             console.log('💾 儲存排班:', { doctor_id, schedules: scheduleList });
 
-            const res = await fetch('/api/schedules', {
+            const res = await fetch('http://localhost:5000/api/schedules', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ doctor_id, schedules: scheduleList })
@@ -264,16 +264,8 @@ export default function DoctorSchedulePage() {
                 setSaveSuccess(true);
                 setTimeout(() => setSaveSuccess(false), 3000);
             } else {
-                let errorMessage = "儲存失敗，請稍後再試";
-
-                try {
-                    const error = await res.json();
-                    errorMessage = error.error || error.message || errorMessage;
-                } catch {
-                    console.warn("⚠️ 錯誤回應非 JSON 格式，使用預設提示");
-                }
-
-                alert(errorMessage);
+                const error = await res.json();
+                alert(`儲存失敗: ${error.error || error.message}`);
             }
 
         } catch (error) {
