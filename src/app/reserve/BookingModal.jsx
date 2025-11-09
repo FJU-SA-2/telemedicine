@@ -1,12 +1,13 @@
 "use client";
 import { useState } from "react";
-import { Calendar, CheckCircle, Clock, X, ArrowRight, ArrowLeft, CreditCard, FileText } from "lucide-react";
+import { Calendar, CheckCircle, Clock, X, ArrowRight, ArrowLeft, CreditCard, FileText, MessageSquare  } from "lucide-react";
 
 // 預約彈窗 - 多步驟流程
 export default function BookingModal({ doctor, schedules, onClose, onConfirm }) {
   const [step, setStep] = useState(1); // 1=選時間, 2=支付, 3=症狀, 4=確認
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
+  const [appointmentType, setAppointmentType] = useState("");
   const [symptoms, setSymptoms] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [cardNumber, setCardNumber] = useState("");
@@ -54,16 +55,6 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
     }
   };
 
-  const handleConfirm = () => {
-    onConfirm({ 
-      doctor, 
-      date: selectedDate, 
-      time: selectedTime, 
-      symptoms,
-      paymentMethod 
-    });
-  };
-
   const formatDate = (dateStr) => {
     const date = new Date(dateStr + "T00:00:00");
     return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
@@ -73,6 +64,22 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
     const date = new Date(dateStr + "T00:00:00");
     const dayNames = ["週日","週一","週二","週三","週四","週五","週六"];
     return dayNames[date.getDay()];
+  };
+
+  const getAppointmentTypeName = (type) => {
+    return type === "consultation" ? "諮詢" : "看診";
+  };
+
+  // 確保傳遞 appointment_type 給 SuccessPage
+  const handleConfirm = () => {
+    onConfirm({ 
+      doctor, 
+      date: selectedDate, 
+      time: selectedTime,
+      appointmentType, // 確保包含預約類型
+      symptoms,
+      paymentMethod 
+    });
   };
 
   return (
@@ -97,7 +104,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
           {/* 步驟指示器 */}
           <div className="flex items-center justify-between">
             {[
-              { num: 1, name: "選擇時間", icon: Calendar },
+              { num: 1, name: "選擇時間、類型", icon: Calendar },
               { num: 2, name: "支付費用", icon: CreditCard },
               { num: 3, name: "症狀描述", icon: FileText },
               { num: 4, name: "確認預約", icon: CheckCircle }
@@ -128,7 +135,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
               <div className="mb-6">
                 <h4 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                   <Calendar size={22} className="text-blue-600" />
-                  選擇就診日期
+                  選擇預約日期
                 </h4>
                 {weekDates.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
@@ -185,6 +192,42 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
                   )}
                 </div>
               )}
+
+                            {selectedTime && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <svg className="text-blue-600" width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                    選擇預約類型
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      onClick={() => setAppointmentType('consultation')}
+                      className={`py-4 px-4 rounded-xl text-center transition-all ${
+                        appointmentType === 'consultation'
+                          ? "bg-blue-500 text-white shadow-lg scale-105"
+                          : "bg-gray-50 border-2 border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50"
+                      }`}
+                    >
+                      <div className="text-lg font-bold mb-1">諮詢</div>
+                      <div className="text-xs opacity-75">健康諮詢服務</div>
+                    </button>
+                    <button
+                      onClick={() => setAppointmentType('treatment')}
+                      className={`py-4 px-4 rounded-xl text-center transition-all ${
+                        appointmentType === 'treatment'
+                          ? "bg-blue-500 text-white shadow-lg scale-105"
+                          : "bg-gray-50 border-2 border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50"
+                      }`}
+                    >
+                      <div className="text-lg font-bold mb-1">看診</div>
+                      <div className="text-xs opacity-75">醫療診療服務</div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
 
               <button
                 onClick={handleNextStep}
@@ -353,9 +396,11 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
                 <div className="space-y-1 text-sm text-gray-600">
                   <p>• 醫師：{doctorFullName} ({doctor.specialty})</p>
                   <p>• 時間：{formatDate(selectedDate)} {getDayName(selectedDate)} {selectedTime}</p>
+                  <p>• 預約類型：{getAppointmentTypeName(appointmentType)}</p>
                   <p>• 費用：NT$ 500 (已支付)</p>
                 </div>
               </div>
+
 
               <div className="flex gap-3">
                 <button
@@ -416,7 +461,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
                   <div className="flex items-start gap-3">
                     <Clock size={20} className="text-blue-600 mt-1 flex-shrink-0" />
                     <div>
-                      <p className="text-sm text-gray-600">就診時間</p>
+                      <p className="text-sm text-gray-600">預約時間</p>
                       <p className="font-bold text-gray-800">{selectedTime}</p>
                     </div>
                   </div>

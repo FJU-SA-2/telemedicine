@@ -44,9 +44,17 @@ function BookingModal({ doctor, onClose, onConfirm }) {
           </button>
 
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-lg">
-              {doctor.last_name.charAt(0)}
+           {doctor.photo_url ? ( 
+            <img
+              src={`http://localhost:5000${doctor.photo_url}`}
+              alt={`${doctor.last_name}${doctor.first_name} 頭像`}
+              className="w-16 h-16 rounded-full object-cover border"
+            />
+          ) : (
+            <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
+              {doctor.last_name?.charAt(0) || "醫"}
             </div>
+          )}
             <div>
               <h3 className="font-bold text-base">{doctorFullName}</h3>
               <p className="text-sm text-black">{doctor.specialty}</p>
@@ -146,9 +154,17 @@ function DoctorDetailsPage({ doctor, onBack, onBooking }) {
             >
               <ArrowLeft size={24} />
             </button>
-            <div className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-3xl">
-              {doctor.last_name.charAt(0)}
-            </div>
+            {doctor.photo_url ? ( 
+              <img
+                src={`http://localhost:5000${doctor.photo_url}`}
+                alt={`${doctor.last_name}${doctor.first_name} 頭像`}
+                className="w-16 h-16 rounded-full object-cover border"
+              />
+            ) : (
+              <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                {doctor.last_name?.charAt(0) || "醫師"}
+              </div>
+            )}
           </div>
           <div>
             <h1 className="text-black font-bold mb-2">{doctorFullName}</h1>
@@ -212,7 +228,7 @@ function DoctorDetailsPage({ doctor, onBack, onBooking }) {
 }
 
 // 🟢 預約主頁面
-function BookingPage({ onSelectDoctor, selectedDoctor }) {
+function BookingPage({ onSelectDoctor, selectedDoctor, activeTab }) {
   const [doctors, setDoctors] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -264,9 +280,11 @@ function BookingPage({ onSelectDoctor, selectedDoctor }) {
       }
     }
 
+    if (activeTab === "reserve" || activeTab === "doctorlist") {
     fetchDoctors();
     fetchFavorites();
-  }, []);
+  }
+}, [activeTab]);
 
   const specialties =
     doctors.length > 0
@@ -415,9 +433,18 @@ function BookingPage({ onSelectDoctor, selectedDoctor }) {
               </div>
 
               <div className="flex items-start gap-4 mb-4">
-                <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                  {doctor.last_name.charAt(0)}
-                </div>
+               {doctor.photo_url ? (
+                 <img
+                  src={`http://localhost:5000${doctor.photo_url}`}
+                  alt={`${doctor.last_name}${doctor.first_name} 頭像`}
+                  className="w-16 h-16 rounded-full object-cover border"
+                  />
+             ) : (
+               <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                 {doctor.last_name?.charAt(0) || "醫"}
+               </div>
+               )}
+
                 <div className="flex-1">
                   <h3 className="font-bold text-lg">{fullName}</h3>
                   <p className="text-blue-600 text-sm">{doctor.specialty}</p>
@@ -497,12 +524,14 @@ export default function App() {
           <BookingPage
             onSelectDoctor={setSelectedDoctor}
             selectedDoctor={selectedDoctor}
+            activeTab={activeTab}
           />
         )}
         {activeTab === "doctorlist" && (
           <BookingPage
             onSelectDoctor={setSelectedDoctor}
             selectedDoctor={selectedDoctor}
+            activeTab={activeTab}
           />
         )}
         {activeTab === "settings" && <SettingsPage />}

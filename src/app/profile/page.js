@@ -14,6 +14,8 @@ export default function ProfilePage() {
 
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
+  const [selectedPhotoFile, setSelectedPhotoFile] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
 
   // 編輯表單狀態
@@ -36,7 +38,8 @@ export default function ProfilePage() {
     experience: "",
     qualifications: "",
     consultation_fee: 0,
-    consultation_type: "現場看診"
+    consultation_type: "現場看診",
+    photo: ""
   });
 const fetchUser = async () => {
    setLoading(true);
@@ -80,7 +83,8 @@ const fetchUser = async () => {
               experience: profile.experience || "",
               qualifications: profile.qualifications || "",
               consultation_fee: profile.consultation_fee || 0,
-              consultation_type: profile.consultation_type || "現場看診"
+              consultation_type: profile.consultation_type || "現場看診",
+              photo: profile.photo || ""
             });
           }
           return data.user; // 成功時返回用戶資料
@@ -99,6 +103,57 @@ const fetchUser = async () => {
  useEffect(() => {
     fetchUser();
   }, [router]);
+
+  const handlePhotoFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      // 確保只選擇一個檔案
+      setSelectedPhotoFile(e.target.files[0]);
+    } else {
+      setSelectedPhotoFile(null);
+    }
+  };
+
+  // ⭐ NEW: 處理照片上傳
+  const handlePhotoUpload = async () => {
+    if (!selectedPhotoFile) {
+      alert("請先選擇照片檔案");
+      return;
+    }
+    
+    setUploadingPhoto(true);
+    
+    const formData = new FormData();
+    formData.append('photo', selectedPhotoFile); // 需與後端 request.files['photo'] 對應
+    
+    try {
+      // 呼叫照片上傳 API (請確保您的後端服務在 localhost:5000)
+      const res = await fetch("http://localhost:5000/api/doctor/upload-photo", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert("照片上傳成功！");
+        // ⭐ 關鍵：更新 doctorForm 狀態，使用後端回傳的 photo_path 更新 'photo' 欄位
+        setDoctorForm(prev => ({
+            ...prev,
+            photo: data.photo_path 
+        }));
+        setSelectedPhotoFile(null); // 清除選中的檔案
+      } else {
+        alert(data.message || "照片上傳失敗，請重試");
+      }
+      
+    } catch (error) {
+      console.error("照片上傳錯誤:", error);
+      alert("照片上傳失敗，請重試");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -128,7 +183,7 @@ const handleSave = async () => {
       credentials: "include",
       body: JSON.stringify(requestBody)
     });
-
+  
     const data = await res.json(); // 取得 PUT 請求的結果 (成功或失敗訊息)
 
     if (res.ok) {
@@ -180,7 +235,8 @@ const handleSave = async () => {
         experience: profile.experience || "",
         qualifications: profile.qualifications || "",
         consultation_fee: profile.consultation_fee || 0,
-        consultation_type: profile.consultation_type || "現場看診"
+        consultation_type: profile.consultation_type || "現場看診",
+        photo: profile.photo || ""
       });
     }
     setEditing(false);
@@ -257,7 +313,7 @@ const handleSave = async () => {
           <div>
             <p className="text-sm text-gray-500">姓名</p>
             <p className="text-lg font-medium text-gray-800">
-              {user.last_name} {user.first_name}
+              {user.first_name}{user.last_name} 
             </p>
           </div>
 
@@ -480,10 +536,61 @@ const handleSave = async () => {
             )}
           </div>
 
+          <div className="mb-6 pb-6 border-b border-gray-100 flex items-start gap-6">
+      {/* 1. 照片顯示 */}
+      <div className="flex-shrink-0">
+        <p className="text-sm text-gray-500 mb-1">個人頭像</p>
+        <img
+          className="h-24 w-24 object-cover rounded-full border-2 border-gray-200"
+          // 使用 doctorForm.photo 讀取當前狀態
+          src={doctorForm.photo 
+            ? `http://localhost:5000/uploads/profile_pictures/${doctorForm.photo}` // ⚠️ 確保後端 app.py 的路徑正確
+            : "/default-doctor-photo.png" // 預設圖
+          }
+          alt="醫師頭像"
+          onError={(e) => {
+              e.target.onerror = null; // 避免無限循環
+              e.target.src="/default-doctor-photo.png"
+          }}
+        />
+      </div>
+      {editing && (
+        // 2. 編輯模式下的上傳控制項
+        <div className="flex-grow">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            上傳新頭像
+          </label>
+          <div className="flex items-center gap-3">
+            <input 
+              type="file" 
+              accept=".png,.jpg,.jpeg" 
+              onChange={handlePhotoFileChange} // 綁定到我們之前定義的檔案選擇函式
+              className="flex-grow text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              disabled={uploadingPhoto}
+            />
+            
+            <button 
+              onClick={handlePhotoUpload} // 綁定到我們之前定義的上傳函式
+              disabled={uploadingPhoto || !selectedPhotoFile}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:bg-gray-400 whitespace-nowrap"
+            >
+              {uploadingPhoto ? "上傳中..." : "儲存照片"}
+            </button>
+          </div>
+          {selectedPhotoFile && (
+              <p className="text-sm text-gray-600 mt-2">
+                  已選擇檔案: {selectedPhotoFile.name}
+              </p>
+          )}
+          <p className="text-xs text-gray-500 mt-1">請選擇檔案後點擊「儲存照片」進行上傳。</p>
+        </div>
+      )}
+    </div>
+    
+
           {!editing ? (
              <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
                 <div>
                   <p className="text-sm text-gray-500">主治科別</p>
                   <p className="text-lg font-medium text-gray-800">
@@ -537,8 +644,6 @@ const handleSave = async () => {
           ) : (
             // ✅ 醫師編輯模式
   <div className="space-y-4">
-    
-
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">
         主治科別
@@ -568,69 +673,69 @@ const handleSave = async () => {
         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       />
     </div>
-    {/* 個人簡介 */}
-<div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">
-    個人簡介
-  </label>
-  <textarea
-    name="description"
-    value={doctorForm.description}
-    onChange={(e) =>
-      setDoctorForm({ ...doctorForm, description: e.target.value })
-    }
-    rows="3"
-    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-  />
-</div>
+        {/* 個人簡介 */}
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        個人簡介
+      </label>
+      <textarea
+        name="description"
+        value={doctorForm.description}
+        onChange={(e) =>
+          setDoctorForm({ ...doctorForm, description: e.target.value })
+        }
+        rows="3"
+        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      />
+    </div>
 
-{/* 專業經歷 */}
-<div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">
-    專業經歷
-  </label>
-  <textarea
-    name="experience"
-    value={doctorForm.experience}
-    onChange={(e) =>
-      setDoctorForm({ ...doctorForm, experience: e.target.value })
-    }
-    rows="3"
-    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-  />
-</div>
+    {/* 專業經歷 */}
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        專業經歷
+      </label>
+      <textarea
+        name="experience"
+        value={doctorForm.experience}
+        onChange={(e) =>
+          setDoctorForm({ ...doctorForm, experience: e.target.value })
+        }
+        rows="3"
+        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      />
+    </div>
 
-{/* 學位與認證 */}
-<div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">
-    學位與認證
-  </label>
-  <textarea
-    name="qualifications"
-    value={doctorForm.qualifications}
-    onChange={(e) =>
-      setDoctorForm({ ...doctorForm, qualifications: e.target.value })
-    }
-    rows="3"
-    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-  />
-</div>
+    {/* 學位與認證 */}
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        學位與認證
+      </label>
+      <textarea
+        name="qualifications"
+        value={doctorForm.qualifications}
+        onChange={(e) =>
+          setDoctorForm({ ...doctorForm, qualifications: e.target.value })
+        }
+        rows="3"
+        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      />
+    </div>
 
-{/* 學歷 */}
-<div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">
-    學歷
-  </label>
-  <textarea
-    name="education"
-    value={doctorForm.education}
-    onChange={(e) =>
-      setDoctorForm({ ...doctorForm, education: e.target.value })
-    }
-    rows="2"
-    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-  />
-</div>
+    {/* 學歷 */}
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        學歷
+      </label>
+      <textarea
+        name="education"
+        value={doctorForm.education}
+        onChange={(e) =>
+          setDoctorForm({ ...doctorForm, education: e.target.value })
+        }
+        rows="2"
+        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      />
+    </div>
 
 
     <div>

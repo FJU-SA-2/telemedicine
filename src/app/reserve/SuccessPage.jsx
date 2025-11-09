@@ -1,7 +1,9 @@
 "use client";
-import { CheckCircle, Calendar, Clock, CreditCard, FileText, AlertCircle, X } from "lucide-react";
+import { CheckCircle, Calendar, Clock, CreditCard, FileText, AlertCircle, X, MessageSquare } from "lucide-react";
 
 export default function SuccessPage({ bookingInfo, onClose }) {
+    console.log("✅ bookingInfo 傳入 SuccessPage:", bookingInfo);
+
   const formatDate = (dateStr) => {
     const date = new Date(dateStr + "T00:00:00");
     return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
@@ -11,6 +13,17 @@ export default function SuccessPage({ bookingInfo, onClose }) {
     const date = new Date(dateStr + "T00:00:00");
     const dayNames = ["週日","週一","週二","週三","週四","週五","週六"];
     return dayNames[date.getDay()];
+  };
+  const getAppointmentTypeName = (type) => {
+    switch(type) {
+      case 'consultation':
+        case 'consultation':
+        return '健康諮詢';
+      case 'treatment': // 假設這是您的醫療診療類型
+        return '醫療診療';
+      default:
+        return '醫療診療';
+    }
   };
 
   return (
@@ -82,10 +95,22 @@ export default function SuccessPage({ bookingInfo, onClose }) {
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <Clock size={16} className="text-gray-500" />
-                    <p className="text-sm text-gray-600">就診時間</p>
+                    <p className="text-sm text-gray-600">預約時間</p>
                   </div>
                   <p className="font-bold text-gray-800 text-xl">{bookingInfo.time}</p>
                 </div>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <MessageSquare size={16} className="text-blue-600" />
+                  <p className="text-sm text-blue-700 font-semibold">預約類型</p>
+                </div>
+                <p className="font-bold text-blue-600">
+                  {getAppointmentTypeName(bookingInfo.appointmentType)}
+                  <span className="text-sm font-normal text-blue-500 ml-2">
+                    ({bookingInfo.appointmentType === 'consultation' ? '健康諮詢服務' : '醫療診療服務'})
+                  </span>
+                </p>
               </div>
 
               <div className="bg-green-50 border border-green-200 rounded-lg p-3">
@@ -99,7 +124,9 @@ export default function SuccessPage({ bookingInfo, onClose }) {
               <div className="bg-white border border-gray-200 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <FileText size={16} className="text-gray-500" />
-                  <p className="text-sm text-gray-600 font-semibold">症狀描述</p>
+                  <p className="text-sm text-gray-600 font-semibold">
+                    {bookingInfo.appointmentType === 'consultation' ? '諮詢內容' : '症狀描述'}
+                  </p>
                 </div>
                 <p className="text-sm text-gray-700 whitespace-pre-wrap">{bookingInfo.symptoms}</p>
               </div>

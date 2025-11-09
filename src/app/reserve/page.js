@@ -88,8 +88,10 @@ function BookingPage({ doctors, schedules, setSchedules }) {
         appointment_time: bookingData.time,
         symptoms: bookingData.symptoms,
         payment_method: bookingData.paymentMethod,
+        appointment_type: bookingData.appointmentType,
         amount: 500
       }),
+      credentials: "include", 
     });
 
     const result = await response.json();
