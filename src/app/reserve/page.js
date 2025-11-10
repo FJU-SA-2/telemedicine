@@ -41,7 +41,7 @@ function BookingPage({ doctors, schedules, setSchedules }) {
     }
     
     if (searchName) {
-      const fullName = doctor.last_name + doctor.first_name;
+      const fullName = doctor.first_name + doctor.last_name;
       if (!fullName.includes(searchName)) return false;
     }
     

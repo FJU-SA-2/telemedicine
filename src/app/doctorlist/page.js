@@ -47,7 +47,7 @@ function BookingModal({ doctor, onClose, onConfirm }) {
            {doctor.photo_url ? ( 
             <img
               src={`http://localhost:5000${doctor.photo_url}`}
-              alt={`${doctor.last_name}${doctor.first_name} 頭像`}
+              alt={`${doctor.first_name}${doctor.last_name} 頭像`}
               className="w-16 h-16 rounded-full object-cover border"
             />
           ) : (
@@ -139,7 +139,7 @@ function DoctorDetailsPage({ doctor, onBack, onBooking }) {
     onBooking(bookingData);
   };
 
-  const doctorFullName = `${doctor.last_name}${doctor.first_name}`;
+  const doctorFullName = `${doctor.first_name}${doctor.last_name}`;
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -157,7 +157,7 @@ function DoctorDetailsPage({ doctor, onBack, onBooking }) {
             {doctor.photo_url ? ( 
               <img
                 src={`http://localhost:5000${doctor.photo_url}`}
-                alt={`${doctor.last_name}${doctor.first_name} 頭像`}
+                alt={`${doctor.first_name}${doctor.last_name} 頭像`}
                 className="w-16 h-16 rounded-full object-cover border"
               />
             ) : (
@@ -436,7 +436,7 @@ function BookingPage({ onSelectDoctor, selectedDoctor, activeTab }) {
                {doctor.photo_url ? (
                  <img
                   src={`http://localhost:5000${doctor.photo_url}`}
-                  alt={`${doctor.last_name}${doctor.first_name} 頭像`}
+                  alt={`${doctor.first_name}${doctor.last_name} 頭像`}
                   className="w-16 h-16 rounded-full object-cover border"
                   />
              ) : (
