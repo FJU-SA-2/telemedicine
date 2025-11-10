@@ -3,9 +3,11 @@
 import { House, Calendar, ContactRound, X, Settings, Video, MessageCircleMore } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 
 export default function DoctorSidebar({ isOpen, setIsOpen }) {
-  const [activeTab, setActiveTab] = useState("/doctorpage");
+  const pathname = usePathname();
+
 
   const menuItems = [
     { id: "/doctorpage", label: "首頁", icon: House, href: "/doctorpage" },
@@ -40,9 +42,8 @@ export default function DoctorSidebar({ isOpen, setIsOpen }) {
             <Link
               key={item.id}
               href={item.href}
-              onClick={() => setActiveTab(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-all ${
-                activeTab === item.id
+                pathname === item.href
                   ? "bg-blue-500 text-white shadow-md"
                   : "text-gray-700 hover:bg-gray-100"
               }`}
