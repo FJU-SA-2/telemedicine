@@ -925,6 +925,70 @@ def get_record():
         cursor.close()
         db.close()
 
+@app.route("/api/cancel_appointment", methods=["POST"])
+def cancel_appointment():
+    try:
+        data = request.get_json()
+        appointment_id = data.get("appointment_id")
+
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        # 取得預約狀態與時間
+        cursor.execute("""
+            SELECT appointment_date, appointment_time, status 
+            FROM appointments 
+            WHERE appointment_id = %s
+        """, (appointment_id,))
+        appt = cursor.fetchone()
+
+        if not appt:
+            return jsonify({"success": False, "message": "找不到此預約"}), 404
+
+        appointment_date = appt["appointment_date"]
+        appointment_time = appt["appointment_time"]
+        status = appt["status"]
+
+        # ✅ 修正:處理 timedelta 轉換為 time
+        if isinstance(appointment_time, timedelta):
+            # timedelta 轉換為 time 物件
+            total_seconds = int(appointment_time.total_seconds())
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
+            appointment_time = datetime.min.time().replace(hour=hours, minute=minutes, second=seconds)
+        elif isinstance(appointment_time, datetime):
+            appointment_time = appointment_time.time()
+
+        appointment_datetime = datetime.combine(appointment_date, appointment_time)
+        now = datetime.now()
+
+        # 判斷距離預約時間是否超過兩天(不含兩天)
+        diff = appointment_datetime - now
+
+        if diff > timedelta(days=2):
+            refund_message = "取消成功,將於三日內退款"
+        else:
+            refund_message = "取消成功"
+
+        # 更新狀態
+        cursor.execute("""
+            UPDATE appointments 
+            SET status = '已取消' 
+            WHERE appointment_id = %s
+        """, (appointment_id,))
+        db.commit()
+
+        return jsonify({"success": True, "message": refund_message})
+
+    except Exception as e:
+        print("Cancel error:", e)
+        return jsonify({"success": False, "message": "伺服器錯誤"}), 500
+
+    finally:
+        cursor.close()
+        db.close()
+        
 @app.route("/api/recordoc", methods=["GET"])
 def get_recordoc():
    

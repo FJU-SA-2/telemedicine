@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect } from 'react';
-import { Calendar, Clock, User, Stethoscope, RefreshCw, Menu } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Calendar, Clock, User, Stethoscope, RefreshCw, Menu } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 
@@ -8,7 +8,7 @@ export default function AppointmentRecords() {
   const [isOpen, setIsOpen] = useState(false);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState("all");
 
   useEffect(() => {
     fetchAppointments();
@@ -17,21 +17,21 @@ export default function AppointmentRecords() {
   const fetchAppointments = async () => {
     setLoading(true);
     try {
-        const res = await fetch("/api/record", {
-      credentials: 'include'  // 很重要！允許跨域時發送 Cookie/Session
-    });
-     
+      const res = await fetch("/api/record", {
+        credentials: "include", // 允許跨域 Cookie/Session
+      });
+
       if (!res.ok) throw new Error("API 取得資料失敗");
       const data = await res.json();
-   
+
       const formattedData = data.map((item) => ({
         appointment_id: item.appointment_id,
         appointment_date: item.appointment_date,
         appointment_time: item.appointment_time,
         status: item.status,
         doctor: {
-          first_name: item.last_name,
-          last_name: item.first_name,
+          first_name: item.first_name,
+          last_name: item.last_name,
           specialty: item.doctor_specialty,
         },
       }));
@@ -45,36 +45,90 @@ export default function AppointmentRecords() {
     }
   };
 
+  // 狀態顏色
   const getStatusColor = (status) => {
     switch (status) {
-      case '待確認':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case '已確認':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
-      case '已完成':
-        return 'bg-green-100 text-green-800 border-green-300';
-      case '已取消':
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+      case "待確認":
+        return "bg-yellow-100 text-yellow-800 border-yellow-300";
+      case "已確認":
+        return "bg-blue-100 text-blue-800 border-blue-300";
+      case "已完成":
+        return "bg-green-100 text-green-800 border-green-300";
+      case "已取消":
+        return "bg-gray-100 text-gray-800 border-gray-300";
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+        return "bg-gray-100 text-gray-800 border-gray-300";
     }
   };
 
+  // 日期格式化
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('zh-TW', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      weekday: 'short'
+    return date.toLocaleDateString("zh-TW", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      weekday: "short",
     });
   };
 
+  // 時間格式化
   const formatTime = (timeString) => {
     return timeString.slice(0, 5);
   };
 
-  const filteredAppointments = appointments.filter(apt => filter === 'all' || apt.status === filter);
+  // 計算可否取消（距離看診日是否超過兩天）
+  const canCancel = (appointmentDate, appointmentTime) => {
+    const appointmentDateTime = new Date(`${appointmentDate}T${appointmentTime}`);
+    const now = new Date();
+    const diffDays = (appointmentDateTime - now) / (1000 * 60 * 60 * 24);
+    return diffDays > 2;
+  };
+
+  // 取消預約函式
+  const handleCancel = async (appointment) => {
+    const confirmed = window.confirm("確定要取消嗎？");
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch("/api/cancel_appointment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ appointment_id: appointment.appointment_id }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        if (appointment.status === "待確認") {
+          alert("取消成功");
+        } else if (appointment.status === "已確認") {
+          alert("取消成功，將於三日內退款");
+        } else {
+          alert("取消成功");
+        }
+
+        // 即時更新畫面上的狀態（不重新整理頁面）
+        setAppointments((prev) =>
+          prev.map((a) =>
+            a.appointment_id === appointment.appointment_id
+              ? { ...a, status: "已取消" }
+              : a
+          )
+        );
+      } else {
+        alert(data.message || "取消失敗，請稍後再試");
+      }
+    } catch (error) {
+      console.error("取消失敗：", error);
+      alert("取消失敗，請稍後再試");
+    }
+  };
+
+  // 篩選預約
+  const filteredAppointments = appointments.filter(
+    (apt) => filter === "all" || apt.status === filter
+  );
 
   if (loading) {
     return (
@@ -88,37 +142,36 @@ export default function AppointmentRecords() {
   }
 
   return (
-      <div className="relative min-h-screen bg-gray-50">
-        {!isOpen && (
-          <button 
-            onClick={() => setIsOpen(true)} 
-            className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
-          >
-            <Menu size={24} />
-          </button>
-        )}
-  
-        <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+    <div className="relative min-h-screen bg-gray-50">
+      {!isOpen && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
+        >
+          <Menu size={24} />
+        </button>
+      )}
+
+      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
       {/* 主內容 */}
       <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
-          <Navbar />
-      
+        <Navbar />
 
         {/* 篩選器 */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <div className="flex flex-wrap gap-2">
-            {['all', '待確認', '已確認', '已完成', '已取消'].map((status) => (
+            {["all", "待確認", "已確認", "已完成", "已取消"].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilter(status)}
                 className={`px-4 py-2 rounded-full font-medium transition-all ${
                   filter === status
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
-                {status === 'all' ? '全部' : status}
+                {status === "all" ? "全部" : status}
               </button>
             ))}
           </div>
@@ -156,7 +209,8 @@ export default function AppointmentRecords() {
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-gray-800">
-                        {appointment.doctor.last_name}{appointment.doctor.first_name} 醫師
+                        {appointment.doctor.first_name}
+                        {appointment.doctor.last_name} 醫師
                       </h3>
                       <div className="flex items-center text-gray-600 mt-1">
                         <Stethoscope className="w-4 h-4 mr-1" />
@@ -166,20 +220,32 @@ export default function AppointmentRecords() {
                   </div>
 
                   {/* 預約時間 */}
-                  <div className="space-y-2 bg-gray-50 rounded-lg p-4">
+                  <div className="space-y-2 bg-gray-50 rounded-lg p-4 mb-4">
                     <div className="flex items-center text-gray-700">
                       <Calendar className="w-5 h-5 mr-3 text-blue-600" />
-                      <span className="font-medium">{formatDate(appointment.appointment_date)}</span>
+                      <span className="font-medium">
+                        {formatDate(appointment.appointment_date)}
+                      </span>
                     </div>
                     <div className="flex items-center text-gray-700">
                       <Clock className="w-5 h-5 mr-3 text-blue-600" />
-                      <span className="font-medium">{formatTime(appointment.appointment_time)}</span>
+                      <span className="font-medium">
+                        {formatTime(appointment.appointment_time)}
+                      </span>
                     </div>
                   </div>
-                </div>
 
-            
-               
+                  {/* ✅ 取消按鈕（僅距離看診 > 2 天且狀態為待確認或已確認時顯示） */}
+                  {["待確認", "已確認"].includes(appointment.status) &&
+                    canCancel(appointment.appointment_date, appointment.appointment_time) && (
+                      <button
+                        onClick={() => handleCancel(appointment)}
+                        className="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-2 rounded-lg transition"
+                      >
+                        取消預約
+                      </button>
+                    )}
+                </div>
               </div>
             ))}
           </div>
