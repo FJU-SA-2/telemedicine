@@ -894,7 +894,7 @@ def get_record():
             a.appointment_date,
             a.appointment_time,
             a.status,
-            a.cancel_reason,
+            a.cancellation_reason,
             d.first_name,
             d.last_name,
             d.specialty as doctor_specialty
@@ -931,7 +931,7 @@ def cancel_appointment():
     try:
         data = request.get_json()
         appointment_id = data.get("appointment_id")
-        cancel_reason = data.get("cancel_reason", "")  # 新增：取得取消原因
+        cancel_reason = data.get("cancellation_reason", "")  # 新增：取得取消原因
 
         db = get_db()
         cursor = db.cursor(dictionary=True)
@@ -984,7 +984,7 @@ def cancel_appointment():
         # 更新狀態並儲存取消原因
         cursor.execute("""
             UPDATE appointments 
-            SET status = '已取消', cancel_reason = %s 
+            SET status = '已取消', cancellation_reason = %s 
             WHERE appointment_id = %s
         """, (cancel_reason, appointment_id))
         db.commit()

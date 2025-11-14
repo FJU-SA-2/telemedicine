@@ -35,7 +35,7 @@ export default function AppointmentRecords() {
         appointment_date: item.appointment_date,
         appointment_time: item.appointment_time,
         status: item.status,
-        cancel_reason: item.cancel_reason || null,
+        cancellation_reason: item.cancellation_reason || null,
         doctor: {
           first_name: item.first_name,
           last_name: item.last_name,
@@ -130,7 +130,7 @@ export default function AppointmentRecords() {
         credentials: "include",
         body: JSON.stringify({
           appointment_id: selectedAppointment.appointment_id,
-          cancel_reason: cancelReason,
+          cancellation_reason: cancelReason,
         }),
       });
 
@@ -281,11 +281,11 @@ export default function AppointmentRecords() {
                   )}
 
                   {/* 顯示取消原因（已取消狀態且有原因時） */}
-                  {appointment.status === "已取消" && appointment.cancel_reason && (
+                  {appointment.status === "已取消" && appointment.cancellation_reason && (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-4">
                       <p className="text-sm text-red-800 mb-1">
                     <span className="font-semibold">取消原因：</span>
-                     <span className="text-red-700 font-normal">{appointment.cancel_reason}</span>
+                     <span className="text-red-700 font-normal">{appointment.cancellation_reason}</span>
                       </p>
 
                     </div>
