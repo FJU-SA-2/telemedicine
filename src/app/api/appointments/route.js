@@ -9,7 +9,7 @@ const dbConfig = {
   database: "telemedicine",
 };
 
-// POST - 新增預約
+// POST - 新增預約 (狀態直接設為已確認)
 export async function POST(request) {
   let connection;
   try {
@@ -34,6 +34,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "該時段已被預約或不存在" }, { status: 409 });
     }
 
+    // ✅ 修改:狀態直接設為「已確認」
     const [result] = await connection.execute(
       `INSERT INTO appointments 
        (patient_id, doctor_id, appointment_date, appointment_time, status, symptoms, payment_method, amount) 
@@ -108,6 +109,83 @@ export async function GET(request) {
   } catch (error) {
     console.error("查詢預約錯誤:", error);
     return NextResponse.json({ error: "查詢失敗", details: error.message }, { status: 500 });
+  } finally {
+    if (connection) await connection.end();
+  }
+}
+
+// ✅ 新增: PATCH - 取消預約
+export async function PATCH(request) {
+  let connection;
+  try {
+    const body = await request.json();
+    const { appointment_id, cancellation_reason } = body;
+
+    if (!appointment_id) {
+      return NextResponse.json({ error: "缺少預約 ID" }, { status: 400 });
+    }
+
+    if (!cancellation_reason || cancellation_reason.trim() === "") {
+      return NextResponse.json({ error: "請填寫取消理由" }, { status: 400 });
+    }
+
+    connection = await mysql.createConnection(dbConfig);
+    await connection.beginTransaction();
+
+    // 查詢預約資料
+    const [appointments] = await connection.execute(
+      `SELECT doctor_id, appointment_date, appointment_time, status 
+       FROM appointments 
+       WHERE appointment_id = ?`,
+      [appointment_id]
+    );
+
+    if (appointments.length === 0) {
+      await connection.rollback();
+      return NextResponse.json({ error: "預約不存在" }, { status: 404 });
+    }
+
+    const appointment = appointments[0];
+
+    if (appointment.status === '已取消') {
+      await connection.rollback();
+      return NextResponse.json({ error: "預約已取消" }, { status: 400 });
+    }
+
+    if (appointment.status === '已完成') {
+      await connection.rollback();
+      return NextResponse.json({ error: "已完成的預約無法取消" }, { status: 400 });
+    }
+
+    // 更新預約狀態為已取消,並記錄取消理由
+    await connection.execute(
+      `UPDATE appointments 
+       SET status = '已取消', 
+           cancellation_reason = ?,
+           updated_at = NOW()
+       WHERE appointment_id = ?`,
+      [cancellation_reason, appointment_id]
+    );
+
+    // 釋放時段,將排程設回可預約
+    await connection.execute(
+      `UPDATE schedules 
+       SET is_available = '1' 
+       WHERE doctor_id = ? AND schedule_date = ? AND time_slot = ?`,
+      [appointment.doctor_id, appointment.appointment_date, appointment.appointment_time]
+    );
+
+    await connection.commit();
+
+    return NextResponse.json({ 
+      success: true, 
+      message: "預約已取消,時段已釋放" 
+    }, { status: 200 });
+
+  } catch (error) {
+    if (connection) await connection.rollback();
+    console.error("取消預約錯誤:", error);
+    return NextResponse.json({ error: "取消失敗", details: error.message }, { status: 500 });
   } finally {
     if (connection) await connection.end();
   }
