@@ -894,6 +894,7 @@ def get_record():
             a.appointment_date,
             a.appointment_time,
             a.status,
+            a.cancel_reason,
             d.first_name,
             d.last_name,
             d.specialty as doctor_specialty
@@ -930,6 +931,7 @@ def cancel_appointment():
     try:
         data = request.get_json()
         appointment_id = data.get("appointment_id")
+        cancel_reason = data.get("cancel_reason", "")  # 新增：取得取消原因
 
         db = get_db()
         cursor = db.cursor(dictionary=True)
@@ -949,9 +951,8 @@ def cancel_appointment():
         appointment_time = appt["appointment_time"]
         status = appt["status"]
 
-        # ✅ 修正:處理 timedelta 轉換為 time
+        # 處理 timedelta 轉換為 time
         if isinstance(appointment_time, timedelta):
-            # timedelta 轉換為 time 物件
             total_seconds = int(appointment_time.total_seconds())
             hours = total_seconds // 3600
             minutes = (total_seconds % 3600) // 60
@@ -963,23 +964,36 @@ def cancel_appointment():
         appointment_datetime = datetime.combine(appointment_date, appointment_time)
         now = datetime.now()
 
-        # 判斷距離預約時間是否超過兩天(不含兩天)
+        # 計算退款比例
         diff = appointment_datetime - now
-
-        if diff > timedelta(days=2):
-            refund_message = "取消成功,將於三日內退款"
+        diff_days = diff.total_seconds() / (24 * 3600)
+        
+        # 判斷是否為當天
+        is_same_day = appointment_date == now.date()
+        
+        if is_same_day:
+            refund_percentage = 20
+            refund_message = "取消成功，將退回 20% 款項，於三日內退款"
+        elif diff_days <= 2:
+            refund_percentage = 50
+            refund_message = "取消成功，將退回 50% 款項，於三日內退款"
         else:
-            refund_message = "取消成功"
+            refund_percentage = 100
+            refund_message = "取消成功，將全額退款，於三日內退款"
 
-        # 更新狀態
+        # 更新狀態並儲存取消原因
         cursor.execute("""
             UPDATE appointments 
-            SET status = '已取消' 
+            SET status = '已取消', cancel_reason = %s 
             WHERE appointment_id = %s
-        """, (appointment_id,))
+        """, (cancel_reason, appointment_id))
         db.commit()
 
-        return jsonify({"success": True, "message": refund_message})
+        return jsonify({
+            "success": True, 
+            "message": refund_message,
+            "refund_percentage": refund_percentage
+        })
 
     except Exception as e:
         print("Cancel error:", e)
