@@ -14,17 +14,6 @@ export default function SuccessPage({ bookingInfo, onClose }) {
     return dayNames[date.getDay()];
   };
 
-  const getAppointmentTypeName = (type) => {
-    switch (type) {
-      case 'consultation':
-        return '健康諮詢';
-      case 'treatment':
-        return '醫療診療';
-      default:
-        return '醫療診療';
-    }
-  };
-
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-white/30 backdrop-blur-sm p-4">
       <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
@@ -98,19 +87,6 @@ export default function SuccessPage({ bookingInfo, onClose }) {
                   </div>
                   <p className="font-bold text-gray-800 text-xl">{bookingInfo.time}</p>
                 </div>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <MessageSquare size={16} className="text-blue-600" />
-                  <p className="text-sm text-blue-700 font-semibold">預約類型</p>
-                </div>
-                <p className="font-bold text-blue-600">
-                  {getAppointmentTypeName(bookingInfo.appointmentType)}
-                  <span className="text-sm font-normal text-blue-500 ml-2">
-                    ({bookingInfo.appointmentType === 'consultation' ? '健康諮詢服務' : '醫療診療服務'})
-                  </span>
-                </p>
               </div>
 
               <div className="bg-green-50 border border-green-200 rounded-lg p-3">
