@@ -1,6 +1,6 @@
 // components/Sidebar.jsx
 "use client";
-import { Video,House, Calendar, ContactRound, X, Settings, MessageCircleMore} from "lucide-react";
+import { Video,House, Calendar, ContactRound, X, Settings, MessageCircleMore,FileText} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
@@ -10,7 +10,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
   const menuItems = [
     { id: "/", label: "首頁", icon: House, href: "/" },
-    { id: "/introduction", label: "使用流程介紹", icon: MessageCircleMore, href: "/introduction" },
+    { id: "/introduction", label: "使用流程介紹", icon: FileText, href: "/introduction" },
     { id: "/doctorlist", label: "醫生介紹", icon: ContactRound, href: "/doctorlist" },
     { id: "/favorite", label: "收藏列表", icon: ContactRound, href: "/favorite" },
     { id: "/reserve", label: "線上預約", icon: Calendar, href: "/reserve" },
