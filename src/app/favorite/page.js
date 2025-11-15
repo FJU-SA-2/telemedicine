@@ -371,7 +371,7 @@ export default function FavoritesPage() {
 
         {/* 成功提示訊息 */}
         {showSuccess && (
-          <div className="fixed top-20 right-6 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2">
+          <div className="fixed top-20 right-6 bg-blue-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2">
             <CheckCircle size={20} />
             <span>已取消收藏</span>
           </div>
