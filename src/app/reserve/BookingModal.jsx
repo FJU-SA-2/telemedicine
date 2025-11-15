@@ -39,7 +39,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
         .sort((a,b)=>a.time_slot.localeCompare(b.time_slot))
     : [];
 
-  const doctorFullName = `${doctor.last_name}${doctor.first_name}`;
+  const doctorFullName = `${doctor.first_name}${doctor.last_name}`;
 
   const handleNextStep = () => {
     if (step === 1 && selectedDate && selectedTime && appointmentType) {
