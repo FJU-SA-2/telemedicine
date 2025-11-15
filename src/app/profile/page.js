@@ -461,7 +461,7 @@ const handleSave = async () => {
                 </p>
               </div>
 
-              <div className="pt-4 border-t">
+              <div className="pt-4">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">緊急聯絡人</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -548,7 +548,7 @@ const handleSave = async () => {
                 />
               </div>
 
-              <div className="pt-4 border-t">
+              <div className="pt-4">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">緊急聯絡人</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
