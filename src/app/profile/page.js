@@ -17,6 +17,10 @@ export default function ProfilePage() {
   const [selectedPhotoFile, setSelectedPhotoFile] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
+  const [trialDaysLeft, setTrialDaysLeft] = useState(null);
+  const [trialEndDate, setTrialEndDate] = useState(null);
+  const trialMonths = 6;
+
 
   // 編輯表單狀態
   const [formData, setFormData] = useState({
@@ -57,6 +61,20 @@ const fetchUser = async () => {
         
         if (data.authenticated && data.user) {
           setUser(data.user);
+
+          // 計算免費試用期
+        if (data.user.created_at) {
+          const created = new Date(data.user.created_at);
+          const end = new Date(created);
+          end.setMonth(created.getMonth() + trialMonths);
+
+          const today = new Date();
+          const diff = end - today;
+          const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+
+          setTrialEndDate(end.toISOString().split("T")[0]);
+          setTrialDaysLeft(days);
+        }
 
            // 如果是病人，初始化表單資料
           if (data.user.role === "patient" && data.user.patientProfile) {
@@ -304,6 +322,49 @@ const handleSave = async () => {
         <Navbar />
       <main className="max-w-4xl mx-auto px-6 py-10">
       <h1 className="text-3xl font-semibold text-gray-800 mb-6">個人檔案</h1>
+      <div className="mt-8">
+      <Link 
+        href={user.role === "doctor" ? "/doctorpage" : "/"} 
+        className="inline-block px-5 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors mr-4"
+      >
+        返回首頁
+      </Link>
+        
+         <button 
+          onClick={handleLogout} 
+          className="inline-block px-5 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
+        >
+          登出
+        </button>
+          </div><br></br>
+      <div className="p-5 rounded-xl border border-indigo-300 bg-indigo-50 mb-6">
+  <h2 className="font-bold text-indigo-700 text-lg flex items-center gap-2">
+    🚀 免費試用期
+  </h2>
+
+  <p className="text-gray-700 mt-2">
+    到期日： <span className="font-semibold">{trialEndDate}</span>
+  </p>
+
+  {trialDaysLeft > 0 ? (
+    <p className="text-green-700 font-semibold">
+      ⏳ 還剩 {trialDaysLeft} 天，立即升級解鎖完整功能！
+    </p>
+  ) : (
+    <p className="text-red-700 font-semibold">
+      🔒 試用已到期，升級後即可繼續使用
+    </p>
+  )}
+
+  <button
+    onClick={() => router.push("/pricing")}
+    className="mt-4 w-full py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition"
+  >
+    查看方案 & 升級
+  </button>
+</div>
+
+      
 
       {/* 基本資料 */}
       <div className="bg-white shadow rounded-xl p-6 space-y-4 border border-gray-100 mb-6">
@@ -330,13 +391,34 @@ const handleSave = async () => {
           </div>
 
           <div>
-            <p className="text-sm text-gray-500">使用者名稱</p>
-            <p className="text-lg font-medium text-gray-800">{user.username}</p>
+            {user.role === "patient" ? (
+              <>
+                <p className="text-sm text-gray-500">年齡</p>
+                <p className="text-lg font-medium text-gray-800">{user.age}</p>
+              </>
+            ) : user.role === "doctor" ? (
+              <>
+                <p className="text-sm text-gray-500">驗證狀態</p>
+                <p className="text-lg font-medium text-gray-800">
+                  {user.approval_status === "approved" && "已通過"}
+                  {user.approval_status === "pending" && "審核中"}
+                  {user.approval_status === "rejected" && "未通過"}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-gray-500">使用者名稱</p>
+                <p className="text-lg font-medium text-gray-800">{user.username}</p>
+              </>
+            )}
           </div>
+          
+
 
 
         </div>
       </div>
+      
 
       {/* 病患專屬：健康資料 */}
       {isPatient && (
@@ -774,21 +856,7 @@ const handleSave = async () => {
   )}
 </div>
 )}
-      <div className="mt-8">
-      <Link 
-        href={user.role === "doctor" ? "/doctorpage" : "/"} 
-        className="inline-block px-5 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors mr-4"
-      >
-        返回首頁
-      </Link>
-        
-         <button 
-          onClick={handleLogout} 
-          className="inline-block px-5 py-2 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
-        >
-          登出
-        </button>
-          </div>
+      
         </main>
       </div>
     </div>
