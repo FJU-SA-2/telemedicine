@@ -492,12 +492,10 @@ const handleVerifyCode = async (e) => {
                         <select value={specialty} onChange={(e) => setSpecialty(e.target.value)}
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black">
                           <option value="">請選擇科別</option>
-                          <option value="內科">內科</option>
-                          <option value="外科">外科</option>
-                          <option value="小兒科">小兒科</option>
-                          <option value="gynecology">婦產科</option>
-                          <option value="婦產科">精神科</option>
+                          <option value="家醫科">家醫科</option>
                           <option value="皮膚科">皮膚科</option>
+                          <option value="心理諮商與精神科">心理諮商與精神科</option>
+                          <option value="營養科">營養科</option>
                         </select>
                       </div>
 
