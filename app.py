@@ -732,11 +732,22 @@ def get_current_user():
     cursor = db.cursor(dictionary=True)
     
     try:
+        cursor.execute("""
+            SELECT username, email, role, created_at
+            FROM users
+            WHERE user_id = %s
+        """, (user_id,))
+        user_row = cursor.fetchone()
+
+        if not user_row:
+            return jsonify({"authenticated": False}), 404
+        
         user_data = {
             "user_id": user_id,
             "username": session.get('username'),
             "email": session.get('email'),
             "role": role,
+            "created_at": user_row["created_at"],
             "patient_id": session.get('patient_id'),
             "doctor_id": session.get('doctor_id'), 
             "first_name": session.get('first_name'), 
@@ -751,7 +762,8 @@ def get_current_user():
         if role == "patient":
             cursor.execute("""
                 SELECT patient_id, first_name, last_name, gender, phone_number, 
-                       date_of_birth, address, id_number, smoking_status, 
+                       date_of_birth,TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) AS age,
+                        address, id_number, smoking_status, 
                        drug_allergies, medical_history, emergency_contact_name, 
                        emergency_contact_phone
                 FROM patient 
@@ -760,6 +772,7 @@ def get_current_user():
             patient_data = cursor.fetchone()
             
             if patient_data:
+                user_data["age"] = patient_data["age"]
                 user_data['patientProfile'] = {
                     'patient_id': patient_data['patient_id'],
                     'gender': patient_data['gender'],
@@ -789,6 +802,7 @@ def get_current_user():
             doctor_data = cursor.fetchone()
             
             if doctor_data:
+                user_data["approval_status"] = doctor_data["approval_status"]
                 user_data['doctorProfile'] = {
                     'doctor_id': doctor_data['doctor_id'],
                     'gender': doctor_data['gender'],
