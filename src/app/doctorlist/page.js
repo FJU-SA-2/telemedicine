@@ -514,6 +514,8 @@ function BookingPage({ onSelectDoctor, selectedDoctor, activeTab }) {
   const [showModal, setShowModal] = useState(false);
   const [selectedDoctorForBooking, setSelectedDoctorForBooking] = useState(null);
   const [showAlert, setShowAlert] = useState(true);
+  const [showFavoriteToast, setShowFavoriteToast] = useState(false);
+  const [favoriteMessage, setFavoriteMessage] = useState("");
 
   const userId = 1;
 
@@ -657,6 +659,11 @@ function BookingPage({ onSelectDoctor, selectedDoctor, activeTab }) {
             ? [...prev, doctorId]
             : prev.filter(id => id !== doctorId)
         );
+        
+        // 顯示收藏提示
+        setFavoriteMessage(data.isFavorite ? "已加入收藏" : "已取消收藏");
+        setShowFavoriteToast(true);
+        setTimeout(() => setShowFavoriteToast(false), 3000);
       }
     } catch (err) {
       console.error("收藏操作失敗", err);
@@ -680,6 +687,13 @@ function BookingPage({ onSelectDoctor, selectedDoctor, activeTab }) {
         <div className="fixed top-20 right-6 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2">
           <CheckCircle size={20} />
           <span>預約成功!</span>
+        </div>
+      )}
+
+      {showFavoriteToast && (
+        <div className="fixed top-20 right-6 bg-blue-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2">
+          <CheckCircle size={20} />
+          <span>{favoriteMessage}</span>
         </div>
       )}
 
