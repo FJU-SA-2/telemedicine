@@ -452,7 +452,7 @@ export default function DoctorAppointmentManagement() {
                                         onChange={(e) => setCancellationReason(e.target.value)}
                                         placeholder="請填寫取消理由,例如:&#10;• 臨時有其他手術安排&#10;• 身體不適無法看診&#10;• 其他緊急事項"
                                         rows={4}
-                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 focus:outline-none text-sm resize-none"
+                                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 focus:outline-none text-sm resize-none text-black"
                                     />
                                 </div>
 

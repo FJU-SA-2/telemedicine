@@ -4,7 +4,7 @@ import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import BookingModal from "./BookingModal";
 import SuccessPage from "./SuccessPage";
-import { Menu, Calendar, Search, Clock } from "lucide-react";
+import { Menu, Calendar, Search, Clock, CircleAlert,X } from "lucide-react";
 
 function BookingPage({ doctors, schedules, setSchedules }) {
   const [selectedSpecialty, setSelectedSpecialty] = useState("all");
@@ -14,6 +14,8 @@ function BookingPage({ doctors, schedules, setSchedules }) {
   const [showModal, setShowModal] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [bookingInfo, setBookingInfo] = useState(null);
+  const [showAlert, setShowAlert] = useState(true);
+
 
   // 只取得有可預約時段的醫師
   const doctorsWithSchedules = new Set(
@@ -30,21 +32,21 @@ function BookingPage({ doctors, schedules, setSchedules }) {
   const filteredDoctors = doctors.filter(doctor => {
     if (!doctorsWithSchedules.has(doctor.doctor_id)) return false;
     if (selectedSpecialty !== "all" && doctor.specialty !== selectedSpecialty) return false;
-    
+
     if (selectedDate) {
       const hasAvailableSlot = schedules.some(
-        s => s.doctor_id === doctor.doctor_id && 
-             s.schedule_date === selectedDate && 
-             s.is_available === 1
+        s => s.doctor_id === doctor.doctor_id &&
+          s.schedule_date === selectedDate &&
+          s.is_available === 1
       );
       if (!hasAvailableSlot) return false;
     }
-    
+
     if (searchName) {
       const fullName = doctor.first_name + doctor.last_name;
       if (!fullName.includes(searchName)) return false;
     }
-    
+
     return true;
   });
 
@@ -60,70 +62,70 @@ function BookingPage({ doctors, schedules, setSchedules }) {
   };
 
   const handleBooking = async (bookingData) => {
-  try {
-    // 先取得登入使用者資訊
-    const meRes = await fetch("/api/me");
-    if (!meRes.ok) {
-      alert("請先登入！");
-      return;
+    try {
+      // 先取得登入使用者資訊
+      const meRes = await fetch("/api/me");
+      if (!meRes.ok) {
+        alert("請先登入！");
+        return;
+      }
+      const meData = await meRes.json();
+      const patientId = meData.user?.patient_id;
+
+      if (!patientId) {
+        alert("您不是病患，無法預約！");
+        return;
+      }
+
+      // 發送預約請求到後端 API
+      const response = await fetch("/api/appointments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          patient_id: patientId, // 從登入狀態取得
+          doctor_id: bookingData.doctor.doctor_id,
+          appointment_date: bookingData.date,
+          appointment_time: bookingData.time,
+          symptoms: bookingData.symptoms,
+          payment_method: bookingData.paymentMethod,
+          appointment_type: bookingData.appointmentType,
+          amount: 500
+        }),
+        credentials: "include",
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        alert(result.error || "預約失敗，請稍後再試");
+        return;
+      }
+
+      // 預約成功，更新本地排程狀態
+      setSchedules(prevSchedules =>
+        prevSchedules.map(s =>
+          s.doctor_id === bookingData.doctor.doctor_id &&
+            s.schedule_date === bookingData.date &&
+            s.time_slot === bookingData.time
+            ? { ...s, is_available: 0 }
+            : s
+        )
+      );
+
+      setBookingInfo({
+        ...bookingData,
+        appointment_id: result.appointment_id
+      });
+      setShowModal(false);
+      setShowSuccess(true);
+
+    } catch (error) {
+      console.error("預約錯誤:", error);
+      alert("預約失敗，請檢查網路連線後再試");
     }
-    const meData = await meRes.json();
-    const patientId = meData.user?.patient_id;
-
-    if (!patientId) {
-      alert("您不是病患，無法預約！");
-      return;
-    }
-
-    // 發送預約請求到後端 API
-    const response = await fetch("/api/appointments", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        patient_id: patientId, // 從登入狀態取得
-        doctor_id: bookingData.doctor.doctor_id,
-        appointment_date: bookingData.date,
-        appointment_time: bookingData.time,
-        symptoms: bookingData.symptoms,
-        payment_method: bookingData.paymentMethod,
-        appointment_type: bookingData.appointmentType,
-        amount: 500
-      }),
-      credentials: "include", 
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      alert(result.error || "預約失敗，請稍後再試");
-      return;
-    }
-
-    // 預約成功，更新本地排程狀態
-    setSchedules(prevSchedules => 
-      prevSchedules.map(s => 
-        s.doctor_id === bookingData.doctor.doctor_id && 
-        s.schedule_date === bookingData.date && 
-        s.time_slot === bookingData.time
-          ? { ...s, is_available: 0 }
-          : s
-      )
-    );
-
-    setBookingInfo({
-      ...bookingData,
-      appointment_id: result.appointment_id
-    });
-    setShowModal(false);
-    setShowSuccess(true);
-
-  } catch (error) {
-    console.error("預約錯誤:", error);
-    alert("預約失敗，請檢查網路連線後再試");
-  }
-};
+  };
 
 
   const handleCloseSuccess = () => {
@@ -140,9 +142,9 @@ function BookingPage({ doctors, schedules, setSchedules }) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">選擇科別</label>
-            <select 
-              value={selectedSpecialty} 
-              onChange={e => setSelectedSpecialty(e.target.value)} 
+            <select
+              value={selectedSpecialty}
+              onChange={e => setSelectedSpecialty(e.target.value)}
               className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-800 font-medium"
             >
               <option value="all">所有科別 ({availableSpecialties.length})</option>
@@ -153,22 +155,22 @@ function BookingPage({ doctors, schedules, setSchedules }) {
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">選擇日期（選填）</label>
-            <input 
-              type="date" 
-              value={selectedDate} 
-              onChange={e => setSelectedDate(e.target.value)} 
-              min={new Date().toISOString().split('T')[0]} 
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={e => setSelectedDate(e.target.value)}
+              min={new Date().toISOString().split('T')[0]}
               className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-800"
             />
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">搜尋醫師姓名</label>
             <div className="relative">
-              <input 
-                type="text" 
-                value={searchName} 
-                onChange={e => setSearchName(e.target.value)} 
-                placeholder="輸入醫師姓名" 
+              <input
+                type="text"
+                value={searchName}
+                onChange={e => setSearchName(e.target.value)}
+                placeholder="輸入醫師姓名"
                 className="w-full px-4 py-2.5 pl-10 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-800"
               />
               <Search className="absolute left-3 top-3 text-gray-400" size={20} />
@@ -176,12 +178,38 @@ function BookingPage({ doctors, schedules, setSchedules }) {
           </div>
         </div>
       </div>
+      
+      {/* ✅ 重要提醒區塊（可關閉） */}
+      {showAlert && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 relative">
+          <button
+            onClick={() => setShowAlert(false)}
+            className="absolute top-3 right-3 text-red-500 hover:text-red-700 transition"
+          >
+            <X size={20} />
+          </button>
+
+          <div className="flex items-start gap-3">
+            <CircleAlert className="text-red-600 flex-shrink-0" size={24} />
+            <div>
+              <p className="font-bold text-red-700">
+                【重要提醒】
+              </p>
+              <p className="text-sm text-gray-700 leading-relaxed mt-1">
+                本平台提供之「心理諮商」與「精神科線上諮詢」服務屬於非醫療性質，
+                僅提供心理支持、情緒陪伴、生活適應建議與健康相關資訊。
+                諮詢內容不包含醫療診斷、開立藥物處方、醫療證明或任何醫療行為。
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 醫生列表 */}
       <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-800">
-            可預約醫師 
+            可預約醫師
             <span className="ml-2 text-blue-600">({filteredDoctors.length})</span>
           </h2>
           {(selectedSpecialty !== "all" || selectedDate || searchName) && (
@@ -209,10 +237,10 @@ function BookingPage({ doctors, schedules, setSchedules }) {
             {filteredDoctors.map(doctor => {
               const availableDates = getDoctorAvailableDates(doctor.doctor_id);
               const availableSlots = getDoctorAvailableSlots(doctor.doctor_id);
-              
+
               return (
-                <div 
-                  key={doctor.doctor_id} 
+                <div
+                  key={doctor.doctor_id}
                   className="border-2 border-gray-200 rounded-xl p-5 hover:border-blue-400 hover:shadow-xl transition-all cursor-pointer bg-gradient-to-br from-white to-gray-50"
                   onClick={() => { setSelectedDoctor(doctor); setShowModal(true); }}
                 >
@@ -251,16 +279,16 @@ function BookingPage({ doctors, schedules, setSchedules }) {
       </div>
 
       {showModal && selectedDoctor && (
-        <BookingModal 
-          doctor={selectedDoctor} 
-          schedules={schedules} 
-          onClose={() => { setShowModal(false); setSelectedDoctor(null); }} 
-          onConfirm={handleBooking} 
+        <BookingModal
+          doctor={selectedDoctor}
+          schedules={schedules}
+          onClose={() => { setShowModal(false); setSelectedDoctor(null); }}
+          onConfirm={handleBooking}
         />
       )}
 
       {showSuccess && bookingInfo && (
-        <SuccessPage 
+        <SuccessPage
           bookingInfo={bookingInfo}
           onClose={handleCloseSuccess}
         />
@@ -280,14 +308,14 @@ export default function HomePage() {
     async function fetchData() {
       try {
         setLoading(true);
-        
+
         const resDoctors = await fetch("/api/doctors");
         const doctorsData = await resDoctors.json();
         setDoctors(doctorsData);
 
         const resSchedules = await fetch("/api/schedules");
         const schedulesData = await resSchedules.json();
-        
+
         // 確保日期格式正確
         const formattedSchedules = schedulesData.map(s => ({
           ...s,
@@ -296,7 +324,7 @@ export default function HomePage() {
           time_slot: s.time_slot.substring(0, 5),
           is_available: Number(s.is_available)
         }));
-        
+
         setSchedules(formattedSchedules);
         setLoading(false);
       } catch (err) {
@@ -321,8 +349,8 @@ export default function HomePage() {
   return (
     <div className="relative min-h-screen bg-gray-50">
       {!isOpen && (
-        <button 
-          onClick={() => setIsOpen(true)} 
+        <button
+          onClick={() => setIsOpen(true)}
           className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
         >
           <Menu size={24} />
@@ -330,7 +358,7 @@ export default function HomePage() {
       )}
 
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
-      
+
       <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
         <Navbar />
         <BookingPage doctors={doctors} schedules={schedules} setSchedules={setSchedules} />
