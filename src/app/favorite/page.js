@@ -4,125 +4,11 @@ import { Star, ArrowLeft, Trash2, Menu, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
-
-// 🟢 預約模態窗口
-function BookingModal({ doctor, onClose, onConfirm }) {
-  const [selectedDate, setSelectedDate] = useState("2025-10-05");
-  const [selectedTime, setSelectedTime] = useState("09:00");
-
-  const weekDates = [
-    { day: "週日", date: 5, fullDate: "2025-10-05" },
-    { day: "週一", date: 6, fullDate: "2025-10-06" },
-    { day: "週二", date: 7, fullDate: "2025-10-07" },
-    { day: "週三", date: 8, fullDate: "2025-10-08" },
-    { day: "週四", date: 9, fullDate: "2025-10-09" },
-    { day: "週五", date: 10, fullDate: "2025-10-10" },
-    { day: "週六", date: 11, fullDate: "2025-10-11" },
-  ];
-
-  const timeSlots = [
-    "09:00", "09:30", "10:00", "10:30",
-    "11:00", "11:30", "14:00", "14:30",
-    "15:00", "15:30", "16:00", "16:30", "17:00"
-  ];
-
-  const getDayName = (fullDate) => {
-    const dateObj = weekDates.find((d) => d.fullDate === fullDate);
-    return dateObj ? dateObj.day : "";
-  };
-
-  const doctorFullName = `${doctor.last_name}${doctor.first_name}`;
-
-  return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
-      <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl pointer-events-auto">
-        <div className="relative p-6">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-          >
-            ×
-          </button>
-
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-lg">
-              {doctor.last_name.charAt(0)}
-            </div>
-            <div>
-              <h3 className="font-bold text-base">{doctorFullName}</h3>
-              <p className="text-sm text-gray-500">{doctor.specialty}</p>
-            </div>
-          </div>
-
-          {/* 日期選擇 */}
-          <div className="mb-5">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">選擇日期</h4>
-            <div className="grid grid-cols-7 gap-2">
-              {weekDates.map((item) => (
-                <button
-                  key={item.fullDate}
-                  onClick={() => setSelectedDate(item.fullDate)}
-                  className={`py-2 px-1 rounded-lg text-center transition ${
-                    selectedDate === item.fullDate
-                      ? "bg-blue-500 text-white"
-                      : "bg-white border border-gray-200 text-gray-700 hover:border-blue-300"
-                  }`}
-                >
-                  <div className="text-xs mb-1">{item.day}</div>
-                  <div className="text-base font-medium">{item.date}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 時間選擇 */}
-          <div className="mb-5">
-            <h4 className="text-sm font-medium text-gray-700 mb-3">選擇時段</h4>
-            <div className="grid grid-cols-4 gap-2">
-              {timeSlots.map((time) => (
-                <button
-                  key={time}
-                  onClick={() => setSelectedTime(time)}
-                  className={`py-2.5 rounded-lg text-sm font-medium transition ${
-                    selectedTime === time
-                      ? "bg-blue-500 text-white"
-                      : "bg-white border border-gray-200 text-gray-700 hover:border-blue-300"
-                  }`}
-                >
-                  {time}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 預約確認 */}
-          <div className="bg-blue-50 rounded-lg p-4 mb-5">
-            <h4 className="text-sm font-semibold text-gray-800 mb-2">預約資訊確認</h4>
-            <div className="space-y-1 text-sm text-gray-700">
-              <p>醫師：{doctorFullName} ({doctor.specialty})</p>
-              <p>
-                日期：{selectedDate.split("-")[1]}月{selectedDate.split("-")[2]}日{" "}
-                {getDayName(selectedDate)}
-              </p>
-              <p>時間：{selectedTime}</p>
-              <p>方式：視訊診療</p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => onConfirm({ doctor, date: selectedDate, time: selectedTime })}
-            className="w-full bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600 transition"
-          >
-            確認預約
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+import BookingModal from "../reserve/BookingModal";
+import SuccessPage from "../reserve/SuccessPage";
 
 // 🟢 醫師詳細資料頁面
-function DoctorDetailsPage({ doctor, onBack, onBooking }) {
+function DoctorDetailsPage({ doctor, schedules, onBack, onBooking }) {
   const [showModal, setShowModal] = useState(false);
 
   const handleBookingClick = () => {
@@ -189,10 +75,7 @@ function DoctorDetailsPage({ doctor, onBack, onBooking }) {
                 ${doctor.consultation_fee || "暫無"}
               </p>
             </div>
-            
           </div>
-
-          
         </div>
 
         {/* 預約按鈕 */}
@@ -207,6 +90,7 @@ function DoctorDetailsPage({ doctor, onBack, onBooking }) {
       {showModal && (
         <BookingModal
           doctor={doctor}
+          schedules={schedules}
           onClose={() => setShowModal(false)}
           onConfirm={handleConfirm}
         />
@@ -218,14 +102,17 @@ function DoctorDetailsPage({ doctor, onBack, onBooking }) {
 export default function FavoritesPage() {
   const router = useRouter();
   const [favoriteDoctors, setFavoriteDoctors] = useState([]);
+  const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [bookingInfo, setBookingInfo] = useState(null);
   const userId = 1; // 模擬登入使用者 ID
 
   useEffect(() => {
     fetchFavorites();
+    fetchSchedules();
   }, []);
 
   const fetchFavorites = async () => {
@@ -260,6 +147,26 @@ export default function FavoritesPage() {
     }
   };
 
+  const fetchSchedules = async () => {
+    try {
+      const resSchedules = await fetch("/api/schedules");
+      const schedulesData = await resSchedules.json();
+
+      // 確保日期格式正確
+      const formattedSchedules = schedulesData.map(s => ({
+        ...s,
+        doctor_id: Number(s.doctor_id),
+        schedule_date: s.schedule_date.split("T")[0],
+        time_slot: s.time_slot.substring(0, 5),
+        is_available: Number(s.is_available)
+      }));
+
+      setSchedules(formattedSchedules);
+    } catch (error) {
+      console.error("無法獲取排程:", error);
+    }
+  };
+
   const removeFavorite = async (doctorId) => {
     try {
       const res = await fetch("/api/favorites", {
@@ -288,10 +195,75 @@ export default function FavoritesPage() {
     setSelectedDoctor(doctor);
   };
 
-  const handleBooking = (bookingData) => {
-    console.log("預約資料:", bookingData);
-    setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+  const handleBooking = async (bookingData) => {
+    try {
+      // 先取得登入使用者資訊
+      const meRes = await fetch("/api/me");
+      if (!meRes.ok) {
+        alert("請先登入！");
+        return;
+      }
+      const meData = await meRes.json();
+      const patientId = meData.user?.patient_id;
+
+      if (!patientId) {
+        alert("您不是病患，無法預約！");
+        return;
+      }
+
+      // 發送預約請求到後端 API
+      const response = await fetch("/api/appointments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          patient_id: patientId,
+          doctor_id: bookingData.doctor.doctor_id,
+          appointment_date: bookingData.date,
+          appointment_time: bookingData.time,
+          symptoms: bookingData.symptoms,
+          payment_method: bookingData.paymentMethod,
+          appointment_type: bookingData.appointmentType,
+          amount: 500
+        }),
+        credentials: "include",
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        alert(result.error || "預約失敗，請稍後再試");
+        return;
+      }
+
+      // 預約成功，更新本地排程狀態
+      setSchedules(prevSchedules =>
+        prevSchedules.map(s =>
+          s.doctor_id === bookingData.doctor.doctor_id &&
+            s.schedule_date === bookingData.date &&
+            s.time_slot === bookingData.time
+            ? { ...s, is_available: 0 }
+            : s
+        )
+      );
+
+      setBookingInfo({
+        ...bookingData,
+        appointment_id: result.appointment_id
+      });
+      setShowSuccess(true);
+
+    } catch (error) {
+      console.error("預約錯誤:", error);
+      alert("預約失敗，請檢查網路連線後再試");
+    }
+  };
+
+  const handleCloseSuccess = () => {
+    setShowSuccess(false);
+    setBookingInfo(null);
+    setSelectedDoctor(null);
   };
 
   if (loading) {
@@ -324,14 +296,17 @@ export default function FavoritesPage() {
 
         <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
           <Navbar />
-          {showSuccess && (
-            <div className="fixed top-20 right-6 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2">
-              <CheckCircle size={20} />
-              <span>預約成功!</span>
-            </div>
+          
+          {showSuccess && bookingInfo && (
+            <SuccessPage
+              bookingInfo={bookingInfo}
+              onClose={handleCloseSuccess}
+            />
           )}
+          
           <DoctorDetailsPage
             doctor={selectedDoctor}
+            schedules={schedules}
             onBack={() => setSelectedDoctor(null)}
             onBooking={handleBooking}
           />
@@ -340,7 +315,7 @@ export default function FavoritesPage() {
     );
   }
 
-   return (
+  return (
     <div className="relative">
       {/* 打開按鈕 */}
       {!isOpen && (
@@ -370,8 +345,8 @@ export default function FavoritesPage() {
         <Navbar />
 
         {/* 成功提示訊息 */}
-        {showSuccess && (
-          <div className="fixed top-20 right-6 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2">
+        {showSuccess && !bookingInfo && (
+          <div className="fixed top-20 right-6 bg-blue-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2">
             <CheckCircle size={20} />
             <span>已取消收藏</span>
           </div>

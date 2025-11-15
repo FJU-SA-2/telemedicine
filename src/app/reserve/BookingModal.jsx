@@ -1,10 +1,10 @@
 "use client";
 import { useState } from "react";
-import { Calendar, CheckCircle, Clock, X, ArrowRight, ArrowLeft, CreditCard, FileText, MessageSquare  } from "lucide-react";
+import { Calendar, CheckCircle, Clock, X, ArrowRight, ArrowLeft, CreditCard, FileText, MessageSquare } from "lucide-react";
 
-// 預約彈窗 - 多步驟流程
+// 預約彈窗 - 多步驟流程 (調整順序: 時間 -> 症狀 -> 確認 -> 支付)
 export default function BookingModal({ doctor, schedules, onClose, onConfirm }) {
-  const [step, setStep] = useState(1); // 1=選時間, 2=支付, 3=症狀, 4=確認
+  const [step, setStep] = useState(1); // 1=選時間, 2=症狀, 3=確認, 4=支付
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [appointmentType, setAppointmentType] = useState("");
@@ -39,19 +39,21 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
         .sort((a,b)=>a.time_slot.localeCompare(b.time_slot))
     : [];
 
-  const doctorFullName = `${doctor.last_name}${doctor.first_name}`;
+  const doctorFullName = `${doctor.first_name}${doctor.last_name}`;
 
   const handleNextStep = () => {
-    if (step === 1 && selectedDate && selectedTime) {
+    if (step === 1 && selectedDate && selectedTime && appointmentType) {
       setStep(2);
-    } else if (step === 2 && paymentMethod) {
+    } else if (step === 2 && symptoms.trim()) {
+      setStep(3);
+    } else if (step === 3) {
+      setStep(4);
+    } else if (step === 4 && paymentMethod) {
       setProcessing(true);
       setTimeout(() => {
         setProcessing(false);
-        setStep(3);
+        handleConfirm();
       }, 2000);
-    } else if (step === 3 && symptoms.trim()) {
-      setStep(4);
     }
   };
 
@@ -70,13 +72,12 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
     return type === "consultation" ? "諮詢" : "看診";
   };
 
-  // 確保傳遞 appointment_type 給 SuccessPage
   const handleConfirm = () => {
     onConfirm({ 
       doctor, 
       date: selectedDate, 
       time: selectedTime,
-      appointmentType, // 確保包含預約類型
+      appointmentType,
       symptoms,
       paymentMethod 
     });
@@ -84,7 +85,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-white/30 backdrop-blur-sm p-4">
-  <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
         {/* 頂部進度條 */}
         <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-2xl z-10">
           <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition">
@@ -105,9 +106,9 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
           <div className="flex items-center justify-between">
             {[
               { num: 1, name: "選擇時間、類型", icon: Calendar },
-              { num: 2, name: "支付費用", icon: CreditCard },
-              { num: 3, name: "症狀描述", icon: FileText },
-              { num: 4, name: "確認預約", icon: CheckCircle }
+              { num: 2, name: "症狀描述", icon: FileText },
+              { num: 3, name: "確認預約", icon: CheckCircle },
+              { num: 4, name: "支付費用", icon: CreditCard }
             ].map((s, idx) => (
               <div key={s.num} className="flex items-center flex-1">
                 <div className="flex flex-col items-center">
@@ -193,12 +194,10 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
                 </div>
               )}
 
-                            {selectedTime && (
+              {selectedTime && (
                 <div className="mb-6">
                   <h4 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <svg className="text-blue-600" width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                    </svg>
+                    <MessageSquare size={22} className="text-blue-600" />
                     選擇預約類型
                   </h4>
                   <div className="grid grid-cols-2 gap-4">
@@ -228,23 +227,22 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
                 </div>
               )}
 
-
               <button
                 onClick={handleNextStep}
-                disabled={!selectedDate || !selectedTime}
+                disabled={!selectedDate || !selectedTime || !appointmentType}
                 className={`w-full py-4 rounded-xl font-semibold text-lg transition-all flex items-center justify-center gap-2 ${
-                  selectedDate && selectedTime
+                  selectedDate && selectedTime && appointmentType
                     ? "bg-blue-500 text-white hover:bg-blue-600 shadow-lg" 
                     : "bg-gray-200 text-gray-400 cursor-not-allowed"
                 }`}
               >
-                下一步：支付費用
+                下一步:填寫症狀
                 <ArrowRight size={20} />
               </button>
             </div>
           )}
 
-          {/* 步驟 2: 支付 */}
+          {/* 步驟 2: 症狀描述 */}
           {step === 2 && (
             <div>
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
@@ -252,10 +250,153 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
                   <div>
                     <p className="text-sm text-gray-600">已選擇</p>
                     <p className="font-bold text-gray-800">{formatDate(selectedDate)} {getDayName(selectedDate)} {selectedTime}</p>
+                    <p className="text-sm text-blue-600 mt-1">預約類型:{getAppointmentTypeName(appointmentType)}</p>
                   </div>
                   <button onClick={() => setStep(1)} className="text-blue-600 text-sm hover:underline">
                     修改
                   </button>
+                </div>
+              </div>
+
+              <h4 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <FileText size={22} className="text-blue-600" />
+                填寫症狀描述
+              </h4>
+
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  主要症狀 <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={symptoms}
+                  onChange={e => setSymptoms(e.target.value)}
+                  placeholder="請詳細描述您的症狀,例如:&#10;• 發燒 38.5°C,已持續 2 天&#10;• 喉嚨痛、咳嗽有痰&#10;• 頭痛、全身無力"
+                  rows={6}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-sm resize-none"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  💡 提示:請包含症狀開始時間、嚴重程度、已採取的處理方式等
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setStep(1)}
+                  className="flex-1 py-4 rounded-xl font-semibold text-lg border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                >
+                  <ArrowLeft size={20} />
+                  上一步
+                </button>
+                <button
+                  onClick={handleNextStep}
+                  disabled={!symptoms.trim()}
+                  className={`flex-1 py-4 rounded-xl font-semibold text-lg transition-all flex items-center justify-center gap-2 ${
+                    symptoms.trim()
+                      ? "bg-blue-500 text-white hover:bg-blue-600 shadow-lg" 
+                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  下一步:確認預約
+                  <ArrowRight size={20} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 步驟 3: 確認預約 */}
+          {step === 3 && (
+            <div>
+              <div className="text-center mb-6">
+                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle size={40} className="text-blue-600" />
+                </div>
+                <h4 className="text-2xl font-bold text-gray-800 mb-2">確認預約資訊</h4>
+                <p className="text-gray-600">請仔細核對以下資訊</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 mb-6">
+                <div className="flex items-start gap-4 mb-6 pb-6 border-b border-blue-200">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg">
+                    {doctor.last_name.charAt(0)}
+                  </div>
+                  <div className="flex-1">
+                    <h5 className="font-bold text-xl text-gray-800 mb-1">{doctorFullName} 醫師</h5>
+                    <p className="text-blue-600 font-semibold mb-1">{doctor.specialty}</p>
+                    <p className="text-sm text-gray-600">{doctor.practice_hospital}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <Calendar size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm text-gray-600">就診日期</p>
+                      <p className="font-bold text-gray-800">{formatDate(selectedDate)} {getDayName(selectedDate)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <Clock size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm text-gray-600">預約時間</p>
+                      <p className="font-bold text-gray-800">{selectedTime}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <MessageSquare size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm text-gray-600">預約類型</p>
+                      <p className="font-bold text-gray-800">{getAppointmentTypeName(appointmentType)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <FileText size={20} className="text-blue-600 mt-1 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-600 mb-1">症狀描述</p>
+                      <div className="bg-white rounded-lg p-3 text-sm text-gray-700 max-h-32 overflow-y-auto">
+                        {symptoms}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+                <p className="text-sm text-yellow-800">
+                  <strong>⚠️ 提醒:</strong>確認後將進入支付頁面,完成支付後預約即生效
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setStep(2)}
+                  className="flex-1 py-4 rounded-xl font-semibold text-lg border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                >
+                  <ArrowLeft size={20} />
+                  修改資料
+                </button>
+                <button
+                  onClick={handleNextStep}
+                  className="flex-1 py-4 rounded-xl font-semibold text-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                >
+                  前往支付
+                  <ArrowRight size={20} />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 步驟 4: 支付 */}
+          {step === 4 && (
+            <div>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+                <h5 className="font-semibold text-gray-800 mb-2">預約資訊</h5>
+                <div className="space-y-1 text-sm text-gray-600">
+                  <p>• 醫師:{doctorFullName} ({doctor.specialty})</p>
+                  <p>• 時間:{formatDate(selectedDate)} {getDayName(selectedDate)} {selectedTime}</p>
+                  <p>• 預約類型:{getAppointmentTypeName(appointmentType)}</p>
                 </div>
               </div>
 
@@ -328,7 +469,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => setStep(1)}
+                  onClick={() => setStep(3)}
                   className="flex-1 py-4 rounded-xl font-semibold text-lg border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
                 >
                   <ArrowLeft size={20} />
@@ -339,7 +480,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
                   disabled={!paymentMethod || processing}
                   className={`flex-1 py-4 rounded-xl font-semibold text-lg transition-all flex items-center justify-center gap-2 ${
                     paymentMethod && !processing
-                      ? "bg-blue-500 text-white hover:bg-blue-600 shadow-lg" 
+                      ? "bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 shadow-lg" 
                       : "bg-gray-200 text-gray-400 cursor-not-allowed"
                   }`}
                 >
@@ -350,162 +491,10 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
                     </>
                   ) : (
                     <>
-                      確認支付
-                      <ArrowRight size={20} />
+                      <CheckCircle size={20} />
+                      確認支付並預約
                     </>
                   )}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 步驟 3: 症狀描述 */}
-          {step === 3 && (
-            <div>
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex items-center gap-3">
-                <CheckCircle size={24} className="text-green-600" />
-                <div>
-                  <p className="font-semibold text-green-800">支付成功！</p>
-                  <p className="text-sm text-green-600">已收到您的支付 NT$ 500</p>
-                </div>
-              </div>
-
-              <h4 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <FileText size={22} className="text-blue-600" />
-                填寫症狀描述
-              </h4>
-
-              <div className="mb-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  主要症狀 <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  value={symptoms}
-                  onChange={e => setSymptoms(e.target.value)}
-                  placeholder="請詳細描述您的症狀，例如：&#10;• 發燒 38.5°C，已持續 2 天&#10;• 喉嚨痛、咳嗽有痰&#10;• 頭痛、全身無力"
-                  rows={6}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-sm resize-none"
-                />
-                <p className="text-xs text-gray-500 mt-2">
-                  💡 提示：請包含症狀開始時間、嚴重程度、已採取的處理方式等
-                </p>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-                <h5 className="font-semibold text-gray-800 mb-2">就診資訊</h5>
-                <div className="space-y-1 text-sm text-gray-600">
-                  <p>• 醫師：{doctorFullName} ({doctor.specialty})</p>
-                  <p>• 時間：{formatDate(selectedDate)} {getDayName(selectedDate)} {selectedTime}</p>
-                  <p>• 預約類型：{getAppointmentTypeName(appointmentType)}</p>
-                  <p>• 費用：NT$ 500 (已支付)</p>
-                </div>
-              </div>
-
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setStep(2)}
-                  className="flex-1 py-4 rounded-xl font-semibold text-lg border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
-                >
-                  <ArrowLeft size={20} />
-                  上一步
-                </button>
-                <button
-                  onClick={handleNextStep}
-                  disabled={!symptoms.trim()}
-                  className={`flex-1 py-4 rounded-xl font-semibold text-lg transition-all flex items-center justify-center gap-2 ${
-                    symptoms.trim()
-                      ? "bg-blue-500 text-white hover:bg-blue-600 shadow-lg" 
-                      : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                  }`}
-                >
-                  下一步：確認預約
-                  <ArrowRight size={20} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 步驟 4: 確認預約 */}
-          {step === 4 && (
-            <div>
-              <div className="text-center mb-6">
-                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle size={40} className="text-blue-600" />
-                </div>
-                <h4 className="text-2xl font-bold text-gray-800 mb-2">確認預約資訊</h4>
-                <p className="text-gray-600">請仔細核對以下資訊</p>
-              </div>
-
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 mb-6">
-                <div className="flex items-start gap-4 mb-6 pb-6 border-b border-blue-200">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-                    {doctor.last_name.charAt(0)}
-                  </div>
-                  <div className="flex-1">
-                    <h5 className="font-bold text-xl text-gray-800 mb-1">{doctorFullName} 醫師</h5>
-                    <p className="text-blue-600 font-semibold mb-1">{doctor.specialty}</p>
-                    <p className="text-sm text-gray-600">{doctor.practice_hospital}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <Calendar size={20} className="text-blue-600 mt-1 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm text-gray-600">就診日期</p>
-                      <p className="font-bold text-gray-800">{formatDate(selectedDate)} {getDayName(selectedDate)}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <Clock size={20} className="text-blue-600 mt-1 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm text-gray-600">預約時間</p>
-                      <p className="font-bold text-gray-800">{selectedTime}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <CreditCard size={20} className="text-blue-600 mt-1 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm text-gray-600">支付狀態</p>
-                      <p className="font-bold text-green-600">已支付 NT$ 500</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <FileText size={20} className="text-blue-600 mt-1 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-600 mb-1">症狀描述</p>
-                      <div className="bg-white rounded-lg p-3 text-sm text-gray-700 max-h-32 overflow-y-auto">
-                        {symptoms}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-                <p className="text-sm text-yellow-800">
-                  <strong>⚠️ 提醒：</strong>請在預約時間前 10 分鐘登入系統準備視訊就診
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setStep(3)}
-                  className="flex-1 py-4 rounded-xl font-semibold text-lg border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
-                >
-                  <ArrowLeft size={20} />
-                  修改資料
-                </button>
-                <button
-                  onClick={handleConfirm}
-                  className="flex-1 py-4 rounded-xl font-semibold text-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
-                >
-                  <CheckCircle size={20} />
-                  確認預約
                 </button>
               </div>
             </div>

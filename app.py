@@ -137,7 +137,236 @@ def send_verification_email(recipient_email, verification_code):
         traceback.print_exc()
         return False
 
-#新增郵件發送函數 
+# 病患註冊成功郵件函數
+def send_patient_registration_success_email(recipient_email, patient_name):
+    """病患註冊成功後發送歡迎郵件"""
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = recipient_email
+        msg['Subject'] = Header('醫隨行 MOG - 註冊成功通知', 'utf-8')
+        
+        html_body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <h2 style="color: #10b981; text-align: center;">🎉 歡迎加入醫隨行 MOG</h2>
+                <p>親愛的 {patient_name} 您好：</p>
+                <p>恭喜您成功註冊醫隨行 MOG！</p>
+                
+                <div style="background-color: #ecfdf5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+                    <h3 style="color: #059669; margin-top: 0;">✨ 免費試用期福利</h3>
+                    <p style="font-size: 16px; margin: 10px 0;">
+                        <strong>現在開始享有 6 個月免費試用期！</strong>
+                    </p>
+                    <p style="margin: 10px 0;">
+                        試用期內您可以：<br>
+                        ✓ 無限制線上預約<br>
+                        ✓ 視訊諮詢服務<br>
+                        ✓ 完整就診記錄保存<br>
+                        ✓ 24/7 隨時查詢
+                    </p>
+                </div>
+                
+                <div style="background-color: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
+                    <h3 style="color: #2563eb; margin-top: 0;">💳 訂閱方案說明</h3>
+                    <p style="font-size: 16px; margin: 10px 0;">
+                        試用期結束後，將以 <strong style="color: #2563eb; font-size: 18px;">$199/月</strong> 開始會員訂閱
+                    </p>
+                    <p style="color: #666; font-size: 14px; margin: 10px 0;">
+                        * 試用期結束前我們會提前通知您<br>
+                        * 您可隨時取消訂閱，無需支付違約金
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="http://localhost:3000/auth" 
+                       style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #10b981, #059669); color: white; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);">
+                        立即開始使用
+                    </a>
+                </div>
+                
+                <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                    如有任何問題，歡迎隨時聯繫我們的客服團隊。
+                </p>
+                
+                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+                <p style="color: #999; font-size: 12px; text-align: center;">
+                    © 醫隨行 MOG · 保障您的健康與隱私<br>
+                    這是一封自動發送的郵件，請勿直接回覆
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_body = f"""
+        歡迎加入醫隨行 MOG
+        
+        親愛的 {patient_name} 您好：
+        
+        恭喜您成功註冊醫隨行 MOG！
+        
+        【免費試用期福利】
+        現在開始享有 6 個月免費試用期！
+        
+        試用期內您可以：
+        ✓ 無限制線上預約
+        ✓ 視訊諮詢服務
+        ✓ 完整就診記錄保存
+        ✓ 24/7 隨時查詢
+        
+        【訂閱方案說明】
+        試用期結束後，將以 $199/月 開始會員訂閱
+        
+        * 試用期結束前我們會提前通知您
+        * 您可隨時取消訂閱，無需支付違約金
+        
+        立即開始使用：http://localhost:3000/auth
+        
+        © 醫隨行 MOG · 保障您的健康與隱私
+        """
+        
+        part1 = MIMEText(text_body, 'plain', 'utf-8')
+        part2 = MIMEText(html_body, 'html', 'utf-8')
+        
+        msg.attach(part1)
+        msg.attach(part2)
+        
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.send_message(msg)
+        
+        print(f"✅ 病患註冊成功郵件已發送至 {recipient_email}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ 郵件發送失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+# 醫師審核通過郵件函數
+def send_approval_email(recipient_email, doctor_name):
+    """醫師審核通過後發送郵件"""
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = recipient_email
+        msg['Subject'] = Header('醫隨行 MOG - 審核通過通知', 'utf-8')
+        
+        html_body = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <h2 style="color: #10b981; text-align: center;">🎉 恭喜！您的資料已審核通過</h2>
+                <p>親愛的 {doctor_name} 醫師，您好：</p>
+                <p>您的註冊資料已通過審核，現在您可以開始使用醫隨行 MOG 平台了！</p>
+                
+                <div style="background-color: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
+                    <h3 style="color: #2563eb; margin-top: 0;">您現在可以：</h3>
+                    <ul style="line-height: 1.8;">
+                        <li>✓ 登入系統開始使用</li>
+                        <li>✓ 設定您的看診時段</li>
+                        <li>✓ 接受病患預約</li>
+                        <li>✓ 進行線上問診服務</li>
+                    </ul>
+                </div>
+                
+                <div style="background-color: #ecfdf5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+                    <h3 style="color: #059669; margin-top: 0;">✨ 免費試用期福利</h3>
+                    <p style="font-size: 16px; margin: 10px 0;">
+                        <strong>現在開始享有 6 個月免費試用期！</strong>
+                    </p>
+                    <p style="margin: 10px 0;">
+                        試用期內享有完整平台功能，無任何限制。
+                    </p>
+                </div>
+                
+                <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+                    <h3 style="color: #d97706; margin-top: 0;">💳 訂閱方案說明</h3>
+                    <p style="font-size: 16px; margin: 10px 0;">
+                        試用期結束後，將以 <strong style="color: #d97706; font-size: 18px;">$199/月</strong> 開始會員訂閱
+                    </p>
+                    <p style="color: #666; font-size: 14px; margin: 10px 0;">
+                        * 試用期結束前我們會提前通知您<br>
+                        * 您可隨時取消訂閱，無需支付違約金<br>
+                        * 訂閱期間享有完整技術支援與平台更新
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="http://localhost:3000/auth" 
+                       style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #10b981, #059669); color: white; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);">
+                        立即登入開始使用
+                    </a>
+                </div>
+                
+                <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                    如有任何問題或需要協助，歡迎隨時聯繫我們的技術支援團隊。
+                </p>
+                
+                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+                <p style="color: #999; font-size: 12px; text-align: center;">
+                    © 醫隨行 MOG · 保障您的健康與隱私<br>
+                    這是一封自動發送的郵件，請勿直接回覆
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_body = f"""
+        恭喜！您的資料已審核通過
+        
+        親愛的 {doctor_name} 醫師，您好：
+        
+        您的註冊資料已通過審核，現在您可以開始使用醫隨行 MOG 平台了！
+        
+        【您現在可以】
+        ✓ 登入系統開始使用
+        ✓ 設定您的看診時段
+        ✓ 接受病患預約
+        ✓ 進行線上問診服務
+        
+        【免費試用期福利】
+        現在開始享有 6 個月免費試用期！
+        試用期內享有完整平台功能，無任何限制。
+        
+        【訂閱方案說明】
+        試用期結束後，將以 $199/月 開始會員訂閱
+        
+        * 試用期結束前我們會提前通知您
+        * 您可隨時取消訂閱，無需支付違約金
+        * 訂閱期間享有完整技術支援與平台更新
+        
+        立即登入：http://localhost:3000/auth
+        
+        © 醫隨行 MOG · 保障您的健康與隱私
+        """
+        
+        part1 = MIMEText(text_body, 'plain', 'utf-8')
+        part2 = MIMEText(html_body, 'html', 'utf-8')
+        
+        msg.attach(part1)
+        msg.attach(part2)
+        
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.send_message(msg)
+        
+        print(f"✅ 審核通過郵件已發送至 {recipient_email}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ 郵件發送失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+# 確保 send_registration_received_email 函數存在（醫師註冊收到通知）
 def send_registration_received_email(recipient_email, doctor_name):
     """醫師註冊後發送資料已收到郵件"""
     try:
@@ -193,45 +422,6 @@ def send_registration_received_email(recipient_email, doctor_name):
     except Exception as e:
         print(f"❌ 郵件發送失敗: {str(e)}")
         return False
-
-def send_approval_email(recipient_email, doctor_name):
-    """醫師審核通過後發送郵件"""
-    try:
-        msg = MIMEMultipart()
-        msg['From'] = SENDER_EMAIL
-        msg['To'] = recipient_email
-        msg['Subject'] = Header('醫隨行 MOG - 審核通過通知', 'utf-8')
-        
-        html_body = f"""
-        <html>
-        <body style="font-family: Arial, sans-serif; padding: 20px;">
-            <h2 style="color: #10b981;">🎉 恭喜!您的資料已審核通過</h2>
-            <p>親愛的 {doctor_name} 醫師,您好:</p>
-            <p>您的註冊資料已通過審核,現在您可以:</p>
-            <ul>
-                <li>✓ 登入系統開始使用</li>
-                <li>✓ 設定您的看診時段</li>
-                <li>✓ 接受病患預約</li>
-                <li>✓ 進行線上問診服務</li>
-            </ul>
-            <p>立即登入開始您的醫隨行之旅!</p>
-            <a href="http://localhost:3000/auth" style="display: inline-block; padding: 12px 24px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; margin-top: 16px;">立即登入</a>
-            <hr>
-            <p style="color: #666; font-size: 12px;">© 醫隨行 MOG · 保障您的健康與隱私</p>
-        </body>
-        </html>
-        """
-        
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
-            server.login(SENDER_EMAIL, SENDER_PASSWORD)
-            server.send_message(msg)
-        
-        return True
-    except Exception as e:
-        print(f"❌ 郵件發送失敗: {str(e)}")
-        return False
-
 
 @app.route("/api/doctors", methods=["GET"])
 def get_doctors():
@@ -894,6 +1084,7 @@ def get_record():
             a.appointment_date,
             a.appointment_time,
             a.status,
+            a.cancellation_reason,
             d.first_name,
             d.last_name,
             d.specialty as doctor_specialty
@@ -925,6 +1116,83 @@ def get_record():
         cursor.close()
         db.close()
 
+@app.route("/api/cancel_appointment", methods=["POST"])
+def cancel_appointment():
+    try:
+        data = request.get_json()
+        appointment_id = data.get("appointment_id")
+        cancel_reason = data.get("cancellation_reason", "")  # 新增：取得取消原因
+
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        # 取得預約狀態與時間
+        cursor.execute("""
+            SELECT appointment_date, appointment_time, status 
+            FROM appointments 
+            WHERE appointment_id = %s
+        """, (appointment_id,))
+        appt = cursor.fetchone()
+
+        if not appt:
+            return jsonify({"success": False, "message": "找不到此預約"}), 404
+
+        appointment_date = appt["appointment_date"]
+        appointment_time = appt["appointment_time"]
+        status = appt["status"]
+
+        # 處理 timedelta 轉換為 time
+        if isinstance(appointment_time, timedelta):
+            total_seconds = int(appointment_time.total_seconds())
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
+            appointment_time = datetime.min.time().replace(hour=hours, minute=minutes, second=seconds)
+        elif isinstance(appointment_time, datetime):
+            appointment_time = appointment_time.time()
+
+        appointment_datetime = datetime.combine(appointment_date, appointment_time)
+        now = datetime.now()
+
+        # 計算退款比例
+        diff = appointment_datetime - now
+        diff_days = diff.total_seconds() / (24 * 3600)
+        
+        # 判斷是否為當天
+        is_same_day = appointment_date == now.date()
+        
+        if is_same_day:
+            refund_percentage = 20
+            refund_message = "取消成功，將退回 20% 款項，於三日內退款"
+        elif diff_days <= 2:
+            refund_percentage = 50
+            refund_message = "取消成功，將退回 50% 款項，於三日內退款"
+        else:
+            refund_percentage = 100
+            refund_message = "取消成功，將全額退款，於三日內退款"
+
+        # 更新狀態並儲存取消原因
+        cursor.execute("""
+            UPDATE appointments 
+            SET status = '已取消', cancellation_reason = %s 
+            WHERE appointment_id = %s
+        """, (cancel_reason, appointment_id))
+        db.commit()
+
+        return jsonify({
+            "success": True, 
+            "message": refund_message,
+            "refund_percentage": refund_percentage
+        })
+
+    except Exception as e:
+        print("Cancel error:", e)
+        return jsonify({"success": False, "message": "伺服器錯誤"}), 500
+
+    finally:
+        cursor.close()
+        db.close()
+        
 @app.route("/api/recordoc", methods=["GET"])
 def get_recordoc():
    
