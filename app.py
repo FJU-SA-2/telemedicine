@@ -2771,5 +2771,278 @@ def get_meeting_status(appointment_id):
         cursor.close()
         db.close()
 
+
+
+
+# 獲取文章列表（含搜尋功能）
+@app.route('/api/experience/posts', methods=['GET'])
+def get_posts():
+    keyword = request.args.get('keyword', '')
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 10))
+    offset = (page - 1) * per_page
+    
+    conn = get_db()
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        if keyword:
+            # 使用 FULLTEXT 搜尋或 LIKE 搜尋
+            query = """
+                SELECT p.id, p.title, p.content, p.is_anonymous, p.created_at,
+                       CASE WHEN p.is_anonymous THEN '匿名用戶' ELSE u.username END as author_name,
+                       COUNT(c.id) as comment_count
+                FROM posts p
+                LEFT JOIN users u ON p.user_id = u.user_id
+                LEFT JOIN comments c ON p.id = c.post_id
+                WHERE p.title LIKE %s OR p.content LIKE %s
+                GROUP BY p.id
+                ORDER BY p.created_at DESC
+                LIMIT %s OFFSET %s
+            """
+            search_term = f'%{keyword}%'
+            cursor.execute(query, (search_term, search_term, per_page, offset))
+        else:
+            query = """
+                SELECT p.id, p.title, p.content, p.is_anonymous, p.created_at,
+                       CASE WHEN p.is_anonymous THEN '匿名用戶' ELSE u.username END as author_name,
+                       COUNT(c.id) as comment_count
+                FROM posts p
+                LEFT JOIN users u ON p.user_id = u.user_id
+                LEFT JOIN comments c ON p.id = c.post_id
+                GROUP BY p.id
+                ORDER BY p.created_at DESC
+                LIMIT %s OFFSET %s
+            """
+            cursor.execute(query, (per_page, offset))
+        
+        posts = cursor.fetchall()
+        
+        # 獲取總數
+        if keyword:
+            cursor.execute("SELECT COUNT(*) as total FROM posts WHERE title LIKE %s OR content LIKE %s", 
+                         (search_term, search_term))
+        else:
+            cursor.execute("SELECT COUNT(*) as total FROM posts")
+        
+        total = cursor.fetchone()['total']
+        
+        return jsonify({
+            'success': True,
+            'posts': posts,
+            'total': total,
+            'page': page,
+            'per_page': per_page
+        }), 200
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()  # ← 加這行
+        print("完整錯誤訊息:")  # ← 加這行
+        print(error_details)  # ← 加這行
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+# 獲取單篇文章詳情
+@app.route('/api/experience/posts/<int:post_id>', methods=['GET'])
+def get_post(post_id):
+    conn = get_db()
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        # 獲取文章
+        query = """
+            SELECT p.id, p.title, p.content, p.is_anonymous, p.created_at, p.user_id,
+                   CASE WHEN p.is_anonymous THEN '匿名用戶' ELSE u.username END as author_name
+            FROM posts p
+            LEFT JOIN users u ON p.user_id = u.user_id
+            WHERE p.id = %s
+        """
+        cursor.execute(query, (post_id,))
+        post = cursor.fetchone()
+        
+        if not post:
+            return jsonify({'success': False, 'message': '文章不存在'}), 404
+        
+        # 獲取留言
+        query = """
+            SELECT c.id, c.content, c.is_anonymous, c.created_at, c.user_id,
+                   CASE WHEN c.is_anonymous THEN '匿名用戶' ELSE u.username END as author_name
+            FROM comments c
+            LEFT JOIN users u ON c.user_id = u.user_id
+            WHERE c.post_id = %s
+            ORDER BY c.created_at ASC
+        """
+        cursor.execute(query, (post_id,))
+        comments = cursor.fetchall()
+        
+        post['comments'] = comments
+        
+        return jsonify({
+            'success': True,
+            'post': post
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+# 創建文章
+@app.route('/api/experience/posts', methods=['POST'])
+def create_post():
+    
+    current_user_id = session['user_id'] 
+    data = request.get_json()
+    
+    title = data.get('title', '').strip()
+    content = data.get('content', '').strip()
+    is_anonymous = data.get('is_anonymous', False)
+    
+    if not title or not content:
+        return jsonify({'success': False, 'message': '標題和內容不能為空'}), 400
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    try:
+        query = """
+            INSERT INTO posts (user_id, title, content, is_anonymous)
+            VALUES (%s, %s, %s, %s)
+        """
+        cursor.execute(query, (current_user_id, title, content, is_anonymous))
+        conn.commit()
+        
+        post_id = cursor.lastrowid
+        
+        return jsonify({
+            'success': True,
+            'message': '文章發布成功',
+            'post_id': post_id
+        }), 201
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+# 創建留言
+@app.route('/api/experience/posts/<int:post_id>/comments', methods=['POST'])
+def create_comment(post_id):
+   
+    current_user_id = session['user_id']
+    data = request.get_json()
+    content = data.get('content', '').strip()
+    is_anonymous = data.get('is_anonymous', False)
+    
+    if not content:
+        return jsonify({'success': False, 'message': '留言內容不能為空'}), 400
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    try:
+        # 檢查文章是否存在
+        cursor.execute("SELECT id FROM posts WHERE id = %s", (post_id,))
+        if not cursor.fetchone():
+            return jsonify({'success': False, 'message': '文章不存在'}), 404
+        
+        query = """
+            INSERT INTO comments (post_id, user_id, content, is_anonymous)
+            VALUES (%s, %s, %s, %s)
+        """
+        cursor.execute(query, (post_id, current_user_id, content, is_anonymous))
+        conn.commit()
+        
+        comment_id = cursor.lastrowid
+        
+        return jsonify({
+            'success': True,
+            'message': '留言成功',
+            'comment_id': comment_id
+        }), 201
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+# 刪除文章（僅作者可刪除）
+@app.route('/api/experience/posts/<int:post_id>', methods=['DELETE'])
+def delete_post(post_id):
+    # 暫時使用固定的 user_id，之後可以改成從 session 取得
+    current_user_id = session['user_id'] # 或從 session['user_id'] 取得
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    try:
+        # 檢查是否為作者
+        cursor.execute("SELECT user_id FROM posts WHERE id = %s", (post_id,))
+        result = cursor.fetchone()
+        
+        if not result:
+            return jsonify({'success': False, 'message': '文章不存在'}), 404
+        
+        if result[0] != current_user_id:
+            return jsonify({'success': False, 'message': '無權限刪除此文章'}), 403
+        
+        cursor.execute("DELETE FROM posts WHERE id = %s", (post_id,))
+        conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '文章刪除成功'
+        }), 200
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+# 刪除留言（僅作者可刪除）
+@app.route('/api/experience/comments/<int:comment_id>', methods=['DELETE'])
+def delete_comment(comment_id):
+    
+    current_user_id = session['user_id']  
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    try:
+        # 檢查是否為作者
+        cursor.execute("SELECT user_id FROM comments WHERE id = %s", (comment_id,))
+        result = cursor.fetchone()
+        
+        if not result:
+            return jsonify({'success': False, 'message': '留言不存在'}), 404
+        
+        if result[0] != current_user_id:
+            return jsonify({'success': False, 'message': '無權限刪除此留言'}), 403
+        
+        cursor.execute("DELETE FROM comments WHERE id = %s", (comment_id,))
+        conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '留言刪除成功'
+        }), 200
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
 if __name__ == "__main__":
     app.run(debug=True)

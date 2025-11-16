@@ -16,6 +16,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     { id: "/reserve", label: "線上預約", icon: Calendar, href: "/reserve" },
     { id: "/my reserve", label: "預約紀錄", icon: Calendar, href: "/record" },
     { id: "/facetime", label: "視訊看診", icon: Video, href: "/pfacetime" },
+    { id: "/experience", label: "經驗分享區", icon: MessageCircleMore, href: "/experience" },
     { id: "/feedback", label: "問題回報", icon: MessageCircleMore, href: "/feedback" },
     { id: "/settings", label: "以後再想", icon: Settings, href: "/settings" },
   ];
