@@ -344,8 +344,14 @@ export default function HomePage() {
         setLoading(false);
       }
     }
-    fetchData();
     
+    fetchData();
+
+    // ✅ 新增:每30秒自動重新獲取排程(可選)
+    const interval = setInterval(() => {
+      fetchData();
+    }, 30000);
+
     return () => clearInterval(interval);
   }, []);
 
