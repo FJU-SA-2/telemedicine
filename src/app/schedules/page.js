@@ -1,8 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Sidebar from "../components/Sidebar";
+import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
+import DoctorSidebar from "../components/DoctorSidebar";
 import { Clock, Save, ChevronLeft, ChevronRight, Menu } from "lucide-react";
 
 export default function DoctorSchedulePage() {
@@ -29,55 +28,57 @@ export default function DoctorSchedulePage() {
         "15:00", "15:30", "16:00", "16:30", "17:00"
     ];
 
-    useEffect(() => {
-        console.log("🔥🔥🔥 fetchApprovalStatus useEffect 被觸發了！");
-        
-        async function fetchApprovalStatus() {
-            console.log("🔥 Step 1: fetchApprovalStatus 函數開始執行");
-            
-            try {
-                console.log("🔥 Step 2: 準備呼叫 /api/me");
-                
-                const res = await fetch("/api/me", {
-                    credentials: 'include'
-                });
-                
-                console.log("🔥 Step 3: 收到回應，status:", res.status);
-                
-                const data = await res.json();
-                
-                console.log("🔥 Step 4: 解析完成");
-                console.log("📡 完整 API 回應:", data);
-                console.log("📡 data.authenticated:", data.authenticated);
-                console.log("📡 data.user:", data.user);
-                console.log("📡 data.user?.role:", data.user?.role);
-                console.log("📡 data.user?.approval_status:", data.user?.approval_status);
-                
-                if (data.authenticated && data.user && data.user.role === 'doctor') {
-                    console.log("🔥 Step 5: 進入 if 判斷");
-                    const status = data.user.approval_status;
-                    console.log("🔥 Step 6: 準備設定 approvalStatus 為:", status);
-                    setApprovalStatus(status);
-                    console.log("✅ Step 7: 已設定 approvalStatus 為:", status);
-                } else {
-                    console.log("⚠️ 條件不符合:");
-                    console.log("   authenticated:", data.authenticated);
-                    console.log("   user exists:", !!data.user);
-                    console.log("   role:", data.user?.role);
-                }
-            } catch (error) {
-                console.error("❌ fetchApprovalStatus 發生錯誤:", error);
-                console.error("❌ 錯誤堆疊:", error.stack);
-            }
-        }
-        
-        console.log("🔥 Step 0: 準備執行 fetchApprovalStatus 函數");
-        fetchApprovalStatus();
-        console.log("🔥 Step -1: fetchApprovalStatus 函數已呼叫（等待執行）");
-    }, []);
 
-    console.log("📝 fetchApprovalStatus useEffect 已定義");
+    useEffect(() => {
+    console.log("🔥🔥🔥 fetchApprovalStatus useEffect 被觸發了！");
+    
+    async function fetchApprovalStatus() {
+        console.log("🔥 Step 1: fetchApprovalStatus 函數開始執行");
+        
+        try {
+            console.log("🔥 Step 2: 準備呼叫 /api/me");
+            
+            const res = await fetch("/api/me", {
+                credentials: 'include'
+            });
+            
+            console.log("🔥 Step 3: 收到回應，status:", res.status);
+            
+            const data = await res.json();
+            
+            console.log("🔥 Step 4: 解析完成");
+            console.log("📡 完整 API 回應:", data);
+            console.log("📡 data.authenticated:", data.authenticated);
+            console.log("📡 data.user:", data.user);
+            console.log("📡 data.user?.role:", data.user?.role);
+            console.log("📡 data.user?.approval_status:", data.user?.approval_status);
+            
+            if (data.authenticated && data.user && data.user.role === 'doctor') {
+                console.log("🔥 Step 5: 進入 if 判斷");
+                const status = data.user.approval_status;
+                console.log("🔥 Step 6: 準備設定 approvalStatus 為:", status);
+                setApprovalStatus(status);
+                console.log("✅ Step 7: 已設定 approvalStatus 為:", status);
+            } else {
+                console.log("⚠️ 條件不符合:");
+                console.log("   authenticated:", data.authenticated);
+                console.log("   user exists:", !!data.user);
+                console.log("   role:", data.user?.role);
+            }
+        } catch (error) {
+            console.error("❌ fetchApprovalStatus 發生錯誤:", error);
+            console.error("❌ 錯誤堆疊:", error.stack);
+        }
+    }
+    
+    console.log("🔥 Step 0: 準備執行 fetchApprovalStatus 函數");
+    fetchApprovalStatus();
+    console.log("🔥 Step -1: fetchApprovalStatus 函數已呼叫（等待執行）");
+}, []);
+
+console.log("📝 fetchApprovalStatus useEffect 已定義");
    
+    // 🔥 修正: 從後端取得真實的 doctor_id
     useEffect(() => {
         const fetchDoctorId = async () => {
             try {
@@ -96,6 +97,7 @@ export default function DoctorSchedulePage() {
                     if (data.authenticated && data.user.role === 'doctor') {
                         console.log(`🔍 查詢 user_id=${data.user.user_id} 的 doctor 資料`);
 
+                        // 🔥 需要從 doctor 表取得 doctor_id
                         const doctorRes = await fetch(
                             `/api/doctor/profile?user_id=${data.user.user_id}`,
                             { credentials: 'include' }
@@ -151,6 +153,7 @@ export default function DoctorSchedulePage() {
         return dates;
     };
 
+
     const weekDates = getWeekDates(currentWeekStart);
 
     const getWeekRangeText = () => {
@@ -167,6 +170,7 @@ export default function DoctorSchedulePage() {
         return checkDate < today;
     };
 
+    // 🔥 修正: 加入 doctor_id 作為依賴項
     useEffect(() => {
         async function loadSchedules() {
             if (!doctor_id || !weekDates || weekDates.length === 0) {
@@ -190,6 +194,7 @@ export default function DoctorSchedulePage() {
                 const data = await res.json();
                 console.log('📦 後端返回資料:', data);
 
+                // 初始化所有時段為 false
                 const newSchedules = {};
                 weekDates.forEach(day => {
                     newSchedules[day.fullDate] = {};
@@ -197,7 +202,6 @@ export default function DoctorSchedulePage() {
                         newSchedules[day.fullDate][time] = false;
                     });
                 });
-                
                 if (Array.isArray(data)) {
                     data.forEach(item => {
                         if (!item.schedule_date || !item.time_slot) return;
@@ -208,6 +212,7 @@ export default function DoctorSchedulePage() {
                         const timeSlot = `${h}:${m}`;
 
                         if (newSchedules[date] && timeSlots.includes(timeSlot)) {
+                            // 🔥 修正:使用 !! 將任何真值轉為 true,假值轉為 false
                             newSchedules[date][timeSlot] = !!item.is_available && item.is_available !== 0 && item.is_available !== "0";
 
                             console.log(`✅ 設定 ${newSchedules[date][timeSlot] ? "可" : "不可"}預約: ${date} ${timeSlot}`,
@@ -229,6 +234,9 @@ export default function DoctorSchedulePage() {
 
         loadSchedules();
     }, [currentWeekStart, doctor_id]);
+
+
+
 
     const toggleSlot = (date, time) => {
         if (isPastDate(date)) {
@@ -302,40 +310,14 @@ export default function DoctorSchedulePage() {
                 body: JSON.stringify({ doctor_id, schedules: scheduleList })
             });
 
-            // ✅ 修正：先檢查 content-type，再決定如何處理回應
-            const contentType = res.headers.get('content-type');
-            console.log('📡 Response Content-Type:', contentType);
-            console.log('📡 Response Status:', res.status);
-
             if (res.ok) {
-                // 只有在有 JSON 內容時才解析
-                let result = null;
-                if (contentType && contentType.includes('application/json')) {
-                    try {
-                        result = await res.json();
-                        console.log('✅ 儲存成功:', result);
-                    } catch (jsonError) {
-                        console.warn('⚠️ 無法解析 JSON，但請求成功');
-                    }
-                }
-                
+                const result = await res.json();
+                console.log('✅ 儲存成功:', result);
                 setSaveSuccess(true);
                 setTimeout(() => setSaveSuccess(false), 3000);
-                alert('排班儲存成功！');
             } else {
-                // 錯誤處理也要考慮可能沒有 JSON
-                let errorMessage = '儲存失敗';
-                if (contentType && contentType.includes('application/json')) {
-                    try {
-                        const error = await res.json();
-                        errorMessage = `儲存失敗: ${error.error || error.message || '未知錯誤'}`;
-                    } catch (jsonError) {
-                        errorMessage = `儲存失敗 (HTTP ${res.status})`;
-                    }
-                } else {
-                    errorMessage = `儲存失敗 (HTTP ${res.status})`;
-                }
-                alert(errorMessage);
+                const error = await res.json();
+                alert(`儲存失敗: ${error.error || error.message}`);
             }
 
         } catch (error) {
@@ -376,15 +358,14 @@ export default function DoctorSchedulePage() {
                 </button>
             )}
 
-            <Sidebar 
+            <DoctorSidebar 
                 isOpen={isOpen} 
                 setIsOpen={setIsOpen} 
                 activeTab={activeTab} 
                 setActiveTab={setActiveTab}
                 approvalStatus={approvalStatus}  
             />
-            
-            <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+                <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
                 <Navbar setIsSidebarOpen={setIsOpen} />
                 <div className="p-6">
                     {saveSuccess && (
