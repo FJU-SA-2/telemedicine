@@ -13,8 +13,18 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
   const [cardNumber, setCardNumber] = useState("");
   const [processing, setProcessing] = useState(false);
 
+   // ✅ 新增:過濾過期時段的函數
+  const isTimeSlotExpired = (dateStr, timeStr) => {
+    const now = new Date();
+    const slotDateTime = new Date(`${dateStr}T${timeStr}`);
+    return slotDateTime < now;
+  };
+
+  // ✅ 修改:過濾掉過期的排程
   const availableSchedules = schedules.filter(
-    s => s.doctor_id === doctor.doctor_id && s.is_available === 1
+    s => s.doctor_id === doctor.doctor_id && 
+         s.is_available === 1 &&
+         !isTimeSlotExpired(s.schedule_date, s.time_slot)
   );
 
   const uniqueDates = [...new Set(availableSchedules.map(s => s.schedule_date))].sort();
@@ -42,8 +52,16 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
   const doctorFullName = `${doctor.first_name}${doctor.last_name}`;
 
   const handleNextStep = () => {
-    if (step === 1 && selectedDate && selectedTime ) {
-      setStep(2);
+    // ✅ 新增:在進入下一步前再次檢查時段是否過期
+    if (step === 1) {
+      if (selectedDate && selectedTime) {
+        if (isTimeSlotExpired(selectedDate, selectedTime)) {
+          alert('此時段已過期,請重新選擇');
+          setSelectedTime("");
+          return;
+        }
+        setStep(2);
+      }
     } else if (step === 2 && symptoms.trim()) {
       setStep(3);
     } else if (step === 3) {
@@ -190,16 +208,6 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
                       ))}
                     </div>
                   )}
-                </div>
-              )}
-
-              {selectedTime && (
-                <div className="mb-6">
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    
-                    
-                  </div>
                 </div>
               )}
 

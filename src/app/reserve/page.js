@@ -4,7 +4,8 @@ import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import BookingModal from "./BookingModal";
 import SuccessPage from "./SuccessPage";
-import { Menu, Calendar, Search, Clock, CircleAlert,X } from "lucide-react";
+import { Menu, Calendar, Search, Clock, CircleAlert, X } from "lucide-react";
+import FloatingChat from "../components/FloatingChat";
 
 function BookingPage({ doctors, schedules, setSchedules }) {
   const [selectedSpecialty, setSelectedSpecialty] = useState("all");
@@ -16,10 +17,21 @@ function BookingPage({ doctors, schedules, setSchedules }) {
   const [bookingInfo, setBookingInfo] = useState(null);
   const [showAlert, setShowAlert] = useState(true);
 
+  // ✅ 新增:檢查時段是否過期的函數
+  const isTimeSlotExpired = (dateStr, timeStr) => {
+    const now = new Date();
+    const slotDateTime = new Date(`${dateStr}T${timeStr}`);
+    return slotDateTime < now;
+  };
+
+  // ✅ 修改:過濾掉過期的排程
+  const validSchedules = schedules.filter(
+    s => s.is_available === 1 && !isTimeSlotExpired(s.schedule_date, s.time_slot)
+  );
 
   // 只取得有可預約時段的醫師
   const doctorsWithSchedules = new Set(
-    schedules.filter(s => s.is_available === 1).map(s => s.doctor_id)
+    validSchedules.map(s => s.doctor_id)
   );
 
   // 只顯示有可預約醫師的科別
@@ -34,10 +46,9 @@ function BookingPage({ doctors, schedules, setSchedules }) {
     if (selectedSpecialty !== "all" && doctor.specialty !== selectedSpecialty) return false;
 
     if (selectedDate) {
-      const hasAvailableSlot = schedules.some(
+      const hasAvailableSlot = validSchedules.some(
         s => s.doctor_id === doctor.doctor_id &&
-          s.schedule_date === selectedDate &&
-          s.is_available === 1
+          s.schedule_date === selectedDate
       );
       if (!hasAvailableSlot) return false;
     }
@@ -50,15 +61,17 @@ function BookingPage({ doctors, schedules, setSchedules }) {
     return true;
   });
 
+  // ✅ 修改:只計算未過期的日期
   const getDoctorAvailableDates = (doctorId) => {
-    const dates = schedules
-      .filter(s => s.doctor_id === doctorId && s.is_available === 1)
+    const dates = validSchedules
+      .filter(s => s.doctor_id === doctorId)
       .map(s => s.schedule_date);
     return [...new Set(dates)].sort();
   };
 
+  // ✅ 修改:只計算未過期的時段
   const getDoctorAvailableSlots = (doctorId) => {
-    return schedules.filter(s => s.doctor_id === doctorId && s.is_available === 1).length;
+    return validSchedules.filter(s => s.doctor_id === doctorId).length;
   };
 
   const handleBooking = async (bookingData) => {
@@ -66,14 +79,14 @@ function BookingPage({ doctors, schedules, setSchedules }) {
       // 先取得登入使用者資訊
       const meRes = await fetch("/api/me");
       if (!meRes.ok) {
-        alert("請先登入！");
+        alert("請先登入!");
         return;
       }
       const meData = await meRes.json();
       const patientId = meData.user?.patient_id;
 
       if (!patientId) {
-        alert("您不是病患，無法預約！");
+        alert("您不是病患,無法預約!");
         return;
       }
 
@@ -84,7 +97,7 @@ function BookingPage({ doctors, schedules, setSchedules }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          patient_id: patientId, // 從登入狀態取得
+          patient_id: patientId,
           doctor_id: bookingData.doctor.doctor_id,
           appointment_date: bookingData.date,
           appointment_time: bookingData.time,
@@ -99,11 +112,11 @@ function BookingPage({ doctors, schedules, setSchedules }) {
       const result = await response.json();
 
       if (!response.ok) {
-        alert(result.error || "預約失敗，請稍後再試");
+        alert(result.error || "預約失敗,請稍後再試");
         return;
       }
 
-      // 預約成功，更新本地排程狀態
+      // 預約成功,更新本地排程狀態
       setSchedules(prevSchedules =>
         prevSchedules.map(s =>
           s.doctor_id === bookingData.doctor.doctor_id &&
@@ -123,10 +136,9 @@ function BookingPage({ doctors, schedules, setSchedules }) {
 
     } catch (error) {
       console.error("預約錯誤:", error);
-      alert("預約失敗，請檢查網路連線後再試");
+      alert("預約失敗,請檢查網路連線後再試");
     }
   };
-
 
   const handleCloseSuccess = () => {
     setShowSuccess(false);
@@ -154,7 +166,7 @@ function BookingPage({ doctors, schedules, setSchedules }) {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">選擇日期（選填）</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">選擇日期(選填)</label>
             <input
               type="date"
               value={selectedDate}
@@ -179,7 +191,7 @@ function BookingPage({ doctors, schedules, setSchedules }) {
         </div>
       </div>
       
-      {/* ✅ 重要提醒區塊（可關閉） */}
+      {/* 重要提醒區塊 */}
       {showAlert && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 relative">
           <button
@@ -196,7 +208,7 @@ function BookingPage({ doctors, schedules, setSchedules }) {
                 【重要提醒】
               </p>
               <p className="text-sm text-gray-700 leading-relaxed mt-1">
-                本平台提供之「心理諮商」與「精神科線上諮詢」服務屬於非醫療性質，
+                本平台提供之「心理諮商」與「精神科線上諮詢」服務屬於非醫療性質,
                 僅提供心理支持、情緒陪伴、生活適應建議與健康相關資訊。
                 諮詢內容不包含醫療診斷、開立藥物處方、醫療證明或任何醫療行為。
               </p>
@@ -333,6 +345,8 @@ export default function HomePage() {
       }
     }
     fetchData();
+    
+    return () => clearInterval(interval);
   }, []);
 
   if (loading) {
@@ -363,6 +377,7 @@ export default function HomePage() {
         <Navbar />
         <BookingPage doctors={doctors} schedules={schedules} setSchedules={setSchedules} />
       </div>
+      <FloatingChat />
     </div>
   );
 }
