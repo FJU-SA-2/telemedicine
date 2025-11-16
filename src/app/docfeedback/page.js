@@ -1,5 +1,5 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';  // 🔥 需要添加 useEffect
 import DoctorSidebar from "../components/DoctorSidebar";
 import Navbar from "../components/Navbar";
 import { Menu, AlertCircle, Send } from 'lucide-react';
@@ -198,6 +198,26 @@ function DoctorFeedbackFormContent() {
 
 export default function DoctorFeedbackPage() {
   const [isOpen, setIsOpen] = useState(false);
+  const [approvalStatus, setApprovalStatus] = useState(null); // 🔥 添加這行
+
+
+  useEffect(() => {
+      async function fetchApprovalStatus() {
+        try {
+          const res = await fetch("/api/me", {
+            credentials: 'include'
+          });
+          const data = await res.json();
+          
+          if (data.authenticated && data.user && data.user.role === 'doctor') {
+            setApprovalStatus(data.user.approval_status);
+          }
+        } catch (error) {
+          console.error("Failed to fetch approval status:", error);
+        }
+      }
+      fetchApprovalStatus();
+  }, []);
 
   return (
     <div className="relative">
@@ -213,6 +233,7 @@ export default function DoctorFeedbackPage() {
       <DoctorSidebar
         isOpen={isOpen}
         setIsOpen={setIsOpen}
+        approvalStatus={approvalStatus}
       />
 
       <div

@@ -19,6 +19,26 @@ export default function DoctorPatientList() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [activeTab, setActiveTab] = useState("home");
   const [isOpen, setIsOpen] = useState(false);
+  const [approvalStatus, setApprovalStatus] = useState(null); // 🔥 添加這行
+
+  useEffect(() => {
+    async function fetchApprovalStatus() {
+      try {
+        const res = await fetch("/api/me", {
+          credentials: 'include'
+        });
+        const data = await res.json();
+        
+        if (data.authenticated && data.user && data.user.role === 'doctor') {
+          setApprovalStatus(data.user.approval_status);
+        }
+      } catch (error) {
+        console.error("Failed to fetch approval status:", error);
+      }
+    }
+    fetchApprovalStatus();
+  }, []);
+
 
   useEffect(() => {
     // 模擬數據載入
@@ -152,8 +172,9 @@ export default function DoctorPatientList() {
       setIsOpen={setIsOpen}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
+      approvalStatus={approvalStatus}  // 🔥 添加這行
     />
-
+    
     {/* 主內容 */}
     <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
       {/* 導覽列 */}

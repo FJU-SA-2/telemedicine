@@ -5,6 +5,9 @@ import DoctorSidebar from "../components/DoctorSidebar";
 import { Clock, Save, ChevronLeft, ChevronRight, Menu } from "lucide-react";
 
 export default function DoctorSchedulePage() {
+    console.log("🚀🚀🚀 DoctorSchedulePage 組件已載入！");
+    console.log("🚀🚀🚀 時間:", new Date().toLocaleTimeString());
+
     const [doctor_id, setDoctorId] = useState(null);
     const [currentWeekStart, setCurrentWeekStart] = useState(() => {
         const today = new Date();
@@ -17,6 +20,7 @@ export default function DoctorSchedulePage() {
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [activeTab, setActiveTab] = useState("home");
     const [isOpen, setIsOpen] = useState(false);
+    const [approvalStatus, setApprovalStatus] = useState(null);
 
     const timeSlots = [
         "09:00", "09:30", "10:00", "10:30",
@@ -24,6 +28,56 @@ export default function DoctorSchedulePage() {
         "15:00", "15:30", "16:00", "16:30", "17:00"
     ];
 
+
+    useEffect(() => {
+    console.log("🔥🔥🔥 fetchApprovalStatus useEffect 被觸發了！");
+    
+    async function fetchApprovalStatus() {
+        console.log("🔥 Step 1: fetchApprovalStatus 函數開始執行");
+        
+        try {
+            console.log("🔥 Step 2: 準備呼叫 /api/me");
+            
+            const res = await fetch("/api/me", {
+                credentials: 'include'
+            });
+            
+            console.log("🔥 Step 3: 收到回應，status:", res.status);
+            
+            const data = await res.json();
+            
+            console.log("🔥 Step 4: 解析完成");
+            console.log("📡 完整 API 回應:", data);
+            console.log("📡 data.authenticated:", data.authenticated);
+            console.log("📡 data.user:", data.user);
+            console.log("📡 data.user?.role:", data.user?.role);
+            console.log("📡 data.user?.approval_status:", data.user?.approval_status);
+            
+            if (data.authenticated && data.user && data.user.role === 'doctor') {
+                console.log("🔥 Step 5: 進入 if 判斷");
+                const status = data.user.approval_status;
+                console.log("🔥 Step 6: 準備設定 approvalStatus 為:", status);
+                setApprovalStatus(status);
+                console.log("✅ Step 7: 已設定 approvalStatus 為:", status);
+            } else {
+                console.log("⚠️ 條件不符合:");
+                console.log("   authenticated:", data.authenticated);
+                console.log("   user exists:", !!data.user);
+                console.log("   role:", data.user?.role);
+            }
+        } catch (error) {
+            console.error("❌ fetchApprovalStatus 發生錯誤:", error);
+            console.error("❌ 錯誤堆疊:", error.stack);
+        }
+    }
+    
+    console.log("🔥 Step 0: 準備執行 fetchApprovalStatus 函數");
+    fetchApprovalStatus();
+    console.log("🔥 Step -1: fetchApprovalStatus 函數已呼叫（等待執行）");
+}, []);
+
+console.log("📝 fetchApprovalStatus useEffect 已定義");
+   
     // 🔥 修正: 從後端取得真實的 doctor_id
     useEffect(() => {
         const fetchDoctorId = async () => {
@@ -305,8 +359,15 @@ export default function DoctorSchedulePage() {
                     <Menu size={24} />
                 </button>
             )}
-            <DoctorSidebar isOpen={isOpen} setIsOpen={setIsOpen} activeTab={activeTab} setActiveTab={setActiveTab} />
-            <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+
+            <DoctorSidebar 
+                isOpen={isOpen} 
+                setIsOpen={setIsOpen} 
+                activeTab={activeTab} 
+                setActiveTab={setActiveTab}
+                approvalStatus={approvalStatus}  
+            />
+                <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
                 <Navbar setIsSidebarOpen={setIsOpen} />
                 <div className="p-6">
                     {saveSuccess && (

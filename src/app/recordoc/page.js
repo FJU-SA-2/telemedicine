@@ -9,7 +9,33 @@ export default function AppointmentRecords() {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [approvalStatus, setApprovalStatus] = useState(null);
+  const [activeTab, setActiveTab] = useState("home");
 
+  useEffect(() => {
+        async function fetchApprovalStatus() {
+            try {
+                const res = await fetch("/api/me", {
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                
+                console.log("📡 API 回應:", data);
+                console.log("📡 approval_status:", data.user?.approval_status);
+                
+                if (data.authenticated && data.user && data.user.role === 'doctor') {
+                    const status = data.user.approval_status;
+                    setApprovalStatus(status);
+                    console.log("✅ 已設定 approvalStatus 為:", status);
+                }
+            } catch (error) {
+                console.error("❌ Failed to fetch approval status:", error);
+            }
+        }
+        fetchApprovalStatus();
+    }, []);
+
+  
   useEffect(() => {
     fetchAppointments();
   }, []);
@@ -99,8 +125,14 @@ export default function AppointmentRecords() {
         </button>
       )}
 
-      <DoctorSidebar isOpen={isOpen} setIsOpen={setIsOpen} />
-
+      <DoctorSidebar 
+          isOpen={isOpen} 
+          setIsOpen={setIsOpen} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab}
+          approvalStatus={approvalStatus}  
+      />
+      
       <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
                 <Navbar />
 

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";  // 🔥 添加 useEffect
 import Navbar from "../components/Navbar";
 import DoctorSidebar from "../components/DoctorSidebar";
 import {
@@ -18,6 +18,7 @@ import {
 const TelemedicineDashboard = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [isOpen, setIsOpen] = useState(false);
+  const [approvalStatus, setApprovalStatus] = useState(null); // 🔥 添加這行
 
   // 模擬預約資料
   const appointments = [
@@ -34,6 +35,24 @@ const TelemedicineDashboard = () => {
     { label: "已完成", value: "5", change: "+3", icon: Activity, color: "bg-green-500" },
     { label: "總患者數", value: "142", change: "+8", icon: Users, color: "bg-purple-500" },
   ];
+
+  useEffect(() => {
+    async function fetchApprovalStatus() {
+      try {
+        const res = await fetch("/api/me", {
+          credentials: 'include'
+        });
+        const data = await res.json();
+        
+        if (data.authenticated && data.user && data.user.role === 'doctor') {
+          setApprovalStatus(data.user.approval_status);
+        }
+      } catch (error) {
+        console.error("Failed to fetch approval status:", error);
+      }
+    }
+    fetchApprovalStatus();
+  }, []);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -74,7 +93,13 @@ const TelemedicineDashboard = () => {
       )}
 
       {/* 側邊欄 */}
-      <DoctorSidebar isOpen={isOpen} setIsOpen={setIsOpen} activeTab={activeTab} setActiveTab={setActiveTab} />
+      <DoctorSidebar 
+        isOpen={isOpen} 
+        setIsOpen={setIsOpen} 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab}
+        approvalStatus={approvalStatus}  // 🔥 添加這行
+      />
 
       {/* 主內容 */}
       <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
@@ -157,9 +182,7 @@ const TelemedicineDashboard = () => {
                       <span className="text-sm">{25 + idx}日</span>
                     </div>
                     <p className="text-xs mt-1 opacity-80">
-                      {idx === 0
-                        ? "8 個預約"
-                        : `${Math.floor(Math.random() * 5) + 3} 個預約`}
+                      {idx === 0 ? "8 個預約" : `${[4, 6, 5, 3][idx] || 4} 個預約`}
                     </p>
                   </div>
                 ))}
