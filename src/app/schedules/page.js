@@ -185,7 +185,7 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
 
             try {
                 const res = await fetch(
-                    `/api/schedules/${doctor_id}?start_date=${startDate}&end_date=${endDate}`,
+                    `http://localhost:5000/api/schedules/${doctor_id}?start_date=${startDate}&end_date=${endDate}`,
                     { credentials: 'include' }
                 );
 
@@ -304,7 +304,7 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
 
             console.log('💾 儲存排班:', { doctor_id, schedules: scheduleList });
 
-            const res = await fetch('/api/schedules', {
+            const res = await fetch('http://localhost:5000/api/schedules', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ doctor_id, schedules: scheduleList })
