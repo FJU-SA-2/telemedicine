@@ -202,23 +202,21 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
                         newSchedules[day.fullDate][time] = false;
                     });
                 });
-
                 if (Array.isArray(data)) {
                     data.forEach(item => {
                         if (!item.schedule_date || !item.time_slot) return;
 
-                        const date = item.schedule_date.slice(0, 10); // YYYY-MM-DD
-                        // 統一時間格式為 "HH:MM"，補零
+                        const date = item.schedule_date.slice(0, 10);
                         let [h, m] = item.time_slot.split(':');
                         if (h.length === 1) h = '0' + h;
                         const timeSlot = `${h}:${m}`;
 
                         if (newSchedules[date] && timeSlots.includes(timeSlot)) {
-                            newSchedules[date][timeSlot] = item.is_available === "1";
-                            console.log(`✅ 設定 ${item.is_available == "1" ? "可" : "不可"}預約: ${date} ${timeSlot}`);
-                            console.log(` ${item.is_available}`);
-                        } else {
-                            console.warn(`⚠ 找不到日期或時段: ${date} ${timeSlot}`);
+                            // 🔥 修正:使用 !! 將任何真值轉為 true,假值轉為 false
+                            newSchedules[date][timeSlot] = !!item.is_available && item.is_available !== 0 && item.is_available !== "0";
+
+                            console.log(`✅ 設定 ${newSchedules[date][timeSlot] ? "可" : "不可"}預約: ${date} ${timeSlot}`,
+                                `(原始值: ${item.is_available}, 類型: ${typeof item.is_available})`);
                         }
                     });
                 } else {

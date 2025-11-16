@@ -72,6 +72,12 @@ export async function GET(request) {
 
     connection = await mysql.createConnection(dbConfig);
 
+    // ✅ 新增:刪除過期的排程(保留今天但時間已過的排程也刪除)
+    await connection.execute(`
+      DELETE FROM schedules 
+      WHERE CONCAT(schedule_date, ' ', time_slot) < NOW()
+    `);
+
     let query = `
       SELECT 
         a.*,
@@ -113,7 +119,6 @@ export async function GET(request) {
     if (connection) await connection.end();
   }
 }
-
 // ✅ 新增: PATCH - 取消預約
 export async function PATCH(request) {
   let connection;
