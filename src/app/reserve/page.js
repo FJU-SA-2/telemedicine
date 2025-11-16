@@ -317,43 +317,38 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
+  async function fetchData() {
+    try {
+      setLoading(true);
 
-        const resDoctors = await fetch("/api/doctors");
-        const doctorsData = await resDoctors.json();
-        setDoctors(doctorsData);
+      const resDoctors = await fetch("/api/doctors");
+      const doctorsData = await resDoctors.json();
+      setDoctors(doctorsData);
 
-        const resSchedules = await fetch("/api/schedules");
-        const schedulesData = await resSchedules.json();
+      const resSchedules = await fetch("/api/schedules");
+      const schedulesData = await resSchedules.json();
 
-        // 確保日期格式正確
-        const formattedSchedules = schedulesData.map(s => ({
-          ...s,
-          doctor_id: Number(s.doctor_id),
-          schedule_date: s.schedule_date.split("T")[0],
-          time_slot: s.time_slot.substring(0, 5),
-          is_available: Number(s.is_available)
-        }));
+      const formattedSchedules = schedulesData.map(s => ({
+        ...s,
+        doctor_id: Number(s.doctor_id),
+        schedule_date: s.schedule_date.split("T")[0],
+        time_slot: s.time_slot.substring(0, 5),
+        is_available: Number(s.is_available)
+      }));
 
-        setSchedules(formattedSchedules);
-        setLoading(false);
-      } catch (err) {
-        console.error("載入資料錯誤:", err);
-        setLoading(false);
-      }
+      setSchedules(formattedSchedules);
+      setLoading(false);
+    } catch (err) {
+      console.error("載入資料錯誤:", err);
+      setLoading(false);
     }
-    
-    fetchData();
+  }
+  
+  // 只執行一次
+  fetchData();
 
-    // ✅ 新增:每30秒自動重新獲取排程(可選)
-    const interval = setInterval(() => {
-      fetchData();
-    }, 30000);
+}, []);
 
-    return () => clearInterval(interval);
-  }, []);
 
   if (loading) {
     return (
