@@ -393,8 +393,12 @@ const handleSave = async () => {
           <div>
             {user.role === "patient" ? (
               <>
-                <p className="text-sm text-gray-500">年齡</p>
-                <p className="text-lg font-medium text-gray-800">{user.age}</p>
+                <p className="text-sm text-gray-500">生日 /年齡</p>
+                <p className="text-lg font-medium text-gray-800">
+                  {user.patientProfile?.date_of_birth
+                    ? `${user.patientProfile.date_of_birth}（${user.age} 歲）`
+                    : "未填寫"}
+                </p>
               </>
             ) : user.role === "doctor" ? (
               <>
