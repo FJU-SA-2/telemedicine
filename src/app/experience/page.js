@@ -8,22 +8,40 @@ import Navbar from "../components/Navbar";
 
 export default function ExperienceSharing() {
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false); // 側邊欄狀態
+  const [isOpen, setIsOpen] = useState(false);
   const [posts, setPosts] = useState([]);
   const [keyword, setKeyword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   
-  // 新文章表單
   const [newPost, setNewPost] = useState({
     title: '',
     content: '',
     is_anonymous: false
   });
 
-  // 獲取文章列表
+  // 檢查登入狀態
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      try {
+        const response = await fetch('/api/me', {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        console.log('登入狀態:', data);
+        setIsLoggedIn(data.authenticated || false);
+      } catch (error) {
+        console.error('檢查登入狀態失敗:', error);
+        setIsLoggedIn(false);
+      }
+    };
+    checkLoginStatus();
+  }, []);
+
   const fetchPosts = async (page = 1, searchKeyword = '') => {
     setLoading(true);
     try {
@@ -35,10 +53,7 @@ export default function ExperienceSharing() {
       );
       const data = await response.json();
       
-      console.log('API 回傳的資料:', data); 
-
       if (data.success) {
-        console.log('文章數量:', data.posts.length); 
         setPosts(data.posts);
         setTotalPages(Math.ceil(data.total / data.per_page));
       }
@@ -50,14 +65,20 @@ export default function ExperienceSharing() {
     }
   };
 
-  // 搜尋處理
   const handleSearch = (e) => {
     e.preventDefault();
     setCurrentPage(1);
+    setIsSearching(true);
     fetchPosts(1, keyword);
   };
 
-  // 創建文章
+  const handleClearSearch = () => {
+    setKeyword('');
+    setIsSearching(false);
+    setCurrentPage(1);
+    fetchPosts(1, '');
+  };
+
   const handleCreatePost = async (e) => {
     e.preventDefault();
     
@@ -92,9 +113,16 @@ export default function ExperienceSharing() {
     }
   };
 
-  // 查看文章詳情
   const viewPost = (postId) => {
     router.push(`/experience/${postId}`);
+  };
+
+  const handleCreateButtonClick = () => {
+    if (!isLoggedIn) {
+      alert('請先登入');
+      return;
+    }
+    setShowCreateModal(true);
   };
 
   useEffect(() => {
@@ -103,7 +131,6 @@ export default function ExperienceSharing() {
 
   return (
     <div className="relative min-h-screen bg-gray-50">
-      {/* 選單按鈕 */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -113,24 +140,18 @@ export default function ExperienceSharing() {
         </button>
       )}
 
-      {/* 側邊欄 */}
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
-      {/* 主內容 */}
       <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
-        {/* 導覽列 */}
         <Navbar />
         
-        {/* 經驗分享區內容 */}
         <div className="py-8">
           <div className="max-w-5xl mx-auto px-4">
-            {/* 標題區 */}
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-gray-800 mb-2">經驗分享區</h1>
               <p className="text-gray-600">分享您的就醫經驗，幫助更多人</p>
             </div>
 
-            {/* 搜尋 */}
             <div className="bg-white rounded-lg shadow-md p-6 mb-6">
               <form onSubmit={handleSearch} className="flex gap-2">
                 <input
@@ -146,19 +167,26 @@ export default function ExperienceSharing() {
                 >
                   搜尋
                 </button>
+                {isSearching && (
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition"
+                  >
+                    清空
+                  </button>
+                )}
               </form>
             </div>
 
-            {/* 浮動發布按鈕（右下角） */}
             <button
-              onClick={() => setShowCreateModal(true)}
+              onClick={handleCreateButtonClick}
               className="fixed bottom-10 right-20 w-16 h-16 bg-green-500 text-white rounded-full shadow-lg hover:bg-green-600 hover:shadow-xl transition-all flex items-center justify-center z-40 text-3xl"
               title="發布文章"
             >
               +
             </button>
            
-            {/* 文章列表 */}
             {loading ? (
               <div className="text-center py-12">
                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -196,7 +224,6 @@ export default function ExperienceSharing() {
               </div>
             )}
 
-            {/* 分頁 */}
             {totalPages > 1 && (
               <div className="flex justify-center gap-2 mt-8">
                 <button
@@ -219,9 +246,8 @@ export default function ExperienceSharing() {
               </div>
             )}
 
-            {/* 創建文章 Modal */}
             {showCreateModal && (
-              <div className="fixed inset-0 bg-black/30 bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
                 <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
                   <h2 className="text-2xl font-bold mb-4">發布新文章</h2>
                   <form onSubmit={handleCreatePost}>
@@ -267,7 +293,7 @@ export default function ExperienceSharing() {
                       >
                         取消
                       </button>
-                       <button
+                      <button
                         type="submit"
                         className="flex-1 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
                       >
