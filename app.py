@@ -1227,6 +1227,7 @@ def get_recordoc():
             a.appointment_id,
             a.appointment_date,
             a.appointment_time,
+            a.cancellation_reason,
             a.status,
             p.first_name,
             p.last_name
