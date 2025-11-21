@@ -72,8 +72,6 @@ export default function AppointmentRecords() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case '待確認':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       case '已確認':
         return 'bg-blue-100 text-blue-800 border-blue-300';
       case '已完成':
@@ -138,7 +136,7 @@ export default function AppointmentRecords() {
         {/* 篩選器 */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <div className="flex flex-wrap gap-2">
-            {['all', '待確認', '已確認', '已完成', '已取消'].map((status) => (
+            {['all',  '已確認', '已完成', '已取消'].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilter(status)}
