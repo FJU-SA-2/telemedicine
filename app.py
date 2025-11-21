@@ -1132,29 +1132,52 @@ def get_record():
 
 @app.route("/api/cancel_appointment", methods=["POST"])
 def cancel_appointment():
+    """取消預約並發送通知"""
     try:
         data = request.get_json()
         appointment_id = data.get("appointment_id")
-        cancel_reason = data.get("cancellation_reason", "")  # 新增：取得取消原因
+        cancel_reason = data.get("cancellation_reason", "")
+
+        if not cancel_reason.strip():
+            return jsonify({"success": False, "message": "請填寫取消原因"}), 400
 
         db = get_db()
         cursor = db.cursor(dictionary=True)
 
-        # 取得預約狀態與時間
+        # 🔍 獲取完整預約資訊
         cursor.execute("""
-            SELECT appointment_date, appointment_time, status 
-            FROM appointments 
-            WHERE appointment_id = %s
+            SELECT 
+                a.appointment_id,
+                a.patient_id,
+                a.doctor_id,
+                a.appointment_date, 
+                a.appointment_time, 
+                a.status,
+                d.first_name as doctor_first_name,
+                d.last_name as doctor_last_name,
+                d.specialty,
+                p.first_name as patient_first_name,
+                p.last_name as patient_last_name
+            FROM appointments a
+            LEFT JOIN doctor d ON a.doctor_id = d.doctor_id
+            LEFT JOIN patient p ON a.patient_id = p.patient_id
+            WHERE a.appointment_id = %s
         """, (appointment_id,))
+        
         appt = cursor.fetchone()
 
         if not appt:
             return jsonify({"success": False, "message": "找不到此預約"}), 404
 
+        if appt["status"] == "已取消":
+            return jsonify({"success": False, "message": "預約已取消"}), 400
+
+        if appt["status"] == "已完成":
+            return jsonify({"success": False, "message": "已完成的預約無法取消"}), 400
+
         appointment_date = appt["appointment_date"]
         appointment_time = appt["appointment_time"]
-        status = appt["status"]
-
+        
         # 處理 timedelta 轉換為 time
         if isinstance(appointment_time, timedelta):
             total_seconds = int(appointment_time.total_seconds())
@@ -1171,41 +1194,75 @@ def cancel_appointment():
         # 計算退款比例
         diff = appointment_datetime - now
         diff_days = diff.total_seconds() / (24 * 3600)
-        
-        # 判斷是否為當天
         is_same_day = appointment_date == now.date()
         
         if is_same_day:
             refund_percentage = 20
-            refund_message = "取消成功，將退回 20% 款項，於三日內退款"
+            refund_message = "取消成功,將退回 20% 款項,於三日內退款"
         elif diff_days <= 2:
             refund_percentage = 50
-            refund_message = "取消成功，將退回 50% 款項，於三日內退款"
+            refund_message = "取消成功,將退回 50% 款項,於三日內退款"
         else:
             refund_percentage = 100
-            refund_message = "取消成功，將全額退款，於三日內退款"
+            refund_message = "取消成功,將全額退款,於三日內退款"
 
-        # 更新狀態並儲存取消原因
+        # ✅ 更新預約狀態
         cursor.execute("""
             UPDATE appointments 
-            SET status = '已取消', cancellation_reason = %s 
+            SET status = '已取消', 
+                cancellation_reason = %s,
+                updated_at = NOW()
             WHERE appointment_id = %s
         """, (cancel_reason, appointment_id))
+
+        # ✅ 釋放時段
+        cursor.execute("""
+            UPDATE schedules 
+            SET is_available = '1' 
+            WHERE doctor_id = %s AND schedule_date = %s AND time_slot = %s
+        """, (appt["doctor_id"], appointment_date, appointment_time))
+
+        # ✅ 創建通知給患者
+        doctor_name = f"{appt['doctor_last_name']}{appt['doctor_first_name']}"
+        notification_title = "預約已取消"
+        notification_message = f"""您與 {doctor_name} 醫師的預約已取消
+
+📅 原預約時間: {appointment_date.strftime('%Y年%m月%d日')} {str(appointment_time)[:5]}
+🏥 醫師: {doctor_name} ({appt['specialty']})
+📝 取消原因: {cancel_reason}
+💰 退款說明: {refund_message}
+
+如有疑問,請聯繫客服。"""
+
+        cursor.execute("""
+            INSERT INTO notifications (patient_id, type, title, message, related_id)
+            VALUES (%s, 'appointment_cancelled', %s, %s, %s)
+        """, (appt["patient_id"], notification_title, notification_message, appointment_id))
+
         db.commit()
+
+        print(f"✅ 預約 {appointment_id} 已取消,通知已發送給患者 {appt['patient_id']}")
 
         return jsonify({
             "success": True, 
             "message": refund_message,
-            "refund_percentage": refund_percentage
-        })
+            "refund_percentage": refund_percentage,
+            "notification_sent": True
+        }), 200
 
     except Exception as e:
-        print("Cancel error:", e)
+        if 'db' in locals():
+            db.rollback()
+        print(f"❌ 取消預約錯誤: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"success": False, "message": "伺服器錯誤"}), 500
 
     finally:
-        cursor.close()
-        db.close()
+        if 'cursor' in locals():
+            cursor.close()
+        if 'db' in locals():
+            db.close()
         
 @app.route("/api/recordoc", methods=["GET"])
 def get_recordoc():
@@ -1923,7 +1980,65 @@ def get_certificate(filename):
     except Exception as e:
         print(f"❌ 檔案不存在: {str(e)}")
         return jsonify({"message": f"檔案不存在: {str(e)}"}), 404
+
+@app.route("/api/admin/feedback/read", methods=["PATCH"])
+def mark_feedback_read():
+    """管理員標記回報為已處理"""
+    if not session.get('is_admin'):
+        return jsonify({"message": "無權限"}), 403
     
+    data = request.get_json()
+    feedback_id = data.get('feedback_id')
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        # 獲取回報資料
+        cursor.execute("""
+            SELECT patient_id, feedback_text 
+            FROM feedback 
+            WHERE feedback_id = %s
+        """, (feedback_id,))
+        
+        feedback = cursor.fetchone()
+        
+        if not feedback:
+            return jsonify({"message": "回報不存在"}), 404
+        
+        # 更新回報狀態
+        cursor.execute("""
+            UPDATE feedback 
+            SET status = 'read'
+            WHERE feedback_id = %s
+        """, (feedback_id,))
+        
+        # ✅ 創建通知給患者
+        if feedback['patient_id']:
+            cursor.execute("""
+                INSERT INTO notifications (patient_id, type, title, message, related_id)
+                VALUES (%s, 'feedback_resolved', '問題回報已處理', %s, %s)
+            """, (
+                feedback['patient_id'],
+                '感謝您的回報,我們已收到並處理您的問題',
+                feedback_id
+            ))
+        
+        db.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "已標記為已處理並通知患者"
+        }), 200
+        
+    except Exception as e:
+        db.rollback()
+        print(f"❌ 更新失敗: {str(e)}")
+        return jsonify({"message": f"操作失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
 @app.route("/api/appointments/history", methods=["GET"])
 def get_appointment_history():
     """獲取用戶的看診歷史記錄"""
@@ -3044,6 +3159,165 @@ def delete_comment(comment_id):
     finally:
         cursor.close()
         conn.close()
+
+@app.route("/api/notifications", methods=["GET"])
+def get_notifications():
+    """獲取患者的通知列表"""
+    if 'user_id' not in session or session.get('role') != 'patient':
+        return jsonify({"message": "請先登入患者帳號"}), 401
+    
+    patient_id = session.get('patient_id')
+    if not patient_id:
+        return jsonify({"message": "找不到患者資料"}), 404
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        # 獲取通知列表(最近30天)
+        cursor.execute("""
+            SELECT 
+                notification_id,
+                type,
+                title,
+                message,
+                related_id,
+                is_read,
+                created_at
+            FROM notifications
+            WHERE patient_id = %s
+            AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            ORDER BY created_at DESC
+            LIMIT 50
+        """, (patient_id,))
+        
+        notifications = cursor.fetchall()
+        
+        # 格式化時間
+        for n in notifications:
+            if n.get('created_at'):
+                n['created_at'] = n['created_at'].isoformat()
+        
+        # 獲取未讀數量
+        cursor.execute("""
+            SELECT COUNT(*) as unread_count
+            FROM notifications
+            WHERE patient_id = %s AND is_read = FALSE
+        """, (patient_id,))
+        
+        unread_count = cursor.fetchone()['unread_count']
+        
+        return jsonify({
+            "notifications": notifications,
+            "unread_count": unread_count
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ 獲取通知失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"message": f"獲取通知失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@app.route("/api/notifications/<int:notification_id>/read", methods=["PATCH"])
+def mark_notification_read(notification_id):
+    """標記單個通知為已讀"""
+    if 'user_id' not in session or session.get('role') != 'patient':
+        return jsonify({"message": "請先登入患者帳號"}), 401
+    
+    patient_id = session.get('patient_id')
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    try:
+        # 確認通知屬於該患者
+        cursor.execute("""
+            UPDATE notifications 
+            SET is_read = TRUE 
+            WHERE notification_id = %s AND patient_id = %s
+        """, (notification_id, patient_id))
+        
+        db.commit()
+        
+        if cursor.rowcount == 0:
+            return jsonify({"message": "通知不存在或無權限"}), 404
+        
+        return jsonify({
+            "success": True,
+            "message": "已標記為已讀"
+        }), 200
+        
+    except Exception as e:
+        db.rollback()
+        print(f"❌ 標記已讀失敗: {str(e)}")
+        return jsonify({"message": f"操作失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@app.route("/api/notifications/read-all", methods=["PATCH"])
+def mark_all_notifications_read():
+    """標記所有通知為已讀"""
+    if 'user_id' not in session or session.get('role') != 'patient':
+        return jsonify({"message": "請先登入患者帳號"}), 401
+    
+    patient_id = session.get('patient_id')
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    try:
+        cursor.execute("""
+            UPDATE notifications 
+            SET is_read = TRUE 
+            WHERE patient_id = %s AND is_read = FALSE
+        """, (patient_id,))
+        
+        db.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": f"已標記 {cursor.rowcount} 則通知為已讀"
+        }), 200
+        
+    except Exception as e:
+        db.rollback()
+        print(f"❌ 全部標記已讀失敗: {str(e)}")
+        return jsonify({"message": f"操作失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+# =============== 通知觸發函數 ===============
+
+def create_notification(patient_id, notification_type, title, message, related_id=None):
+    """創建通知的通用函數"""
+    db = get_db()
+    cursor = db.cursor()
+    
+    try:
+        cursor.execute("""
+            INSERT INTO notifications (patient_id, type, title, message, related_id)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (patient_id, notification_type, title, message, related_id))
+        
+        db.commit()
+        print(f"✅ 通知已創建: {title}")
+        return True
+        
+    except Exception as e:
+        db.rollback()
+        print(f"❌ 創建通知失敗: {str(e)}")
+        return False
+    finally:
+        cursor.close()
+        db.close()
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -78,41 +78,43 @@ export default function DoctorAppointmentManagement() {
 
     // ✅ 修改:取消預約功能 - 需填寫理由
     const handleCancel = async () => {
-        if (!cancellationReason.trim()) {
-            alert("請填寫取消理由");
-            return;
+    if (!cancellationReason.trim()) {
+        alert("請填寫取消理由");
+        return;
+    }
+
+    if (!confirm("確定要取消此預約嗎?取消後時段將重新開放。")) return;
+
+    setProcessing(true);
+    try {
+        // ✅ 修改這裡:使用 Flask 的端點
+        const response = await fetch("/api/cancel_appointment", {
+            method: "POST",  // ← 改成 POST
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                appointment_id: selectedAppointment.appointment_id,
+                cancellation_reason: cancellationReason  // ← 改成這個欄位名
+            })
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            alert(result.message || "預約已取消,時段已釋放");
+            fetchAppointments();
+            setShowCancelModal(false);
+            setShowDetailModal(false);
+            setCancellationReason("");
+        } else {
+            const error = await response.json();
+            alert(error.message || "操作失敗,請稍後再試");
         }
-
-        if (!confirm("確定要取消此預約嗎?取消後時段將重新開放。")) return;
-
-        setProcessing(true);
-        try {
-            const response = await fetch("/api/appointments", {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    appointment_id: selectedAppointment.appointment_id,
-                    cancellation_reason: cancellationReason
-                })
-            });
-
-            if (response.ok) {
-                alert("預約已取消,時段已釋放");
-                fetchAppointments();
-                setShowCancelModal(false);
-                setShowDetailModal(false);
-                setCancellationReason("");
-            } else {
-                const error = await response.json();
-                alert(error.error || "操作失敗,請稍後再試");
-            }
-        } catch (error) {
-            console.error("取消預約錯誤:", error);
-            alert("操作失敗");
-        } finally {
-            setProcessing(false);
-        }
-    };
+    } catch (error) {
+        console.error("取消預約錯誤:", error);
+        alert("操作失敗");
+    } finally {
+        setProcessing(false);
+    }
+};
 
     const formatDate = (dateStr) => {
         const date = new Date(dateStr);

@@ -49,6 +49,16 @@ export async function POST(request) {
       [doctor_id, appointment_date, appointment_time]
     );
 
+    await connection.execute(
+      `INSERT INTO notifications (patient_id, type, title, message, related_id)
+       VALUES (?, 'appointment_confirmed', '預約成功', ?, ?)`,
+      [
+        patient_id,
+        `您已成功預約 ${appointment_date} ${appointment_time} 的看診`,
+        result.insertId
+      ]
+    );
+
     await connection.commit();
 
     return NextResponse.json({ success: true, appointment_id: result.insertId, message: "預約成功" }, { status: 201 });
@@ -178,6 +188,16 @@ export async function PATCH(request) {
        SET is_available = '1' 
        WHERE doctor_id = ? AND schedule_date = ? AND time_slot = ?`,
       [appointment.doctor_id, appointment.appointment_date, appointment.appointment_time]
+    );
+
+    await connection.execute(
+      `INSERT INTO notifications (patient_id, type, title, message, related_id)
+       VALUES (?, 'appointment_cancelled', '預約已取消', ?, ?)`,
+      [
+        appointment.patient_id,
+        `您的 ${appointment.appointment_date} ${appointment.appointment_time} 預約已取消`,
+        appointment_id
+      ]
     );
 
     await connection.commit();
