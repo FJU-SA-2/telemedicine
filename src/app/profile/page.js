@@ -5,6 +5,8 @@ import Link from "next/link";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
  import { Menu } from "lucide-react";
+import DoctorSidebar from "../components/DoctorSidebar";
+
 export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -296,8 +298,6 @@ const handleSave = async () => {
   const doctorProfile = user.doctorProfile || {};
   
     return (
-    
-    
     <div className="relative min-h-screen bg-gray-50">
       {/* Sidebar 開關按鈕（只在 Sidebar 關閉時顯示） */}
       {!isOpen && (
@@ -310,12 +310,22 @@ const handleSave = async () => {
       )}
 
       {/* 側邊欄 */}
-      <Sidebar  
-              isOpen={isOpen} 
-              setIsOpen={setIsOpen} 
-              activeTab={activeTab} 
-              setActiveTab={setActiveTab} />
+      {isPatient && (
+        <Sidebar  
+          isOpen={isOpen} 
+          setIsOpen={setIsOpen} 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab} 
+        />
+      )}
 
+      {isDoctor && (
+        <DoctorSidebar  
+          isOpen={isOpen} 
+          setIsOpen={setIsOpen}
+          approvalStatus={user.approval_status}
+        />
+      )}
       {/* 主內容 */}
       <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
         {/* 頂部導覽列 */}

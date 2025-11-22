@@ -15,6 +15,10 @@ from flask import send_from_directory
 from datetime import datetime, timedelta
 import secrets
 from flask import send_file
+import threading 
+from datetime import datetime, timedelta
+from flask import Response
+import json
 
 
 app = Flask(__name__)
@@ -3319,5 +3323,170 @@ def create_notification(patient_id, notification_type, title, message, related_i
         cursor.close()
         db.close()
 
+def check_upcoming_appointments():
+    """檢查 10 分鐘後的預約並發送提醒"""
+    while True:
+        try:
+            db = get_db()
+            cursor = db.cursor(dictionary=True)
+            
+            # 查詢 10 分鐘後的預約
+            ten_minutes_later = datetime.now() + timedelta(minutes=10)
+            
+            cursor.execute("""
+                SELECT 
+                    a.appointment_id,
+                    a.patient_id,
+                    a.appointment_date,
+                    a.appointment_time,
+                    d.first_name as doctor_first_name,
+                    d.last_name as doctor_last_name,
+                    d.specialty
+                FROM appointments a
+                INNER JOIN doctor d ON a.doctor_id = d.doctor_id
+                WHERE a.status = '已確認'
+                AND CONCAT(a.appointment_date, ' ', a.appointment_time) 
+                    BETWEEN %s AND %s
+                AND NOT EXISTS (
+                    SELECT 1 FROM notifications n 
+                    WHERE n.related_id = a.appointment_id 
+                    AND n.type = 'appointment_reminder'
+                )
+            """, (
+                ten_minutes_later.strftime('%Y-%m-%d %H:%M:%S'),
+                (ten_minutes_later + timedelta(minutes=1)).strftime('%Y-%m-%d %H:%M:%S')
+            ))
+            
+            appointments = cursor.fetchall()
+            
+            for apt in appointments:
+                # 創建提醒通知
+                doctor_name = f"{apt['doctor_last_name']}{apt['doctor_first_name']}"
+                notification_message = f"""您的看診即將開始!
+
+📅 看診時間: {apt['appointment_date']} {apt['appointment_time']}
+👨‍⚕️ 醫師: {doctor_name} ({apt['specialty']})
+
+⏰ 請準備好進入視訊會議室"""
+
+                cursor.execute("""
+                    INSERT INTO notifications (patient_id, type, title, message, related_id, is_read, created_at)
+                    VALUES (%s, 'appointment_reminder', '看診提醒', %s, %s, FALSE, NOW())
+                """, (apt['patient_id'], notification_message, apt['appointment_id']))
+                
+                db.commit()
+                print(f"✅ 已發送看診提醒給患者 {apt['patient_id']}")
+            
+            cursor.close()
+            db.close()
+            
+        except Exception as e:
+            print(f"❌ 檢查預約提醒失敗: {str(e)}")
+            import traceback
+            traceback.print_exc()
+        
+        # 每分鐘檢查一次
+        import time
+        time.sleep(60)
+
+def start_background_tasks():
+    """啟動背景任務"""
+    reminder_thread = threading.Thread(target=check_upcoming_appointments, daemon=True)
+    reminder_thread.start()
+    print("✅ 背景任務已啟動: 預約提醒檢查")
+
+@app.route("/api/notifications/latest", methods=["GET"])
+def get_latest_notifications():
+    """獲取最近 1 分鐘內的新通知"""
+    if 'user_id' not in session or session.get('role') != 'patient':
+        return jsonify({"notifications": [], "count": 0}), 200
+    
+    patient_id = session.get('patient_id')
+    since = request.args.get('since')  # ISO 時間戳
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        if since:
+            # 查詢指定時間之後的通知
+            cursor.execute("""
+                SELECT 
+                    notification_id,
+                    type,
+                    title,
+                    message,
+                    related_id,
+                    is_read,
+                    created_at
+                FROM notifications
+                WHERE patient_id = %s
+                AND created_at > %s
+                ORDER BY created_at DESC
+            """, (patient_id, since))
+        else:
+            # 查詢最近 1 分鐘的通知
+            cursor.execute("""
+                SELECT 
+                    notification_id,
+                    type,
+                    title,
+                    message,
+                    related_id,
+                    is_read,
+                    created_at
+                FROM notifications
+                WHERE patient_id = %s
+                AND created_at >= DATE_SUB(NOW(), INTERVAL 1 MINUTE)
+                ORDER BY created_at DESC
+            """, (patient_id,))
+        
+        notifications = cursor.fetchall()
+        
+        # 格式化時間
+        for n in notifications:
+            if n.get('created_at'):
+                n['created_at'] = n['created_at'].isoformat()
+        
+        return jsonify({
+            "notifications": notifications,
+            "count": len(notifications)
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ 獲取最新通知失敗: {str(e)}")
+        return jsonify({"notifications": [], "count": 0}), 200
+    finally:
+        cursor.close()
+        db.close()
+
+@app.route("/api/notifications/count", methods=["GET"])
+def get_unread_count():
+    """快速獲取未讀通知數量"""
+    if 'user_id' not in session or session.get('role') != 'patient':
+        return jsonify({"count": 0}), 200
+    
+    patient_id = session.get('patient_id')
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM notifications
+            WHERE patient_id = %s AND is_read = FALSE
+        """, (patient_id,))
+        
+        result = cursor.fetchone()
+        return jsonify({"count": result['count']}), 200
+        
+    except Exception as e:
+        return jsonify({"count": 0}), 200
+    finally:
+        cursor.close()
+        db.close()
+
 if __name__ == "__main__":
+    start_background_tasks()
     app.run(debug=True)
