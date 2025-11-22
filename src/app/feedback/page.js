@@ -1,8 +1,9 @@
 "use client";
-import { useState} from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import { Menu, AlertCircle, Send } from 'lucide-react';
+import LockedPageOverlay from "../components/LockedPageOverlay"; // ✅ 新增
 
 function FeedbackFormContent() {
   const [selectedCategories, setSelectedCategories] = useState([]);
@@ -10,7 +11,6 @@ function FeedbackFormContent() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
 
   const categories = [
     { id: '登入註冊', label: '登入註冊' },
@@ -29,59 +29,59 @@ function FeedbackFormContent() {
   };
 
   const handleSubmit = async () => {
-  setLoading(true);
-  setError('');
+    setLoading(true);
+    setError('');
 
-  try {
-    const user_id = localStorage.getItem('user_id'); // 👈 取得登入使用者ID
+    try {
+      const user_id = localStorage.getItem('user_id');
 
-    if (!user_id) {
-      setError('請先登入後再提交回報');
+      if (!user_id) {
+        setError('請先登入後再提交回報');
+        setLoading(false);
+        return;
+      }
+      const userIdNumber = parseInt(user_id, 10);
+      
+      console.log('user_id from localStorage:', user_id);
+      console.log('user_id as number:', userIdNumber);
+      console.log('發送請求到:', '/api/feedback');
+      console.log('提交數據:', {
+          user_id: userIdNumber,
+          categories: selectedCategories,
+          feedback_text: feedback,
+      });
+
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userIdNumber,
+          categories: selectedCategories,
+          feedback_text: feedback,
+        }),
+      });
+
+      const data = await response.json();
+      console.log('API 回應:', data);
+      if (!response.ok) {
+        setError(data.message || '提交失敗');
+        return;
+      }
+
+      setSubmitted(true);
+      setSelectedCategories([]);
+      setFeedback('');
+
+      setTimeout(() => setSubmitted(false), 3000);
+    } catch (err) {
+      console.error('提交錯誤:', err);
+      setError('提交失敗,請稍後重試');
+    } finally {
       setLoading(false);
-      return;
     }
-    const userIdNumber = parseInt(user_id, 10);
-    
-    console.log('user_id from localStorage:', user_id);
-    console.log('user_id as number:', userIdNumber);
-    console.log('發送請求到:', '/api/feedback');
-    console.log('提交數據:', {
-        user_id: userIdNumber,
-        categories: selectedCategories,
-        feedback_text: feedback,
-    });
-
-    const response = await fetch('/api/feedback', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: userIdNumber,  // ✅ 傳送數字型別
-        categories: selectedCategories,
-        feedback_text: feedback,
-      }),
-    });
-
-    const data = await response.json();
-    console.log('API 回應:', data); // 👈 看錯誤訊息
-    if (!response.ok) {
-      setError(data.message || '提交失敗');
-      return;
-    }
-
-    setSubmitted(true);
-    setSelectedCategories([]);
-    setFeedback('');
-
-    setTimeout(() => setSubmitted(false), 3000);
-  } catch (err) {
-    console.error('提交錯誤:', err);
-    setError('提交失敗,請稍後重試');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -110,14 +110,14 @@ function FeedbackFormContent() {
                         : 'border-gray-200 hover:border-indigo-300 bg-white'
                     }`}
                 >
-                <input
+                  <input
                     type="checkbox"
                     name="category"
                     value={category.id}
                     checked={selectedCategories.includes(category.id)}
                     onChange={() => toggleCategory(category.id)}
                     className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 rounded"
-                />
+                  />
                   <span className="ml-3 text-gray-700 font-medium">
                     {category.label}
                   </span>
@@ -176,6 +176,37 @@ function FeedbackFormContent() {
 export default function FeedbackPage() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("feedback");
+  
+  // ✅ 新增：登入狀態管理
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // ✅ 新增：檢查登入狀態
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data.user);
+        }
+      } catch (err) {
+        console.error('檢查登入狀態失敗:', err);
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+    checkAuth();
+  }, []);
+
+  // ✅ 只在認證檢查時顯示載入
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-600">載入中...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="relative">
@@ -201,7 +232,14 @@ export default function FeedbackPage() {
         }`}
       >
         <Navbar />
-        <FeedbackFormContent />
+        
+        {/* ✅ 主內容區域 */}
+        <div className="relative min-h-screen">
+          <FeedbackFormContent />
+          
+          {/* ✅ 未登入時顯示鎖定覆蓋層 */}
+          {!user && <LockedPageOverlay pageName="問題回報" icon={AlertCircle} />}
+        </div>
       </div>
     </div>
   );
