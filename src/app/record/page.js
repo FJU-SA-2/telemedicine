@@ -4,7 +4,6 @@ import { Calendar, Clock, User, Stethoscope, RefreshCw, Menu, X } from "lucide-r
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import LockedPageOverlay from "../components/LockedPageOverlay"; // ✅ 新增
-import LockedPageOverlay from '../components/LockedPageOverlay';
 import { Video } from 'lucide-react';
 
 export default function AppointmentRecords() {
