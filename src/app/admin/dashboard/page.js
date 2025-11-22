@@ -499,7 +499,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">醫隨行 MOG 管理系統</h1>
-                <p className="text-sm text-gray-500">醫師註冊審核</p>
+                <p className="text-sm text-gray-500">後台</p>
               </div>
             </div>
             <button
