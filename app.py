@@ -765,7 +765,7 @@ def get_current_user():
                        date_of_birth,TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()) AS age,
                         address, id_number, smoking_status, 
                        drug_allergies, medical_history, emergency_contact_name, 
-                       emergency_contact_phone
+                       emergency_contact_phone, height, weight, chronic_disease, other_chronic_disease
                 FROM patient 
                 WHERE user_id = %s
             """, (user_id,))
@@ -785,6 +785,10 @@ def get_current_user():
                     'medical_history': patient_data['medical_history'],
                     'emergency_contact_name': patient_data['emergency_contact_name'],
                     'emergency_contact_phone': patient_data['emergency_contact_phone'],
+                    'height': patient_data.get('height') or "",
+                    'weight': patient_data.get('weight') or "",
+                    'chronic_disease': patient_data.get('chronic_disease') or [],
+                    'other_chronic_disease': patient_data.get('other_chronic_disease') or ""
                 }
     # 新增：如果是醫師，取得完整專業資料
         elif role == "doctor":
@@ -852,6 +856,11 @@ def update_patient_profile():
     smoking_status = data.get("smoking_status")
     drug_allergies = data.get("drug_allergies")
     medical_history = data.get("medical_history")
+    chronic_disease_list = data.get("chronic_disease", [])
+    chronic_disease = ",".join(chronic_disease_list)
+    other_chronic_disease = data.get("other_chronic_disease")
+    height = data.get("height")                     
+    weight = data.get("weight")
     emergency_contact_name = data.get("emergency_contact_name")
     emergency_contact_phone = data.get("emergency_contact_phone")
 
@@ -866,12 +875,17 @@ def update_patient_profile():
                 smoking_status = %s,
                 drug_allergies = %s,
                 medical_history = %s,
+                chronic_disease = %s,
+                other_chronic_disease = %s,       
+                height = %s,                
+                weight = %s, 
                 emergency_contact_name = %s,
                 emergency_contact_phone = %s
             WHERE user_id = %s
         """
         cursor.execute(sql, (
             id_number, smoking_status, drug_allergies, medical_history,
+            chronic_disease, other_chronic_disease, height, weight,
             emergency_contact_name, emergency_contact_phone, user_id
         ))
         db.commit()
@@ -1467,9 +1481,11 @@ def get_users():
         return jsonify({"message": "無權限"}), 403
 
     user_type = request.args.get('type', 'doctor')
-    
+    search_query = request.args.get('search', '').strip()
     db = get_db()
     cursor = db.cursor(dictionary=True)
+
+    params = []
 
     try:
         if user_type == 'doctor':
@@ -1488,9 +1504,25 @@ def get_users():
                     u.created_at as registration_date
                 FROM doctor d
                 JOIN users u ON d.user_id = u.user_id
-                WHERE d.approval_status = 'approved'
-                ORDER BY u.created_at DESC
+                WHERE d.approval_status = 'approved' 
             """
+            if search_query:
+                # 假設我們要搜尋 醫師的姓名、Email 或醫院
+                sql += """
+                    AND (
+                        d.first_name LIKE %s OR 
+                        d.last_name LIKE %s OR 
+                        d.practice_hospital LIKE %s OR
+                        u.email LIKE %s
+                    )
+                """
+                # 使用 %s 作為佔位符，並將實際值添加到 params 列表中
+                # 注意：LIKE 查詢需要手動添加 %
+                search_term = f"%{search_query}%"
+                params.extend([search_term, search_term, search_term, search_term])
+                
+            sql += " ORDER BY u.created_at DESC"
+
         else:  # patient
             sql = """
                 SELECT 
@@ -1504,11 +1536,24 @@ def get_users():
                     u.account_status,
                     u.created_at as registration_date
                 FROM patient p
-                JOIN users u ON p.user_id = u.user_id
-                ORDER BY u.created_at DESC
+                JOIN users u ON p.user_id = u.user_id 
+                
             """
-        
-        cursor.execute(sql)
+            if search_query:
+                # 由於 patient 沒有 approval_status，直接在 JOIN 之後加 WHERE
+                sql += """
+                    WHERE (
+                    p.first_name LIKE %s OR 
+                    p.last_name LIKE %s OR 
+                    u.email LIKE %s
+                    )
+                """
+                search_term = f"%{search_query}%"
+                params.extend([search_term, search_term, search_term])
+                sql += " ORDER BY u.created_at DESC"
+        print(f"Executing SQL: {sql.strip()}") 
+        print(f"with params: {params}")
+        cursor.execute(sql, tuple(params))
         users = cursor.fetchall()
 
         # 格式化日期

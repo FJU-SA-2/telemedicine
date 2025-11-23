@@ -8,6 +8,7 @@ function FeedbackList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
+  
 
   useEffect(() => {
     fetchFeedbacks();
@@ -210,6 +211,7 @@ export default function AdminDashboard() {
   const [userType, setUserType] = useState('doctor');
   const [ratings, setRatings] = useState([]);
   const [ratingsLoading, setRatingsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchPendingDoctors();
@@ -221,7 +223,7 @@ export default function AdminDashboard() {
     } else if (activeTab === 'ratings') {
       fetchRatings();
     }
-  }, [activeTab, userType]);
+  }, [activeTab, userType, searchQuery]);
 
   const fetchPendingDoctors = async () => {
     try {
@@ -250,12 +252,24 @@ export default function AdminDashboard() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch(`/api/admin/users?type=${userType}`, {
+      const url = `/api/admin/users?type=${userType}${searchQuery ? `&search=${searchQuery}` : ''}`;
+      
+      const res = await fetch(url, { // <-- 使用包含搜尋參數的 url
         credentials: 'include',
       });
 
       if (!res.ok) {
-        throw new Error('Failed to fetch users');
+        let errorMessage = `載入失敗 (HTTP ${res.status})`;
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (e) {
+          // 如果後端沒有回傳 JSON，則使用回應文字
+          const text = await res.text();
+          errorMessage = text || errorMessage;
+        }
+        throw new Error(errorMessage);
+        
       }
 
       const data = await res.json();
@@ -658,8 +672,7 @@ export default function AdminDashboard() {
             )}
           </>
         )}
-
-        {/* 使用者管理頁面 */}
+                
         {activeTab === 'users' && (
           <>
             <div className="bg-white rounded-xl shadow-sm p-4 mb-6 border flex space-x-2">
@@ -683,6 +696,17 @@ export default function AdminDashboard() {
               >
                 患者管理
               </button>
+            </div>
+            
+            {/* ✨ 新增搜尋欄位 */}
+            <div className="mb-6">
+              <input
+                type="text"
+                placeholder={`搜尋 ${userType === 'doctor' ? '醫師姓名或醫院' : '患者姓名'}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 transition-shadow"
+              />
             </div>
 
             <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border">

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "../components/Sidebar";
@@ -20,6 +20,8 @@ export default function ProfilePage() {
   const [trialDaysLeft, setTrialDaysLeft] = useState(null);
   const [trialEndDate, setTrialEndDate] = useState(null);
   const trialMonths = 6;
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
 
   // 編輯表單狀態
@@ -28,6 +30,10 @@ export default function ProfilePage() {
     smoking_status: "no",
     drug_allergies: "",
     medical_history: "",
+    chronic_disease: [],   
+    other_chronic_disease: "",
+    height: "",            
+    weight: "", 
     emergency_contact_name: "",
     emergency_contact_phone: ""
   });
@@ -45,6 +51,17 @@ export default function ProfilePage() {
     consultation_type: "現場看診",
     photo: ""
   });
+
+useEffect(() => {
+  function handleClickOutside(event) {
+  if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+  setDropdownOpen(false);
+  }
+  }
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
 const fetchUser = async () => {
    setLoading(true);
       try {
@@ -84,6 +101,14 @@ const fetchUser = async () => {
               smoking_status: profile.smoking_status || "no",
               drug_allergies: profile.drug_allergies || "",
               medical_history: profile.medical_history || "",
+              chronic_disease: Array.isArray(profile.chronic_disease)
+                ? profile.chronic_disease
+                : typeof profile.chronic_disease === "string" && profile.chronic_disease
+                ? profile.chronic_disease.split(",")
+                : [],
+              other_chronic_disease: profile.other_chronic_disease || "", 
+              height: profile.height || "",                    
+              weight: profile.weight || "", 
               emergency_contact_name: profile.emergency_contact_name || "",
               emergency_contact_phone: profile.emergency_contact_phone || ""
             });
@@ -238,6 +263,12 @@ const handleSave = async () => {
         smoking_status: profile.smoking_status || "no",
         drug_allergies: profile.drug_allergies || "",
         medical_history: profile.medical_history || "",
+        chronic_disease: profile.chronic_disease
+          ? profile.chronic_disease.split(",")
+          : [],
+        other_chronic_disease: profile.other_chronic_disease || "",  
+        height: profile.height || "",                    
+        weight: profile.weight || "",    
         emergency_contact_name: profile.emergency_contact_name || "",
         emergency_contact_phone: profile.emergency_contact_phone || ""
       });
@@ -465,7 +496,57 @@ const handleSave = async () => {
                 </p>
               </div>
 
-              <div className="pt-4">
+              
+                  <div>
+                    <p className="text-sm text-gray-500">吸菸狀況</p>
+                    <p className="text-lg font-medium text-gray-800">
+                      {profile.smoking_status === "yes" ? "有吸菸" : 
+                      profile.smoking_status === "quit" ? "已戒菸" : "無"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">身高</p>
+                    <p className="text-lg font-medium text-gray-800">
+                      {profile.height ? profile.height + " cm" : "未填寫"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-gray-500">體重</p>
+                    <p className="text-lg font-medium text-gray-800">
+                      {profile.weight ? profile.weight + " kg" : "未填寫"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-gray-500">慢性疾病</p>
+                    <p className="text-lg font-medium text-gray-800 whitespace-pre-wrap">
+                      {(() => {
+                        // 轉陣列（不管後端給字串或陣列都可以處理）
+                        const chronicList = Array.isArray(profile.chronic_disease)
+                          ? profile.chronic_disease
+                          : profile.chronic_disease
+                          ? profile.chronic_disease.split(",")
+                          : [];
+
+                        // 如果沒有任何資料
+                        if (chronicList.length === 0 && !profile.other_chronic_disease) {
+                          return "無";
+                        }
+
+                        // 移除選項 "其他"，並加上自填項（如果有）
+                        const displayList = chronicList
+                          .filter(item => item && item !== "其他");
+
+                        if (chronicList.includes("其他") && profile.other_chronic_disease) {
+                          displayList.push(profile.other_chronic_disease);
+                        }
+
+                        return displayList.join("、") || "無";
+                      })()}
+                    </p>
+                  </div>
+                  <div className="pt-4">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">緊急聯絡人</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -480,13 +561,8 @@ const handleSave = async () => {
                       {profile.emergency_contact_phone || "未填寫"}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-500">吸菸狀況</p>
-                    <p className="text-lg font-medium text-gray-800">
-                      {profile.smoking_status === "yes" ? "有吸菸" : 
-                      profile.smoking_status === "quit" ? "已戒菸" : "無"}
-                    </p>
-                  </div>
+
+
                 </div>
               </div>
             </div>
@@ -506,22 +582,6 @@ const handleSave = async () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="請輸入身分證字號"
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  吸菸狀況
-                </label>
-                <select
-                  name="smoking_status"
-                  value={formData.smoking_status}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="no">無</option>
-                  <option value="yes">有吸菸</option>
-                  <option value="quit">已戒菸</option>
-                </select>
               </div>
 
               <div>
@@ -550,6 +610,151 @@ const handleSave = async () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="請輸入重大疾病史（如有多項請分行填寫）"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  吸菸狀況
+                </label>
+                <select
+                  name="smoking_status"
+                  value={formData.smoking_status}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="no">無</option>
+                  <option value="yes">有吸菸</option>
+                  <option value="quit">已戒菸</option>
+                </select>
+              </div>
+              
+              {/* 身高 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  身高（cm）
+                </label>
+                <input
+                  type="number"
+                  name="height"
+                  value={formData.height}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="請輸入身高"
+                />
+              </div>
+
+              {/* 體重 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  體重（kg）
+                </label>
+                <input
+                  type="number"
+                  name="weight"
+                  value={formData.weight}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="請輸入體重"
+                />
+              </div>
+
+              {/* ⭐ 下拉式多選：慢性疾病 */}
+              <div className="relative" ref={dropdownRef}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  慢性疾病（可複選）
+                </label>
+
+                {/* ▼ 下拉按鈕 */}
+                <div
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white cursor-pointer flex justify-between items-center"
+                >
+                  <span className="text-gray-700">
+                    {formData.chronic_disease.length === 0
+                      ? "請選擇"
+                      : formData.chronic_disease
+                          .filter(item => item !== "其他")
+                          .concat(
+                            formData.chronic_disease.includes("其他") &&
+                            formData.other_chronic_disease
+                              ? [formData.other_chronic_disease]
+                              : []
+                          )
+                          .join("、")}
+                  </span>
+                  <span>▼</span>
+                </div>
+
+                {/* ▼ 下拉內容 */}
+                {dropdownOpen && (
+                  <div className="absolute mt-1 w-full border bg-white rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto p-3">
+                    {[
+                      "高血壓",
+                      "糖尿病",
+                      "高血脂",
+                      "心臟病",
+                      "氣喘",
+                      "甲狀腺疾病",
+                      "腎臟病",
+                      "肝病"
+                    ].map((disease) => (
+                      <label key={disease} className="flex items-center gap-2 mb-1">
+                        <input
+                          type="checkbox"
+                          checked={formData.chronic_disease.includes(disease)}
+                          onChange={(e) => {
+                            let updated = [...formData.chronic_disease];
+
+                            if (e.target.checked) {
+                              updated.push(disease);
+                            } else {
+                              updated = updated.filter(item => item !== disease);
+                            }
+
+                            setFormData({ ...formData, chronic_disease: updated });
+                          }}
+                        />
+                        <span>{disease}</span>
+                      </label>
+                    ))}
+
+                    {/* ⭐ 其他 */}
+                    <label className="flex items-center gap-2 mt-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.chronic_disease.includes("其他")}
+                        onChange={(e) => {
+                          let updated = [...formData.chronic_disease];
+
+                          if (e.target.checked) {
+                            updated.push("其他");
+                          } else {
+                            updated = updated.filter(item => item !== "其他");
+                            setFormData({ ...formData, other_chronic_disease: "" });
+                          }
+
+                          setFormData({ ...formData, chronic_disease: updated });
+                        }}
+                      />
+                      <span>其他（請填寫）</span>
+                    </label>
+
+                    {/* ⭐ 自填輸入框 */}
+                    {formData.chronic_disease.includes("其他") && (
+                      <input
+                        type="text"
+                        className="mt-2 w-full px-3 py-2 border bg-white rounded-lg"
+                        placeholder="請輸入疾病名稱"
+                        value={formData.other_chronic_disease}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            other_chronic_disease: e.target.value
+                          })
+                        }
+                      />
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="pt-4">
@@ -583,6 +788,7 @@ const handleSave = async () => {
                   </div>
                 </div>
               </div>
+
 
               <div className="flex gap-3 pt-4">
                 <button
