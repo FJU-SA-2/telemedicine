@@ -365,7 +365,7 @@ const handleSave = async () => {
       <h1 className="text-3xl font-semibold text-gray-800 mb-6">個人檔案</h1>
       <div className="mt-8">
       <Link 
-        href={user.role === "doctor" ? "/doctorpage" : "/"} 
+        href={user.role === "doctor" ? "/doctorpage" : "/PatientPage"} 
         className="inline-block px-5 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors mr-4"
       >
         返回首頁

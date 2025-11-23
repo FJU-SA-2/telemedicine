@@ -37,7 +37,7 @@ export default function LockedPageOverlay({ pageName, icon: Icon }) {
           </button>
           
           <button
-            onClick={() => window.location.href = '/register'}
+            onClick={() => window.location.href = '/login'}
             className="w-full bg-white hover:bg-gray-50 text-gray-700 py-3 px-6 rounded-lg font-semibold border-2 border-gray-300 transition-colors flex items-center justify-center gap-2"
           >
             <UserPlus className="w-5 h-5" />
