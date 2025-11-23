@@ -143,7 +143,7 @@ export default function TelemedicineAuth() {
     if (role === 'doctor') {
       router.push('/doctorpage');
     } else if (role === 'patient') {
-      router.push('/');
+      router.push('/PatientPage');
     } else {
       router.push('/admin'); // fallback
     }

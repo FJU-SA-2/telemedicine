@@ -1,89 +1,55 @@
-// ============ 患者詳情彈窗組件 ============
-import { useState } from "react";
-import { X, User, History, AlertTriangle, Shield, Heart, TrendingUp } from "lucide-react";
+// PatientDetailModal.jsx
+import { useState, useEffect } from "react";
+import { X, User, AlertTriangle, Shield, Phone, MapPin, Calendar, FileText, Activity, Pill, Cigarette } from "lucide-react";
 import * as utils from "./Utils";
-import MedicalHistory from "./MedicalHistory";
-import AllergyList from "./AllergyList";
-import ChronicConditionList from "./ChronicConditionList";
-import VitalSignsChart from "./VitalSignsChart";
-import VitalSignsList from "./VitalSignsList";
 
 export default function PatientDetailModal({ patient, onClose }) {
-  const [activeTab, setActiveTab] = useState("history");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [patientDetail, setPatientDetail] = useState(null);
+  const [history, setHistory] = useState([]);
 
-  // 模擬數據
-  const mockHistory = [
-    {
-      doctor_name: "張醫師",
-      specialty: "內科",
-      appointment_date: "2024-10-15",
-      appointment_time: "14:30",
-      symptoms: "發燒、咳嗽",
-      diagnoses: "急性上呼吸道感染",
-      prescriptions: "退燒藥、止咳藥"
+  // 從 API 獲取患者詳細資料
+  useEffect(() => {
+    async function fetchPatientDetail() {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/doctors/patients/${patient.patient_id}`, {
+          credentials: 'include'
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          setPatientDetail(data.patient);
+          setHistory(data.history);
+        }
+      } catch (err) {
+        console.error("獲取患者詳情錯誤:", err);
+      } finally {
+        setLoading(false);
+      }
     }
-  ];
-
-  const mockAllergies = [
-    {
-      allergen_name: "青黴素",
-      allergen_type: "藥物",
-      severity: "重度",
-      reaction: "皮疹、呼吸困難"
+    
+    if (patient?.patient_id) {
+      fetchPatientDetail();
     }
-  ];
+  }, [patient?.patient_id]);
 
-  const mockConditions = [
-    {
-      condition_name: "高血壓",
-      icd_code: "I10",
-      current_status: "控制良好",
-      notes: "定期服藥控制中"
-    }
-  ];
-
-  const mockVitals = [
-    {
-      measurement_date: "2024-10-15",
-      blood_pressure_systolic: 120,
-      blood_pressure_diastolic: 80,
-      heart_rate: 72,
-      temperature: 36.5,
-      weight: 70
-    },
-    {
-      measurement_date: "2024-10-10",
-      blood_pressure_systolic: 125,
-      blood_pressure_diastolic: 82,
-      heart_rate: 75,
-      temperature: 36.6,
-      weight: 70.5
-    }
-  ];
-
-  const tabs = [
-    { id: "history", label: "就診紀錄", icon: History, color: "blue" },
-    { id: "allergies", label: "過敏史", icon: AlertTriangle, color: "red" },
-    { id: "chronic", label: "慢性疾病", icon: Shield, color: "orange" },
-    { id: "vitals", label: "生命徵象", icon: Heart, color: "green" },
-    { id: "trends", label: "趨勢圖表", icon: TrendingUp, color: "purple" }
-  ];
+  const p = patientDetail || patient;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl w-full max-w-6xl shadow-2xl max-h-[90vh] overflow-y-auto">
-        {/* 彈窗標題 */}
-        <div className={`sticky top-0 bg-gradient-to-r ${utils.getGenderColor(patient.gender)} text-white p-6 rounded-t-2xl z-10`}>
+      <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        {/* 標題區 */}
+        <div className={`sticky top-0 bg-gradient-to-r ${utils.getGenderColor(p.gender)} text-white p-6 rounded-t-2xl z-10`}>
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-                {patient.first_name?.charAt(0)}
+                {p.first_name?.charAt(0)}
               </div>
               <div>
-                <h3 className="text-2xl font-bold">{patient.last_name}{patient.first_name}</h3>
+                <h3 className="text-2xl font-bold">{p.last_name}{p.first_name}</h3>
                 <p className="text-white/80 text-sm mt-1">
-                  病歷號：#{patient.patient_id} | {utils.getGenderDisplay(patient.gender)} | {utils.calculateAge(patient.date_of_birth)}
+                  病歷號：#{p.patient_id} | {utils.getGenderDisplay(p.gender)} | {utils.calculateAge(p.date_of_birth)}
                 </p>
               </div>
             </div>
@@ -94,59 +60,196 @@ export default function PatientDetailModal({ patient, onClose }) {
         </div>
 
         <div className="p-6">
-          {/* 患者基本資料 */}
-          <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl p-5 mb-6">
-            <h4 className="font-bold text-lg text-gray-800 mb-4 flex items-center gap-2">
-              <User size={20} className="text-blue-600" /> 基本資料
-            </h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <p className="text-sm text-gray-600 mb-1">出生日期</p>
-                <p className="font-semibold text-gray-800">
-                  {patient.date_of_birth ? utils.formatDate(patient.date_of_birth) : "未提供"}
-                </p>
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">載入中...</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* ===== 基本資料區塊 ===== */}
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl p-5">
+                <h4 className="font-bold text-lg text-gray-800 mb-4 flex items-center gap-2">
+                  <User size={20} className="text-blue-600" /> 基本資料
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* 出生日期 */}
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">出生日期</p>
+                    <p className="font-semibold text-gray-800">
+                      {p.date_of_birth ? utils.formatDate(p.date_of_birth) : "未提供"}
+                    </p>
+                  </div>
+                  
+                  {/* 身分證字號 */}
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">身分證字號</p>
+                    <p className="font-semibold text-gray-800">{p.id_number || "未提供"}</p>
+                  </div>
+                  
+                  {/* 聯絡電話 */}
+                  <div className="flex items-start gap-2">
+                    <Phone size={16} className="text-green-600 mt-1" />
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">聯絡電話</p>
+                      <p className="font-semibold text-gray-800">{p.phone_number || "未提供"}</p>
+                    </div>
+                  </div>
+                  
+                  {/* 吸菸狀態 */}
+                  <div className="flex items-start gap-2">
+                    <Cigarette size={16} className="text-orange-600 mt-1" />
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">吸菸狀態</p>
+                      <p className="font-semibold text-gray-800">
+                        {p.smoking_status === "yes" ? "有吸菸" : p.smoking_status === "quit" ? "已戒菸" : "無"}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* 居住地址 */}
+                  <div className="md:col-span-2 flex items-start gap-2">
+                    <MapPin size={16} className="text-red-600 mt-1" />
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">居住地址</p>
+                      <p className="font-semibold text-gray-800">{p.address || "未提供"}</p>
+                    </div>
+                  </div>
+
+                  {/* 緊急聯絡人 */}
+                  {(p.emergency_contact_name || p.emergency_contact_phone) && (
+                    <>
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">緊急聯絡人</p>
+                        <p className="font-semibold text-gray-800">{p.emergency_contact_name || "未提供"}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">緊急聯絡人電話</p>
+                        <p className="font-semibold text-gray-800">{p.emergency_contact_phone || "未提供"}</p>
+                      </div>
+                    </>
+                  )}
+
+                  {/* 藥物過敏史 */}
+                  <div className="md:col-span-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle size={16} className="text-red-600" />
+                      <p className="text-sm text-gray-500 font-semibold">藥物過敏史</p>
+                    </div>
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                      <p className="text-gray-800 whitespace-pre-wrap">
+                        {p.drug_allergies || "無藥物過敏紀錄"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 慢性病/重大疾病史 */}
+                  <div className="md:col-span-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Shield size={16} className="text-orange-600" />
+                      <p className="text-sm text-gray-500 font-semibold">慢性病/重大疾病史</p>
+                    </div>
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                      <p className="text-gray-800 whitespace-pre-wrap">
+                        {p.medical_history || "無重大疾病史紀錄"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 就診統計 */}
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">總就診次數</p>
+                    <p className="font-semibold text-blue-600 text-xl">{p.total_appointments || 0} 次</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">最近就診日期</p>
+                    <p className="font-semibold text-gray-800">
+                      {p.last_appointment_date ? utils.formatDate(p.last_appointment_date) : "無"}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">聯絡電話</p>
-                <p className="font-semibold text-gray-800">{patient.phone_number || "未提供"}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 mb-1">就診次數</p>
-                <p className="font-semibold text-gray-800">{patient.total_appointments || 0} 次</p>
-              </div>
-              <div className="md:col-span-3">
-                <p className="text-sm text-gray-600 mb-1">居住地址</p>
-                <p className="font-semibold text-gray-800">{patient.address || "未提供"}</p>
+
+              {/* ===== 就診紀錄區塊 ===== */}
+              <div className="bg-white border-2 border-gray-200 rounded-xl p-5">
+                <h4 className="font-bold text-lg text-gray-800 mb-4 flex items-center gap-2">
+                  <FileText size={20} className="text-green-600" /> 就診紀錄
+                </h4>
+
+                {history.length === 0 ? (
+                  <div className="text-center py-8">
+                    <FileText size={48} className="mx-auto mb-4 text-gray-300" />
+                    <p className="text-gray-500">暫無就診紀錄</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
+                    {history.map((record, idx) => (
+                      <div key={idx} className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 hover:shadow-md transition-all">
+                        {/* 標題列 */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold shadow">
+                              {record.doctor_name?.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="font-bold text-gray-800">{record.doctor_name} 醫師</p>
+                              <p className="text-sm text-gray-600">{record.specialty}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-blue-600">
+                              {utils.formatDate(record.appointment_date)}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {record.appointment_time?.substring(0, 5)}
+                            </p>
+                            <span className={`inline-block mt-1 text-xs px-2 py-1 rounded-full ${
+                              record.status === '已完成' ? 'bg-green-100 text-green-700' :
+                              record.status === '已確認' ? 'bg-blue-100 text-blue-700' :
+                              record.status === '已取消' ? 'bg-red-100 text-red-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>
+                              {record.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* 主訴症狀（預約時填寫） */}
+                        {record.symptoms && (
+                          <div className="bg-white rounded-lg p-3 mb-2 border border-blue-100">
+                            <p className="text-xs text-gray-600 mb-1 flex items-center gap-1 font-semibold">
+                              <Activity size={14} className="text-blue-600" /> 主訴症狀
+                            </p>
+                            <p className="text-sm text-gray-700">{record.symptoms}</p>
+                          </div>
+                        )}
+
+                        {/* 診斷（醫師看診後填寫） */}
+                        {record.diagnoses && (
+                          <div className="bg-white rounded-lg p-3 border border-green-100">
+                            <p className="text-xs text-gray-600 mb-1 flex items-center gap-1 font-semibold">
+                              <Pill size={14} className="text-green-600" /> 醫師診斷/處方
+                            </p>
+                            <p className="text-sm text-gray-700">{record.diagnoses}</p>
+                          </div>
+                        )}
+
+                        {/* 如果還沒看診完成，顯示提示 */}
+                        {!record.diagnoses && record.status !== '已取消' && (
+                          <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                            <p className="text-xs text-yellow-700">
+                              {record.status === '已完成' ? '醫師尚未填寫診斷紀錄' : '尚未完成看診'}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-
-          {/* 分頁標籤 */}
-          <div className="flex gap-2 mb-6 border-b-2 border-gray-200 overflow-x-auto">
-            {tabs.map(({ id, label, icon: Icon, color }) => (
-              <button
-                key={id}
-                onClick={() => setActiveTab(id)}
-                className={`px-6 py-3 font-semibold transition-all whitespace-nowrap ${
-                  activeTab === id
-                    ? `text-${color}-600 border-b-4 border-${color}-600 -mb-0.5`
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Icon size={18} />
-                  {label}
-                </div>
-              </button>
-            ))}
-          </div>
-
-          {/* 分頁內容 */}
-          {activeTab === "history" && <MedicalHistory history={mockHistory} />}
-          {activeTab === "allergies" && <AllergyList allergies={mockAllergies} />}
-          {activeTab === "chronic" && <ChronicConditionList conditions={mockConditions} />}
-          {activeTab === "vitals" && <VitalSignsList vitals={mockVitals} />}
-          {activeTab === "trends" && <VitalSignsChart vitals={mockVitals} />}
+          )}
         </div>
       </div>
     </div>

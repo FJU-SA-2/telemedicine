@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect, useRef } from 'react';
-import { Menu,Video, PhoneOff, Monitor, Clock, FileText, AlertCircle, User, Calendar, Heart, CheckCircle, PlayCircle, Download } from 'lucide-react';
+import { Menu, Video, PhoneOff, Monitor, Clock, FileText, AlertCircle, User, Calendar, Heart, CheckCircle, PlayCircle, Download } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import RatingModal from '../components/RatingModal';
+import LockedPageOverlay from '../components/LockedPageOverlay'; // ✅ 新增
 
 export default function PatientVideoConsultation() {
   const [appointments, setAppointments] = useState([]);
@@ -22,7 +23,29 @@ export default function PatientVideoConsultation() {
   const jitsiContainerRef = useRef(null);
   const jitsiApiRef = useRef(null);
 
-  // ✅ 載入 Jitsi API
+  // ✅ 新增：登入狀態管理
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // ✅ 新增：檢查登入狀態 (放在最前面)
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data.user);
+        }
+      } catch (err) {
+        console.error('檢查登入狀態失敗:', err);
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+    checkAuth();
+  }, []);
+
+  // 載入 Jitsi API
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -52,11 +75,16 @@ export default function PatientVideoConsultation() {
   }, []);
 
   useEffect(() => {
-    fetchUpcomingAppointments();
-    fetchConsultationHistory();
-    const interval = setInterval(fetchUpcomingAppointments, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    // ✅ 只有登入時才載入資料
+    if (user) {
+      fetchUpcomingAppointments();
+      fetchConsultationHistory();
+      const interval = setInterval(fetchUpcomingAppointments, 30000);
+      return () => clearInterval(interval);
+    } else if (!authLoading) {
+      setIsLoading(false);
+    }
+  }, [user, authLoading]);
 
   const fetchUpcomingAppointments = async () => {
     try {
@@ -67,7 +95,6 @@ export default function PatientVideoConsultation() {
       if (response.ok) {
         const data = await response.json();
         
-        // 過濾出即將到來的預約 (狀態為「待確認」或「已確認」)
         const upcoming = data.filter(apt => 
           apt.status === '待確認' || apt.status === '已確認'
         );
@@ -93,7 +120,6 @@ export default function PatientVideoConsultation() {
       if (response.ok) {
         const data = await response.json();
         
-        // 過濾出已完成的看診記錄
         const completed = data.filter(apt => 
           apt.status === 'completed'
         );
@@ -128,7 +154,6 @@ export default function PatientVideoConsultation() {
       return;
     }
 
-    // 檢查是否有 meeting_room_id
     if (!appointment.meeting_room_id) {
       setError('醫師尚未開啟會議室，請稍後再試');
       return;
@@ -222,7 +247,7 @@ export default function PatientVideoConsultation() {
       });
 
       api.addEventListener('readyToClose', () => {
-        console.log('🔚 會議準備關閉');
+        console.log('📚 會議準備關閉');
         handleMeetingEnd();
       });
 
@@ -236,7 +261,6 @@ export default function PatientVideoConsultation() {
   const handleMeetingEnd = async () => {
     console.log('📚 處理會議結束...');
 
-    // ✅ 立即儲存當前預約資訊（在清空 state 之前）
     const appointmentToRate = currentMeeting ? { ...currentMeeting } : null;
     console.log('💾 儲存的預約資訊:', appointmentToRate);
 
@@ -255,7 +279,6 @@ export default function PatientVideoConsultation() {
     setSelectedDoctor(null);
     console.log('✅ UI 狀態已重置');
 
-    // ✅ 重新獲取資料
     console.log('🔄 開始重新獲取預約資料...');
     await fetchUpcomingAppointments();
     await fetchConsultationHistory();
@@ -271,7 +294,6 @@ export default function PatientVideoConsultation() {
     
       const hasRated = await checkIfRated(appointmentToRate.appointment_id);
     
-      // ✅ 修正：使用正確的變數名
       if (!hasRated) {
         setTimeout(() => {
           setCompletedAppointment(appointmentToRate);
@@ -280,12 +302,11 @@ export default function PatientVideoConsultation() {
       }
     } catch (error) {
       console.error('評分檢查失敗:', error);
-      // 容錯機制
       setTimeout(() => {
         setCompletedAppointment(appointmentToRate);
         setShowRatingModal(true);
       }, 500);
-  } 
+    } 
   };
 
   const leaveMeeting = () => {
@@ -297,7 +318,6 @@ export default function PatientVideoConsultation() {
 
   const handleRatingSubmit = async (ratingData) => {
     console.log('評分已提交:', ratingData);
-    // 重新獲取看診記錄以顯示最新評分
     await fetchConsultationHistory();
   };
 
@@ -310,7 +330,6 @@ export default function PatientVideoConsultation() {
       if (response.ok) {
         const data = await response.json();
         if (data.appointment.recording_url) {
-          // 開啟錄影播放視窗
           window.open(`http://localhost:5000/api/recording/${data.appointment.recording_url}`, '_blank');
         } else {
           setError('此次看診尚無錄影記錄');
@@ -337,8 +356,8 @@ export default function PatientVideoConsultation() {
     return `${mins}分${secs}秒`;
   };
 
-  // ====== UI 渲染 ======
-  if (isLoading && appointments.length === 0) {
+  // ✅ 修改：只在認證檢查時顯示載入
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
@@ -380,69 +399,69 @@ export default function PatientVideoConsultation() {
           <div ref={jitsiContainerRef} className="flex-1 bg-gray-900" />
 
           <div className="w-96 bg-white border-l border-gray-200 overflow-y-auto">
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                    <User className="w-5 h-5 mr-2 text-blue-600" />
-                    醫師資訊
-                  </h3>
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                <User className="w-5 h-5 mr-2 text-blue-600" />
+                醫師資訊
+              </h3>
 
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 mb-4">
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-sm text-gray-500">主治醫師</p>
-                        <p className="font-semibold text-gray-900 text-lg">
-                          {selectedDoctor?.doctor_first_name} {selectedDoctor?.doctor_last_name}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">專科</p>
-                        <p className="font-semibold text-gray-900">{selectedDoctor?.doctor_specialty}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">執業醫院</p>
-                        <p className="font-semibold text-gray-900">{selectedDoctor?.practice_hospital}</p>
-                      </div>
-                    </div>
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 mb-4">
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-gray-500">主治醫師</p>
+                    <p className="font-semibold text-gray-900 text-lg">
+                      {selectedDoctor?.doctor_first_name} {selectedDoctor?.doctor_last_name}
+                    </p>
                   </div>
-
-                  {selectedDoctor?.symptoms && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                      <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
-                        <FileText className="w-4 h-4 mr-2 text-yellow-600" />
-                        您的症狀描述
-                      </h4>
-                      <p className="text-gray-700 text-sm">{selectedDoctor.symptoms}</p>
-                    </div>
-                  )}
-
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
-                      <Monitor className="w-4 h-4 mr-2 text-blue-600" />
-                      看診提醒
-                    </h4>
-                    <ul className="space-y-2 text-sm text-gray-700">
-                      <li className="flex items-start space-x-2">
-                        <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                        <span>請確保麥克風和攝影機正常運作</span>
-                      </li>
-                      <li className="flex items-start space-x-2">
-                        <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                        <span>找一個安靜、光線充足的環境</span>
-                      </li>
-                      <li className="flex items-start space-x-2">
-                        <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                        <span>準備好相關的檢查報告或藥單</span>
-                      </li>
-                      <li className="flex items-start space-x-2">
-                        <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                        <span>看診過程將自動錄影以供日後查閱</span>
-                      </li>
-                    </ul>
+                  <div>
+                    <p className="text-sm text-gray-500">專科</p>
+                    <p className="font-semibold text-gray-900">{selectedDoctor?.doctor_specialty}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">執業醫院</p>
+                    <p className="font-semibold text-gray-900">{selectedDoctor?.practice_hospital}</p>
                   </div>
                 </div>
               </div>
+
+              {selectedDoctor?.symptoms && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                  <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
+                    <FileText className="w-4 h-4 mr-2 text-yellow-600" />
+                    您的症狀描述
+                  </h4>
+                  <p className="text-gray-700 text-sm">{selectedDoctor.symptoms}</p>
+                </div>
+              )}
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                  <Monitor className="w-4 h-4 mr-2 text-blue-600" />
+                  看診提醒
+                </h4>
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span>請確保麥克風和攝影機正常運作</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span>找一個安靜、光線充足的環境</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span>準備好相關的檢查報告或藥單</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <CheckCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span>看診過程將自動錄影以供日後查閱</span>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
     );
   }
 
@@ -469,7 +488,8 @@ export default function PatientVideoConsultation() {
         <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
           <Navbar setIsSidebarOpen={setIsOpen} />
 
-          <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+          {/* ✅ 主內容區域 */}
+          <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
               <div className="flex items-center justify-between">
                 <button
@@ -511,7 +531,6 @@ export default function PatientVideoConsultation() {
 
               {!showHistory ? (
                 <>
-                  {/* Statistics cards */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <div className="bg-white rounded-xl shadow-md p-6">
                       <div className="flex items-center justify-between">
@@ -556,8 +575,12 @@ export default function PatientVideoConsultation() {
                     </div>
                   </div>
 
-                  {/* Appointments list */}
-                  {appointments.length === 0 ? (
+                  {isLoading ? (
+                    <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+                      <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <p className="text-gray-600">載入中...</p>
+                    </div>
+                  ) : appointments.length === 0 ? (
                     <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
                       <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
                         <Calendar className="w-10 h-10 text-gray-400" />
@@ -651,7 +674,6 @@ export default function PatientVideoConsultation() {
                     </div>
                   )}
 
-                  {/* Tips section */}
                   <div className="mt-8 bg-white rounded-2xl shadow-lg p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                       <Heart className="w-5 h-5 mr-2 text-blue-600" />
@@ -695,7 +717,6 @@ export default function PatientVideoConsultation() {
                 </>
               ) : (
                 <>
-                  {/* Consultation history */}
                   <div className="space-y-6">
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-2xl font-bold text-gray-900">看診記錄</h2>
@@ -772,7 +793,6 @@ export default function PatientVideoConsultation() {
                                 </div>
                               )}
 
-                              {/* ✅ 顯示評分 */}
                               {record.rating && (
                                 <div className="bg-yellow-50 rounded-lg p-4 mb-4">
                                   <p className="text-xs text-gray-500 mb-2">您的評分</p>
@@ -812,7 +832,6 @@ export default function PatientVideoConsultation() {
                                 </div>
 
                                 <div className="flex items-center space-x-2">
-                                  {/* ✅ 評分按鈕 */}
                                   {!record.rating && (
                                     <button
                                       onClick={() => {
@@ -848,11 +867,14 @@ export default function PatientVideoConsultation() {
                 </>
               )}
             </div>
+            
+            {/* ✅ 未登入時顯示鎖定覆蓋層 */}
+            {!user && <LockedPageOverlay pageName="視訊看診" icon={Video} />}
           </div>
         </div>
       </div>
 
-      {/* ✅ 評分彈窗 - 背景為原始頁面 */}
+      {/* 評分彈窗 - 背景為原始頁面 */}
       {showRatingModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <RatingModal

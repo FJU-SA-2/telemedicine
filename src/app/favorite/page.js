@@ -6,8 +6,9 @@ import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import BookingModal from "../reserve/BookingModal";
 import SuccessPage from "../reserve/SuccessPage";
+import LockedPageOverlay from "../components/LockedPageOverlay"; // ✅ 新增
 
-// 🟢 醫師詳細資料頁面
+// 醫師詳細資料頁面
 function DoctorDetailsPage({ doctor, schedules, onBack, onBooking }) {
   const [showModal, setShowModal] = useState(false);
 
@@ -20,14 +21,12 @@ function DoctorDetailsPage({ doctor, schedules, onBack, onBooking }) {
     onBooking(bookingData);
   };
 
-  const doctorFullName = `${doctor.last_name}${doctor.first_name}`;
+  const doctorFullName = `${doctor.first_name}${doctor.last_name}`;
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-lg shadow p-8 max-w-2xl mx-auto">
-        {/* 醫師基本信息 */}
         <div className="flex gap-6 mb-8 relative">
-          {/* 返回按鈕 - 位於頭像左上角 */}
           <button
             onClick={onBack}
             className="absolute -left-6 -top-6 p-2 text-gray-500 hover:text-gray-700 transition-colors flex items-center justify-center z-10"
@@ -45,7 +44,6 @@ function DoctorDetailsPage({ doctor, schedules, onBack, onBooking }) {
           </div>
         </div>
 
-        {/* 詳細資料 */}
         <div className="space-y-6 border-t border-gray-200 pt-6">
           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">簡介</h3>
@@ -78,7 +76,6 @@ function DoctorDetailsPage({ doctor, schedules, onBack, onBooking }) {
           </div>
         </div>
 
-        {/* 預約按鈕 */}
         <button
           onClick={handleBookingClick}
           className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition mt-8"
@@ -108,18 +105,45 @@ export default function FavoritesPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [bookingInfo, setBookingInfo] = useState(null);
+  
+  // ✅ 新增：登入狀態管理
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const userId = 1; // 模擬登入使用者 ID
 
+  // ✅ 新增：檢查登入狀態
   useEffect(() => {
-    fetchFavorites();
-    fetchSchedules();
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data.user);
+        }
+      } catch (err) {
+        console.error('檢查登入狀態失敗:', err);
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+    checkAuth();
   }, []);
+
+  useEffect(() => {
+    // ✅ 修改：只有登入時才載入資料
+    if (user) {
+      fetchFavorites();
+      fetchSchedules();
+    } else if (!authLoading) {
+      // 如果未登入且認證檢查完成，停止載入
+      setLoading(false);
+    }
+  }, [user, authLoading]);
 
   const fetchFavorites = async () => {
     try {
       setLoading(true);
 
-      // 1. 獲取收藏的醫生 ID 列表
       const favRes = await fetch(`/api/favorites?user_id=${userId}`);
       const favoriteIds = await favRes.json();
 
@@ -129,11 +153,9 @@ export default function FavoritesPage() {
         return;
       }
 
-      // 2. 獲取所有醫生資料
       const doctorsRes = await fetch("/api/doctors");
       const allDoctors = await doctorsRes.json();
 
-      // 3. 篩選出收藏的醫生
       const favorites = allDoctors.filter((doctor) =>
         favoriteIds.includes(doctor.doctor_id)
       );
@@ -152,7 +174,6 @@ export default function FavoritesPage() {
       const resSchedules = await fetch("/api/schedules");
       const schedulesData = await resSchedules.json();
 
-      // 確保日期格式正確
       const formattedSchedules = schedulesData.map(s => ({
         ...s,
         doctor_id: Number(s.doctor_id),
@@ -178,11 +199,9 @@ export default function FavoritesPage() {
       const data = await res.json();
 
       if (data.isFavorite === false) {
-        // 移除成功，更新列表
         setFavoriteDoctors((prev) =>
           prev.filter((doc) => doc.doctor_id !== doctorId)
         );
-        // 顯示成功提示
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 3000);
       }
@@ -197,21 +216,19 @@ export default function FavoritesPage() {
 
   const handleBooking = async (bookingData) => {
     try {
-      // 先取得登入使用者資訊
       const meRes = await fetch("/api/me");
       if (!meRes.ok) {
-        alert("請先登入！");
+        alert("請先登入!");
         return;
       }
       const meData = await meRes.json();
       const patientId = meData.user?.patient_id;
 
       if (!patientId) {
-        alert("您不是病患，無法預約！");
+        alert("您不是病患,無法預約!");
         return;
       }
 
-      // 發送預約請求到後端 API
       const response = await fetch("/api/appointments", {
         method: "POST",
         headers: {
@@ -233,11 +250,10 @@ export default function FavoritesPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        alert(result.error || "預約失敗，請稍後再試");
+        alert(result.error || "預約失敗,請稍後再試");
         return;
       }
 
-      // 預約成功，更新本地排程狀態
       setSchedules(prevSchedules =>
         prevSchedules.map(s =>
           s.doctor_id === bookingData.doctor.doctor_id &&
@@ -256,7 +272,7 @@ export default function FavoritesPage() {
 
     } catch (error) {
       console.error("預約錯誤:", error);
-      alert("預約失敗，請檢查網路連線後再試");
+      alert("預約失敗,請檢查網路連線後再試");
     }
   };
 
@@ -266,7 +282,8 @@ export default function FavoritesPage() {
     setSelectedDoctor(null);
   };
 
-  if (loading) {
+  // ✅ 新增：只在認證檢查時顯示載入
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <p className="text-gray-600">載入中...</p>
@@ -274,7 +291,6 @@ export default function FavoritesPage() {
     );
   }
 
-  // 如果選擇了醫師，顯示詳細資料頁面
   if (selectedDoctor) {
     return (
       <div className="relative min-h-screen bg-gray-50">
@@ -311,13 +327,15 @@ export default function FavoritesPage() {
             onBooking={handleBooking}
           />
         </div>
+        
+        {/* ✅ 新增：未登入時顯示鎖定覆蓋層 */}
+        {!user && <LockedPageOverlay pageName="收藏列表" icon={Star} />}
       </div>
     );
   }
 
   return (
     <div className="relative">
-      {/* 打開按鈕 */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -327,7 +345,6 @@ export default function FavoritesPage() {
         </button>
       )}
 
-      {/* 側邊欄 */}
       <Sidebar
         isOpen={isOpen}
         setIsOpen={setIsOpen}
@@ -335,122 +352,117 @@ export default function FavoritesPage() {
         setActiveTab={() => {}}
       />
 
-      {/* 主要內容區域 */}
       <div
         className={`transition-all duration-300 ${
           isOpen ? "ml-64" : "ml-0"
         }`}
       >
-        {/* 導覽列 */}
         <Navbar />
 
-        {/* 成功提示訊息 */}
-        {showSuccess && !bookingInfo && (
-          <div className="fixed top-20 right-6 bg-blue-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2">
-            <CheckCircle size={20} />
-            <span>已取消收藏</span>
-          </div>
-        )}
-
-        {/* 收藏頁面內容 */}
-        <div className="p-6">
-          {/* 標題區 */}
-          <div className="max-w-6xl mx-auto mb-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Star size={28} className="text-yellow-400" fill="currentColor" />
-              <h1 className="text-3xl font-bold text-gray-800">我的收藏</h1>
+        {/* ✅ 主內容區域加上 relative 定位並設定最小高度 */}
+        <div className="relative min-h-screen">
+          {showSuccess && !bookingInfo && (
+            <div className="fixed top-20 right-6 bg-blue-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2">
+              <CheckCircle size={20} />
+              <span>已取消收藏</span>
             </div>
-            <p className="text-gray-600">
-              共收藏了 {favoriteDoctors.length} 位醫師
-            </p>
-          </div>
+          )}
 
-          {/* 收藏列表 */}
-          <div className="max-w-6xl mx-auto">
-            {favoriteDoctors.length === 0 ? (
-              <div className="bg-white rounded-lg shadow p-12 text-center">
-                <Star
-                  size={64}
-                  className="mx-auto text-yellow-300 mb-4"
-                  fill="currentColor"
-                />
-                <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                  尚無收藏的醫師
-                </h3>
-                <p className="text-gray-500 mb-6">
-                  瀏覽醫師列表，點擊星星圖標來收藏您喜歡的醫師
-                </p>
-                <button
-                  onClick={() => router.push("/doctorlist")}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
-                >
-                  前往醫師列表
-                </button>
+          <div className="p-6">
+            <div className="max-w-6xl mx-auto mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <Star size={28} className="text-yellow-400" fill="currentColor" />
+                <h1 className="text-3xl font-bold text-gray-800">我的收藏</h1>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {favoriteDoctors.map((doctor) => {
-                  const fullName = `${doctor.last_name}${doctor.first_name}`;
-                  return (
-                    <div
-                      key={doctor.doctor_id}
-                      className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 relative"
-                    >
-                      {/* 移除收藏按鈕 */}
-                      <button
-                        onClick={() => removeFavorite(doctor.doctor_id)}
-                        className="absolute top-3 right-3 p-2 text-red-500 hover:bg-red-50 rounded-full transition"
-                        title="取消收藏"
+              <p className="text-gray-600">
+                共收藏了 {favoriteDoctors.length} 位醫師
+              </p>
+            </div>
+
+            <div className="max-w-6xl mx-auto">
+              {favoriteDoctors.length === 0 ? (
+                <div className="bg-white rounded-lg shadow p-12 text-center">
+                  <Star
+                    size={64}
+                    className="mx-auto text-yellow-300 mb-4"
+                    fill="currentColor"
+                  />
+                  <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                    尚無收藏的醫師
+                  </h3>
+                  <p className="text-gray-500 mb-6">
+                    瀏覽醫師列表,點擊星星圖標來收藏您喜歡的醫師
+                  </p>
+                  <button
+                    onClick={() => router.push("/doctorlist")}
+                    className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+                  >
+                    前往醫師列表
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {favoriteDoctors.map((doctor) => {
+                    const fullName = `${doctor.first_name}${doctor.last_name}`;
+                    return (
+                      <div
+                        key={doctor.doctor_id}
+                        className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 relative"
                       >
-                        <Trash2 size={18} />
-                      </button>
+                        <button
+                          onClick={() => removeFavorite(doctor.doctor_id)}
+                          className="absolute top-3 right-3 p-2 text-red-500 hover:bg-red-50 rounded-full transition"
+                          title="取消收藏"
+                        >
+                          <Trash2 size={18} />
+                        </button>
 
-                      {/* 醫師頭像 */}
-                      <div className="flex items-start gap-4 mb-4">
-                        <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
-                          {doctor.last_name.charAt(0)}
+                        <div className="flex items-start gap-4 mb-4">
+                          <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+                            {doctor.last_name.charAt(0)}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-lg text-gray-800">
+                              {fullName}
+                            </h3>
+                            <p className="text-blue-600 text-sm font-medium">
+                              {doctor.specialty}
+                            </p>
+                            <p className="text-gray-500 text-xs mt-1">
+                              {doctor.practice_hospital}
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <h3 className="font-bold text-lg text-gray-800">
-                            {fullName}
-                          </h3>
-                          <p className="text-blue-600 text-sm font-medium">
-                            {doctor.specialty}
-                          </p>
-                          <p className="text-gray-500 text-xs mt-1">
-                            {doctor.practice_hospital}
+
+                        <div className="mb-4">
+                          <p className="text-gray-600 text-sm line-clamp-3">
+                            {doctor.description || "暫無介紹"}
                           </p>
                         </div>
-                      </div>
 
-                      {/* 醫師簡介 */}
-                      <div className="mb-4">
-                        <p className="text-gray-600 text-sm line-clamp-3">
-                          {doctor.description || "暫無介紹"}
-                        </p>
-                      </div>
+                        <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                          <p className="text-xs text-gray-500">掛號費</p>
+                          <p className="text-lg font-bold text-blue-600">
+                            ${doctor.consultation_fee || "暫無"}
+                          </p>
+                        </div>
 
-                      {/* 掛號費 */}
-                      <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                        <p className="text-xs text-gray-500">掛號費</p>
-                        <p className="text-lg font-bold text-blue-600">
-                          ${doctor.consultation_fee || "暫無"}
-                        </p>
+                        <button
+                          onClick={() => viewDoctorDetails(doctor)}
+                          className="w-full bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition font-medium"
+                        >
+                          查看醫師資訊
+                        </button>
                       </div>
-
-                      {/* 查看詳情按鈕 */}
-                      <button
-                        onClick={() => viewDoctorDetails(doctor)}
-                        className="w-full bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition font-medium"
-                      >
-                        查看醫師資訊
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
+          
+          {/* ✅ 鎖定覆蓋層現在只在主內容區域內 */}
+          {!user && <LockedPageOverlay pageName="收藏列表" icon={Star} />}
         </div>
       </div>
     </div>

@@ -1,0 +1,37 @@
+[
+  {
+"department": "family_medicine",
+"department_name": "家庭醫學科",
+"title": "感冒與流感如何分辨？",
+"content": "感冒通常症狀較輕，會自行痊癒；流感則來得突然，常伴隨高燒、全身痠痛，建議盡早就醫。",
+"source": "台灣衛福部、CDC"
+},
+{
+"department": "internal_medicine",
+"department_name": "內科",
+"title": "胃食道逆流常見症狀",
+"content": "胸口灼熱、喉嚨異物感、反酸是常見症狀。避免咖啡因、過飽及太晚進食能改善。",
+"source": "台灣胃腸科醫學會"
+},
+{
+"department": "dermatology",
+"department_name": "皮膚科",
+"title": "如何正確使用防曬？",
+"content": "出門前 20 分鐘塗抹，每 2 小時補擦一次。戶外運動建議使用 SPF50+、PA++++。",
+"source": "台灣皮膚科醫學會"
+},
+{
+"department": "dentistry",
+"department_name": "牙科",
+"title": "牙線真的需要天天用嗎？",
+"content": "牙線能清除 40% 牙刷刷不到的區域，天天使用可有效預防牙周病。",
+"source": "中華民國牙醫師公會"
+},
+{
+"department": "pediatrics",
+"department_name": "小兒科",
+"title": "嬰幼兒發燒怎麼辦？",
+"content": "保持水分、適度退熱。若超過 38°C 且持續或伴隨抽搐、精神差，應盡速就醫。",
+"source": "台灣小兒科醫學會"
+}
+]

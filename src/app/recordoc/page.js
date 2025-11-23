@@ -13,29 +13,28 @@ export default function AppointmentRecords() {
   const [activeTab, setActiveTab] = useState("home");
 
   useEffect(() => {
-        async function fetchApprovalStatus() {
-            try {
-                const res = await fetch("/api/me", {
-                    credentials: 'include'
-                });
-                const data = await res.json();
-                
-                console.log("📡 API 回應:", data);
-                console.log("📡 approval_status:", data.user?.approval_status);
-                
-                if (data.authenticated && data.user && data.user.role === 'doctor') {
-                    const status = data.user.approval_status;
-                    setApprovalStatus(status);
-                    console.log("✅ 已設定 approvalStatus 為:", status);
-                }
-            } catch (error) {
-                console.error("❌ Failed to fetch approval status:", error);
-            }
+    async function fetchApprovalStatus() {
+      try {
+        const res = await fetch("/api/me", {
+          credentials: 'include'
+        });
+        const data = await res.json();
+        
+        console.log("📡 API 回應:", data);
+        console.log("📡 approval_status:", data.user?.approval_status);
+        
+        if (data.authenticated && data.user && data.user.role === 'doctor') {
+          const status = data.user.approval_status;
+          setApprovalStatus(status);
+          console.log("✅ 已設定 approvalStatus 為:", status);
         }
-        fetchApprovalStatus();
-    }, []);
+      } catch (error) {
+        console.error("❌ Failed to fetch approval status:", error);
+      }
+    }
+    fetchApprovalStatus();
+  }, []);
 
-  
   useEffect(() => {
     fetchAppointments();
   }, []);
@@ -43,26 +42,26 @@ export default function AppointmentRecords() {
   const fetchAppointments = async () => {
     setLoading(true);
     try {
-        const res = await fetch("/api/recordoc", {
-          credentials: 'include'
-        });
-        
-        if (!res.ok) throw new Error("API 取得資料失敗");
-        const data = await res.json();
+      const res = await fetch("/api/recordoc", {
+        credentials: 'include'
+      });
+      
+      if (!res.ok) throw new Error("API 取得資料失敗");
+      const data = await res.json();
 
-        
-        const formattedData = data.map((item) => ({
-          appointment_id: item.appointment_id,
-          appointment_date: item.appointment_date,
-          appointment_time: item.appointment_time,
-          status: item.status,
-          patient: {
-            first_name: item.first_name,
-            last_name: item.last_name,
-          },
-        }));
+      const formattedData = data.map((item) => ({
+        appointment_id: item.appointment_id,
+        appointment_date: item.appointment_date,
+        appointment_time: item.appointment_time,
+        status: item.status,
+        cancellation_reason: item.cancellation_reason || null, // 加入取消原因
+        patient: {
+          first_name: item.first_name,
+          last_name: item.last_name,
+        },
+      }));
 
-        setAppointments(formattedData);
+      setAppointments(formattedData);
     } catch (error) {
       console.error(error);
       setAppointments([]);
@@ -73,8 +72,6 @@ export default function AppointmentRecords() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case '待確認':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       case '已確認':
         return 'bg-blue-100 text-blue-800 border-blue-300';
       case '已完成':
@@ -126,20 +123,20 @@ export default function AppointmentRecords() {
       )}
 
       <DoctorSidebar 
-          isOpen={isOpen} 
-          setIsOpen={setIsOpen} 
-          activeTab={activeTab} 
-          setActiveTab={setActiveTab}
-          approvalStatus={approvalStatus}  
+        isOpen={isOpen} 
+        setIsOpen={setIsOpen} 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab}
+        approvalStatus={approvalStatus}  
       />
       
       <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
-                <Navbar />
+        <Navbar />
 
         {/* 篩選器 */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <div className="flex flex-wrap gap-2">
-            {['all', '待確認', '已確認', '已完成', '已取消'].map((status) => (
+            {['all',  '已確認', '已完成', '已取消'].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilter(status)}
@@ -193,7 +190,7 @@ export default function AppointmentRecords() {
                   </div>
 
                   {/* 預約時間 */}
-                  <div className="space-y-2 bg-gray-50 rounded-lg p-4">
+                  <div className="space-y-2 bg-gray-50 rounded-lg p-4 mb-4">
                     <div className="flex items-center text-gray-700">
                       <Calendar className="w-5 h-5 mr-3 text-blue-600" />
                       <span className="font-medium">{formatDate(appointment.appointment_date)}</span>
@@ -203,6 +200,16 @@ export default function AppointmentRecords() {
                       <span className="font-medium">{formatTime(appointment.appointment_time)}</span>
                     </div>
                   </div>
+
+                  {/* 顯示取消原因（已取消狀態且有原因時） */}
+                  {appointment.status === '已取消' && appointment.cancellation_reason && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <p className="text-sm text-red-800">
+                        <span className="font-semibold">取消原因：</span>
+                        <span className="text-red-700 font-normal ml-1">{appointment.cancellation_reason}</span>
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

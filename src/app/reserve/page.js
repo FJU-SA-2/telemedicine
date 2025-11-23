@@ -6,6 +6,7 @@ import BookingModal from "./BookingModal";
 import SuccessPage from "./SuccessPage";
 import { Menu, Calendar, Search, Clock, CircleAlert, X } from "lucide-react";
 import FloatingChat from "../components/FloatingChat";
+import LockedPageOverlay from "../components/LockedPageOverlay"; // ✅ 新增
 
 function BookingPage({ doctors, schedules, setSchedules }) {
   const [selectedSpecialty, setSelectedSpecialty] = useState("all");
@@ -17,24 +18,20 @@ function BookingPage({ doctors, schedules, setSchedules }) {
   const [bookingInfo, setBookingInfo] = useState(null);
   const [showAlert, setShowAlert] = useState(true);
 
-  // ✅ 新增:檢查時段是否過期的函數
   const isTimeSlotExpired = (dateStr, timeStr) => {
     const now = new Date();
     const slotDateTime = new Date(`${dateStr}T${timeStr}`);
     return slotDateTime < now;
   };
 
-  // ✅ 修改:過濾掉過期的排程
   const validSchedules = schedules.filter(
     s => s.is_available === 1 && !isTimeSlotExpired(s.schedule_date, s.time_slot)
   );
 
-  // 只取得有可預約時段的醫師
   const doctorsWithSchedules = new Set(
     validSchedules.map(s => s.doctor_id)
   );
 
-  // 只顯示有可預約醫師的科別
   const availableSpecialties = [...new Set(
     doctors
       .filter(d => doctorsWithSchedules.has(d.doctor_id))
@@ -61,7 +58,6 @@ function BookingPage({ doctors, schedules, setSchedules }) {
     return true;
   });
 
-  // ✅ 修改:只計算未過期的日期
   const getDoctorAvailableDates = (doctorId) => {
     const dates = validSchedules
       .filter(s => s.doctor_id === doctorId)
@@ -69,14 +65,12 @@ function BookingPage({ doctors, schedules, setSchedules }) {
     return [...new Set(dates)].sort();
   };
 
-  // ✅ 修改:只計算未過期的時段
   const getDoctorAvailableSlots = (doctorId) => {
     return validSchedules.filter(s => s.doctor_id === doctorId).length;
   };
 
   const handleBooking = async (bookingData) => {
     try {
-      // 先取得登入使用者資訊
       const meRes = await fetch("/api/me");
       if (!meRes.ok) {
         alert("請先登入!");
@@ -90,7 +84,6 @@ function BookingPage({ doctors, schedules, setSchedules }) {
         return;
       }
 
-      // 發送預約請求到後端 API
       const response = await fetch("/api/appointments", {
         method: "POST",
         headers: {
@@ -116,7 +109,6 @@ function BookingPage({ doctors, schedules, setSchedules }) {
         return;
       }
 
-      // 預約成功,更新本地排程狀態
       setSchedules(prevSchedules =>
         prevSchedules.map(s =>
           s.doctor_id === bookingData.doctor.doctor_id &&
@@ -148,7 +140,6 @@ function BookingPage({ doctors, schedules, setSchedules }) {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      {/* 篩選區 */}
       <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
         <h2 className="text-lg font-bold text-gray-800 mb-4">篩選條件</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -191,7 +182,6 @@ function BookingPage({ doctors, schedules, setSchedules }) {
         </div>
       </div>
       
-      {/* 重要提醒區塊 */}
       {showAlert && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 relative">
           <button
@@ -217,7 +207,6 @@ function BookingPage({ doctors, schedules, setSchedules }) {
         </div>
       )}
 
-      {/* 醫生列表 */}
       <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-800">
@@ -309,48 +298,67 @@ function BookingPage({ doctors, schedules, setSchedules }) {
   );
 }
 
-// 主頁面
 export default function HomePage() {
   const [isOpen, setIsOpen] = useState(false);
   const [doctors, setDoctors] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // ✅ 新增：登入狀態管理
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // ✅ 新增：檢查登入狀態
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data.user);
+        }
+      } catch (err) {
+        console.error('檢查登入狀態失敗:', err);
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+    checkAuth();
+  }, []);
 
   useEffect(() => {
-  async function fetchData() {
-    try {
-      setLoading(true);
+    async function fetchData() {
+      try {
+        setLoading(true);
 
-      const resDoctors = await fetch("/api/doctors");
-      const doctorsData = await resDoctors.json();
-      setDoctors(doctorsData);
+        const resDoctors = await fetch("/api/doctors");
+        const doctorsData = await resDoctors.json();
+        setDoctors(doctorsData);
 
-      const resSchedules = await fetch("/api/schedules");
-      const schedulesData = await resSchedules.json();
+        const resSchedules = await fetch("/api/schedules");
+        const schedulesData = await resSchedules.json();
 
-      const formattedSchedules = schedulesData.map(s => ({
-        ...s,
-        doctor_id: Number(s.doctor_id),
-        schedule_date: s.schedule_date.split("T")[0],
-        time_slot: s.time_slot.substring(0, 5),
-        is_available: Number(s.is_available)
-      }));
+        const formattedSchedules = schedulesData.map(s => ({
+          ...s,
+          doctor_id: Number(s.doctor_id),
+          schedule_date: s.schedule_date.split("T")[0],
+          time_slot: s.time_slot.substring(0, 5),
+          is_available: Number(s.is_available)
+        }));
 
-      setSchedules(formattedSchedules);
-      setLoading(false);
-    } catch (err) {
-      console.error("載入資料錯誤:", err);
-      setLoading(false);
+        setSchedules(formattedSchedules);
+        setLoading(false);
+      } catch (err) {
+        console.error("載入資料錯誤:", err);
+        setLoading(false);
+      }
     }
-  }
-  
-  // 只執行一次
-  fetchData();
+    
+    fetchData();
+  }, []);
 
-}, []);
-
-
-  if (loading) {
+  // ✅ 修改：只在認證檢查時顯示載入
+  if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="text-center">
@@ -376,7 +384,23 @@ export default function HomePage() {
 
       <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
         <Navbar />
-        <BookingPage doctors={doctors} schedules={schedules} setSchedules={setSchedules} />
+        
+        {/* ✅ 主內容區域 */}
+        <div className="relative min-h-screen">
+          {loading ? (
+            <div className="flex items-center justify-center min-h-screen">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500 mx-auto mb-4"></div>
+                <p className="text-gray-600 font-medium">載入中...</p>
+              </div>
+            </div>
+          ) : (
+            <BookingPage doctors={doctors} schedules={schedules} setSchedules={setSchedules} />
+          )}
+          
+          {/* ✅ 未登入時顯示鎖定覆蓋層 */}
+          {!user && <LockedPageOverlay pageName="線上預約" icon={Calendar} />}
+        </div>
       </div>
       <FloatingChat />
     </div>
