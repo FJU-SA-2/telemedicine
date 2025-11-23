@@ -1,83 +1,215 @@
 "use client";
-import { useState } from 'react';
-import { Calendar, Video, Star, FileText, CreditCard, User, Clock, CheckCircle, ArrowRight, Stethoscope, Heart, Monitor, ChevronRight, AlertCircle, Menu } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Calendar, Video, Star, FileText, CreditCard, User, Clock, CheckCircle, ArrowRight, Stethoscope, Heart, Monitor, ChevronRight, ChevronLeft, AlertCircle, Menu, X, ZoomIn } from 'lucide-react';
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 
 export default function IntroductionPage() {
   const [activeStep, setActiveStep] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState({});
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState(null);
+  const [lightboxImages, setLightboxImages] = useState([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  // 鍵盤控制
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!lightboxOpen) return;
+      
+      if (e.key === 'Escape') {
+        closeLightbox();
+      } else if (e.key === 'ArrowLeft') {
+        lightboxPrev();
+      } else if (e.key === 'ArrowRight') {
+        lightboxNext();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxOpen, lightboxIndex, lightboxImages]);
 
   const steps = [
     {
       id: 1,
       icon: User,
-      title: "註冊/登入",
+      title: "註冊",
       color: "from-blue-500 to-blue-600",
       description: "建立您的專屬帳號",
+      images: [
+        "/images/1.png",
+        "/images/2.png", 
+        "/images/3.png",
+        "/images/4.png"
+      ],
       details: [
-        "填寫基本個人資料",
-        "設定安全密碼",
-        "驗證電子郵件",
-        "完成會員註冊"
+        "選擇您的身分",
+        "註冊帳號",
+        "填寫您的基本資料及帳號密碼",
+        "發送驗證碼及取得驗證碼",
+        "完成會員註冊!"
       ]
     },
     {
       id: 2,
       icon: Calendar,
-      title: "預約掛號",
+      title: "醫師介紹及收藏",
       color: "from-purple-500 to-purple-600",
       description: "選擇適合的醫師與時間",
+      images: [
+        "/images/5.png",
+        "/images/6.png", 
+        "/images/7.png"
+      ],
       details: [
         "瀏覽醫師列表與專科",
-        "查看醫師資歷與評價",
-        "選擇方便的日期時段",
-        "填寫主訴症狀",
-        "選擇預約類型(諮詢/看診)"
+        "點擊查看更多可瀏覽醫師詳細資料!",
+        "點擊星星符號可收藏醫師",
+        "可在收藏列表查看您所收藏的醫師!",
       ]
     },
     {
       id: 3,
       icon: CreditCard,
-      title: "線上付款",
+      title: "預約及線上付款",
       color: "from-green-500 to-green-600",
-      description: "安全便捷的支付方式",
+      description: "預約功能及安全便捷的支付方式",
+      images: [
+        "/images/11.png",
+        "/images/12.png", 
+        "/images/13.png",
+        "/images/14.png",
+        "/images/15.png",
+        "/images/16.png"
+      ],
       details: [
-        "查看費用明細",
+        "可在線上預約介面查看可預約醫師",
+        "選取您想要的時間段",
+        "描述您的症狀，如時間想更改，可以點擊修改",
+        "確認您的預約資訊",
         "選擇付款方式",
-        "完成安全付款",
-        "收到預約確認通知"
+        "完成預約!"
       ]
     },
     {
       id: 4,
-      icon: Video,
-      title: "視訊看診",
-      color: "from-red-500 to-red-600",
-      description: "與醫師進行線上諮詢",
+      icon: CreditCard,
+      title: "取消預約",
+      color: "from-green-500 to-green-600",
+      description: "取消預約功能",
+      images: [
+        "/images/17.png",
+        "/images/18.png"
+      ],
       details: [
-        "等待醫師開啟會議室",
-        "進入視訊看診室",
-        "與醫師進行即時溝通",
-        "討論症狀與治療方案",
-        "看診過程自動錄影保存"
+        "可在線上預約介面查看可預約醫師",
+        "如想取消預約可點選取消預約",
+        "輸入取消原因並送出",
+        "若於2天內取消，僅退回50%款項！"
       ]
     },
     {
       id: 5,
-      icon: FileText,
-      title: "查看紀錄",
-      color: "from-indigo-500 to-indigo-600",
-      description: "完整的醫療紀錄管理",
+      icon: Video,
+      title: "視訊看診及視訊後評分",
+      color: "from-red-500 to-red-600",
+      description: "與醫師進行線上諮詢",
+      images: [
+        "/images/8.png",
+        "/images/19.png",
+        "/images/20.png"
+      ],
       details: [
-        "查看看診歷史紀錄",
-        "閱讀醫師診斷與建議",
-        "觀看看診錄影回放",
-        "追蹤治療進度",
-        "評價看診體驗"
+        "等待醫師開啟會議室",
+        "進入視訊看診室",
+        "與醫師進行即時溝通",
+        "看診過程自動錄影保存",
+        "對此次視訊進行評分!"
       ]
-    }
+    },
+    {
+      id: 6,
+      icon: FileText,
+      title: "經驗分享區",
+      color: "from-indigo-500 to-indigo-600",
+      description: "與其他人分享自己的經驗並交流",
+      images: [
+        "/images/9.png",
+        "/images/21.png",
+        "/images/22.png"
+      ],
+      details: [
+        "按下發布按鈕",
+        "輸入標題與內容",
+        "也可選擇匿名發布文章",
+        "可在他人的文章下發表留言",
+        "也可選擇匿名發布留言"
+      ]
+    },
+    {
+      id: 7,
+      icon: User,
+      title: "問題回報",
+      color: "from-blue-500 to-blue-600",
+      description: "建立您的專屬帳號",
+      images: [
+        "/images/10.png"],
+      details: [
+        "勾選您覺得可以改善的地方",
+        "輸入具體問題",
+        "我們將收到您的問題回報並盡速改進!"
+      ]
+    },
   ];
+
+  // 處理圖片切換
+  const handlePrevImage = (stepId) => {
+    setCurrentImageIndex(prev => {
+      const currentIndex = prev[stepId] || 0;
+      const step = steps.find(s => s.id === stepId);
+      const newIndex = currentIndex === 0 ? step.images.length - 1 : currentIndex - 1;
+      return { ...prev, [stepId]: newIndex };
+    });
+  };
+
+  const handleNextImage = (stepId) => {
+    setCurrentImageIndex(prev => {
+      const currentIndex = prev[stepId] || 0;
+      const step = steps.find(s => s.id === stepId);
+      const newIndex = currentIndex === step.images.length - 1 ? 0 : currentIndex + 1;
+      return { ...prev, [stepId]: newIndex };
+    });
+  };
+
+  // 開啟燈箱
+  const openLightbox = (images, index) => {
+    setLightboxImages(images);
+    setLightboxIndex(index);
+    setLightboxImage(images[index]);
+    setLightboxOpen(true);
+  };
+
+  // 關閉燈箱
+  const closeLightbox = () => {
+    setLightboxOpen(false);
+    setLightboxImage(null);
+  };
+
+  // 燈箱上一張
+  const lightboxPrev = () => {
+    const newIndex = lightboxIndex === 0 ? lightboxImages.length - 1 : lightboxIndex - 1;
+    setLightboxIndex(newIndex);
+    setLightboxImage(lightboxImages[newIndex]);
+  };
+
+  // 燈箱下一張
+  const lightboxNext = () => {
+    const newIndex = lightboxIndex === lightboxImages.length - 1 ? 0 : lightboxIndex + 1;
+    setLightboxIndex(newIndex);
+    setLightboxImage(lightboxImages[newIndex]);
+  };
 
   const features = [
     {
@@ -150,73 +282,138 @@ export default function IntroductionPage() {
               使用流程
             </h3>
             
-            <div className="relative">
-              {/* Connection Line */}
-              <div className="hidden md:block absolute top-24 left-0 right-0 h-1 bg-gradient-to-r from-blue-200 via-purple-200 to-pink-200" 
-                   style={{ top: '80px', left: '10%', right: '10%' }} />
-              
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
-                {steps.map((step, index) => {
-                  const Icon = step.icon;
-                  const isActive = activeStep === step.id;
-                  
-                  return (
-                    <div 
-                      key={step.id}
-                      className="relative"
-                      onMouseEnter={() => setActiveStep(step.id)}
-                      onMouseLeave={() => setActiveStep(null)}
-                    >
-                      <div className={`bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer border-2 ${
-                        isActive ? 'border-blue-500 scale-105' : 'border-transparent'
-                      }`}>
-                        {/* Step Number */}
-                        <div className="absolute -top-4 -right-4 w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
-                          {step.id}
+            <div className="space-y-12">
+              {steps.map((step, index) => {
+                const Icon = step.icon;
+                const isActive = activeStep === step.id;
+                
+                return (
+                  <div 
+                    key={step.id}
+                    className="bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300"
+                    onMouseEnter={() => setActiveStep(step.id)}
+                    onMouseLeave={() => setActiveStep(null)}
+                  >
+                    <div className="flex flex-col lg:flex-row gap-8 items-center">
+                      {/* Left Side - Info */}
+                      <div className="flex-1 space-y-6">
+                        {/* Step Header */}
+                        <div className="flex items-center gap-4">
+                          <div className={`w-20 h-20 bg-gradient-to-br ${step.color} rounded-2xl flex items-center justify-center`}>
+                            <Icon className="w-10 h-10 text-white" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className="px-4 py-1 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-full text-sm font-bold">
+                                步驟 {step.id}
+                              </span>
+                            </div>
+                            <h4 className="text-3xl font-bold text-gray-800">
+                              {step.title}
+                            </h4>
+                          </div>
                         </div>
-                        
-                        {/* Icon */}
-                        <div className={`w-16 h-16 mx-auto mb-4 bg-gradient-to-br ${step.color} rounded-2xl flex items-center justify-center transform transition-transform ${
-                          isActive ? 'scale-110 rotate-3' : ''
-                        }`}>
-                          <Icon className="w-8 h-8 text-white" />
-                        </div>
-                        
-                        {/* Title */}
-                        <h4 className="text-xl font-bold text-gray-800 text-center mb-2">
-                          {step.title}
-                        </h4>
                         
                         {/* Description */}
-                        <p className="text-sm text-gray-600 text-center mb-4">
+                        <p className="text-lg text-gray-600">
                           {step.description}
                         </p>
                         
-                        {/* Details - Show on hover */}
-                        <div className={`transition-all duration-300 overflow-hidden ${
-                          isActive ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-                        }`}>
-                          <div className="border-t border-gray-200 pt-4 space-y-2">
-                            {step.details.map((detail, idx) => (
-                              <div key={idx} className="flex items-start gap-2 text-sm text-gray-700">
-                                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
-                                <span>{detail}</span>
-                              </div>
-                            ))}
-                          </div>
+                        {/* Details */}
+                        <div className="space-y-3">
+                          {step.details.map((detail, idx) => (
+                            <div key={idx} className="flex items-start gap-3 text-gray-700">
+                              <CheckCircle className="w-6 h-6 text-green-500 flex-shrink-0 mt-0.5" />
+                              <span className="text-base">{detail}</span>
+                            </div>
+                          ))}
                         </div>
-                        
-                        {/* Arrow */}
-                        {index < steps.length - 1 && (
-                          <div className="hidden md:block absolute top-1/2 -right-4 transform -translate-y-1/2">
-                            <ChevronRight className="w-8 h-8 text-gray-300" />
+                      </div>
+                      
+                      {/* Right Side - Screenshot with Carousel */}
+                      <div className="flex-1 w-full">
+                        <div className="relative group">
+                          <div 
+                            className="rounded-2xl overflow-hidden border-4 border-gray-200 shadow-lg hover:shadow-2xl transition-all duration-300 cursor-zoom-in relative"
+                            onClick={() => openLightbox(step.images, currentImageIndex[step.id] || 0)}
+                          >
+                            <img 
+                              src={step.images[currentImageIndex[step.id] || 0]} 
+                              alt={`${step.title}示意圖 ${(currentImageIndex[step.id] || 0) + 1}`}
+                              className="w-full h-auto object-cover"
+                            />
+                            {/* Zoom Indicator */}
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                              <div className="bg-white/90 rounded-full p-3 opacity-0 group-hover:opacity-100 transition-all transform scale-75 group-hover:scale-100">
+                                <ZoomIn className="w-8 h-8 text-gray-800" />
+                              </div>
+                            </div>
                           </div>
-                        )}
+                          
+                          {/* Image Navigation - Only show if multiple images */}
+                          {step.images.length > 1 && (
+                            <>
+                              {/* Previous Button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePrevImage(step.id);
+                                }}
+                                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/90 hover:bg-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 z-10"
+                              >
+                                <ChevronRight className="w-6 h-6 text-gray-800 rotate-180" />
+                              </button>
+                              
+                              {/* Next Button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleNextImage(step.id);
+                                }}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/90 hover:bg-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-110 z-10"
+                              >
+                                <ChevronRight className="w-6 h-6 text-gray-800" />
+                              </button>
+                              
+                              {/* Image Indicators */}
+                              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                                {step.images.map((_, idx) => (
+                                  <button
+                                    key={idx}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setCurrentImageIndex(prev => ({ ...prev, [step.id]: idx }));
+                                    }}
+                                    className={`w-2.5 h-2.5 rounded-full transition-all ${
+                                      (currentImageIndex[step.id] || 0) === idx 
+                                        ? 'bg-white w-8' 
+                                        : 'bg-white/50 hover:bg-white/75'
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                              
+                              {/* Image Counter */}
+                              <div className="absolute top-4 right-4 bg-black/60 text-white px-3 py-1 rounded-full text-sm font-semibold z-10">
+                                {(currentImageIndex[step.id] || 0) + 1} / {step.images.length}
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                    
+                    {/* Arrow for next step */}
+                    {index < steps.length - 1 && (
+                      <div className="flex justify-center mt-8">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center transform rotate-90">
+                          <ChevronRight className="w-8 h-8 text-white" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -247,62 +444,6 @@ export default function IntroductionPage() {
               })}
             </div>
           </div>
-
-          {/* Additional Features */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
-            {/* 收藏功能 */}
-            <div className="bg-white rounded-2xl p-8 shadow-lg">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Star className="w-6 h-6 text-yellow-500" />
-                </div>
-                <div>
-                  <h4 className="text-xl font-bold text-gray-800 mb-3">收藏功能</h4>
-                  <ul className="space-y-2 text-gray-600">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span>收藏喜歡的醫師</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span>快速找到常看的醫師</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span>建立個人醫療團隊</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* 預約管理 */}
-            <div className="bg-white rounded-2xl p-8 shadow-lg">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Calendar className="w-6 h-6 text-blue-500" />
-                </div>
-                <div>
-                  <h4 className="text-xl font-bold text-gray-800 mb-3">預約管理</h4>
-                  <ul className="space-y-2 text-gray-600">
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span>查看預約狀態</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span>彈性取消或修改</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span>即時通知提醒</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Important Notice */}
           <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl p-8 mb-16">
             <div className="flex items-start gap-4">
@@ -346,6 +487,83 @@ export default function IntroductionPage() {
           </div>
         </div>
       </div>
+
+     {/* Lightbox Modal */}
+      {lightboxOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+          onClick={closeLightbox}
+        >
+          {/* Close Button */}
+          <button
+            onClick={closeLightbox}
+            className="absolute top-4 right-4 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all z-10"
+          >
+            <X className="w-8 h-8 text-white" />
+          </button>
+
+          {/* Image Counter */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/10 text-white px-4 py-2 rounded-full text-lg font-semibold">
+            {lightboxIndex + 1} / {lightboxImages.length}
+          </div>
+
+          {/* Main Image */}
+          <div 
+            className="relative max-w-6xl max-h-[90vh] w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={lightboxImage}
+              alt="放大檢視"
+              className="w-full h-full object-contain rounded-lg"
+            />
+
+            {/* Navigation Buttons - Only show if multiple images */}
+            {lightboxImages.length > 1 && (
+              <>
+                {/* Previous Button */}
+                <button
+                  onClick={lightboxPrev}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 w-14 h-14 bg-white/90 hover:bg-white rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110"
+                >
+                  <ChevronRight className="w-8 h-8 text-gray-800 rotate-180" />
+                </button>
+
+                {/* Next Button */}
+                <button
+                  onClick={lightboxNext}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 w-14 h-14 bg-white/90 hover:bg-white rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110"
+                >
+                  <ChevronRight className="w-8 h-8 text-gray-800" />
+                </button>
+
+                {/* Image Indicators */}
+                <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 flex gap-2">
+                  {lightboxImages.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setLightboxIndex(idx);
+                        setLightboxImage(lightboxImages[idx]);
+                      }}
+                      className={`w-3 h-3 rounded-full transition-all ${
+                        lightboxIndex === idx 
+                          ? 'bg-white w-10' 
+                          : 'bg-white/40 hover:bg-white/60'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Keyboard Hint */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-sm">
+            按 ESC 關閉 {lightboxImages.length > 1 && '• 使用 ← → 切換圖片'}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
