@@ -21,7 +21,7 @@ function DoctorDetailsPage({ doctor, schedules, onBack, onBooking }) {
     onBooking(bookingData);
   };
 
-  const doctorFullName = `${doctor.last_name}${doctor.first_name}`;
+  const doctorFullName = `${doctor.first_name}${doctor.last_name}`;
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -403,7 +403,7 @@ export default function FavoritesPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {favoriteDoctors.map((doctor) => {
-                    const fullName = `${doctor.last_name}${doctor.first_name}`;
+                    const fullName = `${doctor.first_name}${doctor.last_name}`;
                     return (
                       <div
                         key={doctor.doctor_id}
