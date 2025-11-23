@@ -439,11 +439,32 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleLogout = () => {
-    if (confirm('確定要登出嗎?')) {
-      router.push('/');
+  const handleLogout = async () => {
+  if (confirm('確定要登出嗎?')) {
+    try {
+      // 調用後端登出 API
+      const res = await fetch('/api/admin/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      // 清除本地存儲的用戶資訊
+      localStorage.removeItem('user_id');
+      localStorage.removeItem('user_type');
+      localStorage.removeItem('email');
+      
+      // 跳轉到登入頁面（身份選擇頁）
+      router.push('/login');
+    } catch (err) {
+      console.error('登出錯誤:', err);
+      // 即使 API 調用失敗，仍然清除本地資訊並跳轉
+      localStorage.removeItem('user_id');
+      localStorage.removeItem('user_type');
+      localStorage.removeItem('email');
+      router.push('/login');
     }
-  };
+  }
+};
 
   const loadCertificate = async (certificatePath) => {
     if (!certificatePath) {
