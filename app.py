@@ -3551,6 +3551,69 @@ def get_unread_count():
         cursor.close()
         db.close()
 
+@app.route('/api/doctor/dashboard-stats', methods=['GET'])
+def get_dashboard_stats():
+    try:
+        if 'user_id' not in session:
+            return jsonify({'error': '未授權'}), 401
+        
+        if session.get('role') != 'doctor':
+            return jsonify({'error': '權限不足'}), 403
+        
+        doctor_id = session.get('doctor_id')
+        if not doctor_id:
+            return jsonify({'error': '無法獲取醫生資訊'}), 400
+        
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        
+        today = date.today().strftime('%Y-%m-%d')
+        
+        # 今日預約總數
+        cursor.execute("""
+            SELECT COUNT(*) as count 
+            FROM appointments 
+            WHERE doctor_id = %s 
+            AND appointment_date = %s 
+            AND status IN ('已確認', '已完成')
+        """, (doctor_id, today))
+        today_total = cursor.fetchone()['count'] or 0
+        
+        # 待處理
+        cursor.execute("""
+            SELECT COUNT(*) as count 
+            FROM appointments 
+            WHERE doctor_id = %s 
+            AND appointment_date = %s 
+            AND status = '已確認'
+        """, (doctor_id, today))
+        pending = cursor.fetchone()['count'] or 0
+        
+        # 已完成
+        cursor.execute("""
+            SELECT COUNT(*) as count 
+            FROM appointments 
+            WHERE doctor_id = %s 
+            AND appointment_date = %s 
+            AND status = '已完成'
+        """, (doctor_id, today))
+        completed = cursor.fetchone()['count'] or 0
+        
+        cursor.close()
+        
+        return jsonify({
+            'success': True,
+            'todayTotal': today_total,
+            'pending': pending,
+            'completed': completed,
+            'date': today
+        }), 200
+        
+    except Exception as e:
+        print(f"錯誤: {str(e)}")
+        return jsonify({'error': '伺服器錯誤'}), 500
+
+
 if __name__ == "__main__":
     start_background_tasks()
     app.run(debug=True)
