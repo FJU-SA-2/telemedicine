@@ -1304,6 +1304,7 @@ def get_recordoc():
             a.appointment_time,
             a.cancellation_reason,
             a.status,
+            a.doctor_advice,
             p.first_name,
             p.last_name
         FROM appointments a
@@ -1334,6 +1335,24 @@ def get_recordoc():
         cursor.close()
         db.close()
 
+@app.route('/api/appointments/<int:appointment_id>/advice', methods=['PUT'])
+
+def update_doctor_advice(appointment_id):
+    data = request.get_json()
+    new_advice = data.get('doctor_advice')
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE appointments
+        SET doctor_advice = %s
+        WHERE appointment_id = %s
+    """, (new_advice, appointment_id))
+
+    conn.commit()
+
+    return jsonify({"message": "Advice updated successfully"}), 200
 
    
 
