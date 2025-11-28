@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Calendar, Video, Star, FileText, CreditCard, User, Clock, CheckCircle, ArrowRight, Stethoscope, Heart, Monitor, ChevronRight, ChevronLeft, AlertCircle, Menu, X, ZoomIn } from 'lucide-react';
-import Sidebar from "../components/Sidebar";
+import { Calendar, Video, FileText, Users, Clock, CheckCircle, ChevronRight, ChevronLeft, AlertCircle, Menu, X, ZoomIn, Stethoscope, ClipboardCheck, UserCheck, MessageSquare, Star, Shield } from 'lucide-react';
+import DoctorSidebar from "../components/DoctorSidebar";
 import Navbar from "../components/Navbar";
 
-export default function IntroductionPage() {
+export default function DoctorIntroductionPage() {
   const [activeStep, setActiveStep] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState({});
@@ -31,67 +31,57 @@ export default function IntroductionPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [lightboxOpen, lightboxIndex, lightboxImages]);
 
-  // 患者端使用步驟
-const steps = [
+  const steps = [
   {
     id: 1,
-    icon: User,
-    title: "註冊帳號",
+    icon: UserCheck,
+    title: "醫師註冊與審核",
     color: "from-blue-500 to-blue-600",
-    description: "輕鬆建立您的個人健康帳戶",
+    description: "快速完成專業醫師認證,開啟線上診療之旅",
     images: [
       "/images/1.png",
-      "/images/2.png", 
-      "/images/3.png",
+      "/images/23.png", 
+      "/images/24.png",
       "/images/4.png"
     ],
     details: [
-      "選擇「患者」身份開始註冊流程",
-      "使用電子郵件建立帳號",
-      "填寫基本個人資料與設定安全密碼",
-      "輸入手機驗證碼完成身份驗證",
-      "註冊完成，立即開始使用平台功能!"
+      "選擇「醫師」身份進行註冊,填寫基本聯絡資訊",
+      "設定安全的帳號密碼,保護您的專業帳戶",
+      "上傳醫師執照及相關證明文件(支援 PDF、JPG 格式)",
+      "系統將在 1-3 個工作天內完成審核並通知結果",
+      "審核通過後立即啟用帳號,開始使用完整平台功能"
     ]
   },
   {
     id: 2,
     icon: Calendar,
-    title: "瀏覽與收藏醫師",
+    title: "設定看診時間表",
     color: "from-purple-500 to-purple-600",
-    description: "找到最適合您的專業醫師",
-    images: [
-      "/images/5.png",
-      "/images/6.png", 
-      "/images/7.png"
-    ],
+    description: "彈性安排門診時段,掌握工作節奏",
+    images: ["/images/26.png"],
     details: [
-      "瀏覽各專科醫師列表,查看醫師背景與專長",
-      "點擊「查看更多」了解醫師詳細資料",
-      "點擊星星圖示將喜歡的醫師加入收藏清單",
-      "在「我的收藏」中快速找到您收藏的醫師",
-      "隨時管理收藏清單,方便日後預約!"
+      "進入「排班管理」功能,查看您的可用時段",
+      "選擇想要開放看診的日期與時間區間",
+      "可設定單次或重複性排班,靈活調整時間安排",
+      "隨時暫停或關閉特定時段,應對突發狀況",
+      "點擊儲存後,系統將自動開放預約給患者"
     ]
   },
   {
     id: 3,
-    icon: CreditCard,
-    title: "預約與線上付款",
+    icon: Users,
+    title: "查看預約清單",
     color: "from-green-500 to-green-600",
-    description: "簡單三步驟完成看診預約",
+    description: "一目了然掌握所有預約資訊",
     images: [
-      "/images/11.png",
-      "/images/12.png", 
-      "/images/13.png",
-      "/images/14.png",
-      "/images/15.png",
-      "/images/16.png"
+      "/images/27.png",
+      "/images/30.png"
     ],
     details: [
-      "在線上預約頁面查看醫師的可預約時段",
-      "選擇最適合您的看診日期與時間",
-      "詳細描述您的症狀,如需修改可點擊編輯",
-      "確認預約資訊無誤後進入付款頁面",
-      "選擇付款方式完成交易,預約成功!系統將發送確認通知"
+      "進入「預約管理」查看今日及未來的預約安排",
+      "點擊任一預約可查看患者詳細資料與主訴症狀",
+      "系統會顯示患者基本健康資訊,協助診前準備",
+      "可按日期、狀態篩選預約,快速找到所需資訊"
     ]
   },
   {
@@ -99,70 +89,82 @@ const steps = [
     icon: Calendar,
     title: "取消預約",
     color: "from-orange-500 to-orange-600",
-    description: "彈性調整您的看診安排",
+    description: "妥善處理突發狀況,維護醫病關係",
     images: [
-      "/images/17.png",
-      "/images/18.png"
+      "/images/27.png",
+      "/images/28.png"
     ],
     details: [
-      "在「我的預約」中找到想要取消的預約項目",
-      "點擊「取消預約」按鈕進入取消流程",
-      "填寫取消原因(可選填)並送出申請",
-      "注意:預約時間 2 天內取消僅退還 50% 費用",
-      "取消成功後將收到系統通知與退款確認"
+      "在「預約管理」中找到需要取消的預約項目",
+      "點擊「取消預約」按鈕,進入取消流程",
+      "填寫取消原因(此資訊將通知患者)",
+      "確認送出後,系統將自動通知患者並退還費用",
+      "該時段將重新開放,供其他患者預約"
     ]
   },
   {
     id: 5,
     icon: Video,
-    title: "視訊看診與評分",
+    title: "查看預約紀錄",
     color: "from-red-500 to-red-600",
-    description: "享受便利的線上醫療服務",
-    images: [
-      "/images/8.png",
-      "/images/19.png",
-      "/images/20.png"
-    ],
+    description: "完整追蹤所有診療歷程",
+    images: ["/images/31.png"],
     details: [
-      "預約時間到達前,等待醫師開啟視訊會議室",
-      "收到通知後點擊「進入看診室」開始視訊",
-      "與醫師進行即時視訊問診,清楚說明症狀",
-      "看診過程將自動錄影保存,可隨時回顧",
-      "看診結束後為醫師評分,幫助其他患者參考"
+      "進入「預約紀錄」功能,查看歷史預約資料",
+      "可檢視已完成的看診記錄與診療內容",
+      "查看已取消的預約及取消原因,便於追蹤管理",
+      "支援日期範圍篩選,快速找到特定時期的紀錄"
     ]
   },
   {
     id: 6,
     icon: FileText,
-    title: "經驗分享區",
+    title: "查看患者病歷",
     color: "from-indigo-500 to-indigo-600",
-    description: "與社群分享您的就醫經驗",
+    description: "完整病歷系統,提供更精準的診療",
     images: [
-      "/images/9.png",
-      "/images/21.png",
-      "/images/22.png"
+      "/images/32.png",
+      "/images/33.png"
     ],
     details: [
-      "點擊「發布」按鈕開始撰寫您的經驗分享",
-      "輸入標題與內容,分享您的就醫心得",
-      "可選擇「匿名發布」保護個人隱私",
-      "在他人的文章下方發表留言互動交流",
-      "留言時也可選擇匿名,自由表達想法"
+      "進入「患者病歷」功能,查看所有就診過的患者列表",
+      "系統自動整理每位患者的完整就診歷程",
+      "點擊「查看完整病歷」可查看詳細診療記錄",
+      "包含過往主訴、診斷、處方等重要醫療資訊",
+      "協助您更全面了解患者健康狀況,提供連貫性照護"
     ]
   },
   {
     id: 7,
-    icon: User,
-    title: "問題回報",
-    color: "from-blue-500 to-blue-600",
-    description: "您的回饋幫助我們做得更好",
-    images: ["/images/10.png"],
+    icon: Video,
+    title: "視訊看診",
+    color: "from-pink-500 to-pink-600",
+    description: "高品質視訊系統,如同面對面問診",
+    images: [
+      "/images/35.png",
+      "/images/34.png"
+    ],
     details: [
-      "點擊「問題回報」進入反饋表單",
-      "勾選遇到的問題類型或功能建議",
-      "詳細描述問題情況或您的改善建議",
-      "我們會仔細審閱每一則回饋意見",
-      "持續改進平台,提供更優質的服務體驗"
+      "在預約時間前 5 分鐘開啟會議室",
+      "點擊「進入視訊看診室」,系統會進行設備檢測",
+      "等待患者進入,開始進行線上診療",
+      "使用清晰的視訊與音訊功能進行專業問診",
+      "看診過程自動錄影並加密保存,保障醫病雙方權益"
+    ]
+  },
+  {
+    id: 8,
+    icon: MessageSquare,
+    title: "問題回報",
+    color: "from-teal-500 to-teal-600",
+    description: "您的回饋幫助我們做得更好",
+    images: ["/images/36.png"],
+    details: [
+      "點擊頁面上的「問題回報」按鈕",
+      "勾選您遇到的問題類型(可複選)",
+      "詳細描述具體問題或建議事項",
+      "我們的技術團隊將在 24 小時內回覆",
+      "持續優化平台功能,提供更好的使用體驗"
     ]
   },
 ];
@@ -217,28 +219,28 @@ const steps = [
   const features = [
     {
       icon: Clock,
-      title: "24/7 線上服務",
-      description: "隨時隨地都能預約看診"
+      title: "彈性排班",
+      description: "自由安排看診時間，工作生活平衡"
     },
     {
-      icon: Stethoscope,
-      title: "專業醫師團隊",
-      description: "各科專業醫師為您服務"
+      icon: Shield,
+      title: "資料安全",
+      description: "醫療資訊加密保護，符合法規要求"
     },
     {
-      icon: Monitor,
+      icon: Video,
       title: "高品質視訊",
-      description: "清晰流暢的視訊通話"
+      description: "穩定流暢的視訊通話體驗"
     },
     {
-      icon: Heart,
-      title: "隱私保護",
-      description: "嚴格保護您的個人資料"
+      icon: Star,
+      title: "專業形象",
+      description: "建立個人品牌，獲得更多病患信任"
     }
   ];
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
       {/* 側邊欄開啟按鈕 */}
       {!isOpen && (
         <button
@@ -249,8 +251,8 @@ const steps = [
         </button>
       )}
 
-      {/* 使用你自己的 Sidebar 組件 */}
-      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+      {/* 使用醫師專用的 Sidebar 組件 */}
+      <DoctorSidebar isOpen={isOpen} setIsOpen={setIsOpen} activeTab="introduction" />
 
       {/* 主要內容區域 */}
       <div className={`transition-all duration-300 ${isOpen ? 'ml-64' : 'ml-0'}`}>
@@ -260,21 +262,24 @@ const steps = [
         <div className="max-w-7xl mx-auto px-4 py-12">
           {/* Hero Section */}
           <div className="text-center mb-16">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <Stethoscope size={48} className="text-blue-600" />
+            </div>
             <h2 className="text-5xl font-bold text-gray-800 mb-6">
-              遠距線上醫療看診平台
+              醫師專用平台使用指南
             </h2>
             <p className="text-xl text-gray-600 mb-8">
-              打破時間與空間限制，讓優質醫療服務觸手可及
+              歡迎加入線上醫療平台，為更多病患提供專業醫療服務
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <div className="bg-white rounded-full px-6 py-3 shadow-md">
-                <span className="text-blue-600 font-semibold">✓ 即時預約</span>
+                <span className="text-blue-600 font-semibold">✓ 彈性排班</span>
               </div>
               <div className="bg-white rounded-full px-6 py-3 shadow-md">
-                <span className="text-purple-600 font-semibold">✓ 視訊看診</span>
+                <span className="text-purple-600 font-semibold">✓ 線上看診</span>
               </div>
               <div className="bg-white rounded-full px-6 py-3 shadow-md">
-                <span className="text-green-600 font-semibold">✓ 完整紀錄</span>
+                <span className="text-green-600 font-semibold">✓ 收益透明</span>
               </div>
             </div>
           </div>
@@ -423,7 +428,7 @@ const steps = [
           {/* Features Grid */}
           <div className="mb-16">
             <h3 className="text-3xl font-bold text-center text-gray-800 mb-12">
-              平台特色
+              平台優勢
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {features.map((feature, index) => {
@@ -447,20 +452,20 @@ const steps = [
               })}
             </div>
           </div>
+
           {/* Important Notice */}
-          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl p-8 mb-16">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-8 mb-16">
             <div className="flex items-start gap-4">
-              <AlertCircle className="w-8 h-8 text-yellow-600 flex-shrink-0" />
+              <AlertCircle className="w-8 h-8 text-blue-600 flex-shrink-0" />
               <div>
-                <h4 className="text-xl font-bold text-gray-800 mb-3">重要提醒</h4>
-                <p className="text-gray-700 leading-relaxed mb-4">
-                  本平台提供之「心理諮商」與「精神科線上諮詢」服務屬於非醫療性質，
-                  僅提供心理支持、情緒陪伴、生活適應建議與健康相關資訊。
-                </p>
-                <p className="text-gray-700 leading-relaxed">
-                  諮詢內容不包含醫療診斷、開立藥物處方、醫療證明或任何醫療行為。
-                  如有緊急醫療需求，請立即撥打 119 或前往最近的醫療機構。
-                </p>
+                <h4 className="text-xl font-bold text-gray-800 mb-3">醫師注意事項</h4>
+                <ul className="text-gray-700 leading-relaxed space-y-2">
+                  <li>• 請確保您的醫師執照在有效期限內</li>
+                  <li>• 線上看診需遵守醫療法規與倫理規範</li>
+                  <li>• 建議在安靜、光線充足的環境進行視訊看診</li>
+                  <li>• 請保護病患隱私，不得洩露病患資訊</li>
+                  <li>• 如遇緊急狀況，請引導病患就近就醫</li>
+                </ul>
               </div>
             </div>
           </div>
@@ -469,14 +474,14 @@ const steps = [
           <div className="text-center bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl p-12 text-white shadow-2xl">
             <h3 className="text-4xl font-bold mb-4">準備好開始了嗎？</h3>
             <p className="text-xl mb-8 text-blue-100">
-              立即註冊，體驗便捷的線上醫療服務
+              立即註冊成為平台醫師，開啟線上醫療新篇章
             </p>
             <a 
               href="/login"
               className="inline-flex bg-white text-blue-600 px-10 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg items-center gap-3"
             >
               立即開始
-              <ArrowRight className="w-6 h-6" />
+              <ChevronRight className="w-6 h-6" />
             </a>
           </div>
         </div>
@@ -485,13 +490,13 @@ const steps = [
         <div className="bg-gray-800 text-white py-8">
           <div className="max-w-7xl mx-auto px-4 text-center">
             <p className="text-gray-400">
-              © 2024 MedOnGo. 讓醫療服務更便捷、更貼心。
+              © 2024 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。
             </p>
           </div>
         </div>
       </div>
 
-     {/* Lightbox Modal */}
+      {/* Lightbox Modal */}
       {lightboxOpen && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
