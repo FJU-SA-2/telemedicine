@@ -1,4 +1,3 @@
-// components/Sidebar.jsx
 "use client";
 import { Video, House, Calendar, ContactRound, X, Settings, MessageCircleMore, FileText, Lock } from "lucide-react";
 import Link from "next/link";
@@ -27,13 +26,16 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     checkAuthStatus();
   }, []);
 
+
+  const homeHref = isLoggedIn ? "/PatientPage" : "/";
+
   const menuItems = [
-    { id: "/", label: "首頁", icon: House, href: "/", requiresAuth: false },
+    { id: "home", label: "首頁", icon: House, href: homeHref, requiresAuth: false },
     { id: "/introduction", label: "使用流程介紹", icon: FileText, href: "/introduction", requiresAuth: false },
     { id: "/doctorlist", label: "醫生介紹", icon: ContactRound, href: "/doctorlist", requiresAuth: false },
     { id: "/favorite", label: "收藏列表", icon: ContactRound, href: "/favorite", requiresAuth: true },
     { id: "/reserve", label: "線上預約", icon: Calendar, href: "/reserve", requiresAuth: true },
-    { id: "/my reserve", label: "預約紀錄", icon: Calendar, href: "/record", requiresAuth: true },
+    { id: "/record", label: "預約紀錄", icon: Calendar, href: "/record", requiresAuth: true },
     { id: "/facetime", label: "視訊看診", icon: Video, href: "/pfacetime", requiresAuth: true },
     { id: "/experience", label: "經驗分享區", icon: MessageCircleMore, href: "/experience", requiresAuth: false },
     { id: "/feedback", label: "問題回報", icon: MessageCircleMore, href: "/feedback", requiresAuth: true },
@@ -48,7 +50,6 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     >
       <div className="p-4 text-xl font-bold border-b border-gray-300 flex justify-between items-center">
         功能列表
-        {/* 關閉按鈕 */}
         <button onClick={() => setIsOpen(false)} className="hover:text-red-500">
           <X size={24} />
         </button>
@@ -58,7 +59,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isLocked = item.requiresAuth && !isLoggedIn;
-          
+
           return (
             <Link
               key={item.id}
@@ -73,14 +74,11 @@ export default function Sidebar({ isOpen, setIsOpen }) {
             >
               <Icon size={20} />
               <span className="font-medium">{item.label}</span>
-              {isLocked && (
-                <Lock size={16} className="ml-auto text-gray-400" />
-              )}
+              {isLocked && <Lock size={16} className="ml-auto text-gray-400" />}
             </Link>
           );
         })}
-        
-        {/* 未登入提示 */}
+
         {!isLoading && !isLoggedIn && (
           <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
             <p className="text-xs text-amber-800 flex items-center gap-2">
