@@ -19,6 +19,12 @@ const TelemedicineDashboard = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [isOpen, setIsOpen] = useState(false);
   const [approvalStatus, setApprovalStatus] = useState(null);
+  const [dashboardStats, setDashboardStats] = useState({
+    todayTotal: 0,
+    pending: 0,
+    completed: 0
+  });
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   // 模擬預約資料
   const appointments = [
@@ -28,12 +34,26 @@ const TelemedicineDashboard = () => {
     { id: 4, patient: "林美玲", time: "15:30", type: "檢查報告", status: "completed" },
   ];
 
-  // 儀表板統計數據
+  // 儀表板統計數據（使用真實數據）
   const healthMetrics = [
-    { label: "今日預約", value: "8", change: "+2", icon: Calendar, color: "bg-blue-500" },
-    { label: "待處理", value: "3", change: "-1", icon: Clock, color: "bg-yellow-500" },
-    { label: "已完成", value: "5", change: "+3", icon: Activity, color: "bg-green-500" },
-    { label: "總患者數", value: "142", change: "+8", icon: Users, color: "bg-purple-500" },
+    { 
+      label: "今日預約", 
+      value: dashboardStats.todayTotal.toString(), 
+      icon: Calendar, 
+      color: "bg-blue-500" 
+    },
+    { 
+      label: "待完成", 
+      value: dashboardStats.pending.toString(), 
+      icon: Clock, 
+      color: "bg-yellow-500" 
+    },
+    { 
+      label: "已完成", 
+      value: dashboardStats.completed.toString(), 
+      icon: Activity, 
+      color: "bg-green-500" 
+    },
   ];
 
   useEffect(() => {
@@ -53,6 +73,40 @@ const TelemedicineDashboard = () => {
     }
     fetchApprovalStatus();
   }, []);
+
+  // 獲取統計數據
+  useEffect(() => {
+    async function fetchDashboardStats() {
+      if (approvalStatus !== 'approved') {
+        setIsLoadingStats(false);
+        return;
+      }
+
+      try {
+        setIsLoadingStats(true);
+        const res = await fetch("/api/doctor/dashboard-stats", {
+          credentials: 'include'
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          setDashboardStats({
+            todayTotal: data.todayTotal || 0,
+            pending: data.pending || 0,
+            completed: data.completed || 0
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard stats:", error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    }
+
+    if (approvalStatus) {
+      fetchDashboardStats();
+    }
+  }, [approvalStatus]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -127,30 +181,32 @@ const TelemedicineDashboard = () => {
             </div>
           )}
 
-          {/* 統計卡片 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {healthMetrics.map((metric, idx) => {
-              const Icon = metric.icon;
-              return (
-                <div
-                  key={idx}
-                  className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`${metric.color} p-3 rounded-lg`}>
-                      <Icon size={24} className="text-white" />
+          {/* 統計卡片 - 改為置中並使用真實數據 */}
+          <div className="flex justify-center mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full">
+              {healthMetrics.map((metric, idx) => {
+                const Icon = metric.icon;
+                return (
+                  <div
+                    key={idx}
+                    className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className={`${metric.color} p-3 rounded-lg`}>
+                        <Icon size={24} className="text-white" />
+                      </div>
                     </div>
-                    <span className="text-sm font-medium text-green-600">
-                      {isNotApproved ? "0" : metric.change}
-                    </span>
+                    <p className="text-gray-600 text-sm mb-1">{metric.label}</p>
+                    <p className="text-3xl font-bold text-gray-800">
+                      {isNotApproved || isLoadingStats ? "0" : metric.value}
+                    </p>
+                    {isLoadingStats && !isNotApproved && (
+                      <p className="text-xs text-gray-400 mt-1">載入中...</p>
+                    )}
                   </div>
-                  <p className="text-gray-600 text-sm mb-1">{metric.label}</p>
-                  <p className="text-3xl font-bold text-gray-800">
-                    {isNotApproved ? "0" : metric.value}
-                  </p>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -227,7 +283,7 @@ const TelemedicineDashboard = () => {
           </div>
 
           {/* 快速操作 */}
-          <div className="mt-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-black">
+          <div className="mt-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
             <h3 className="text-xl font-bold mb-4">快速操作</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <button 
