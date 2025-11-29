@@ -30,64 +30,64 @@ export default function NotificationBell({ user }) {
   }, [isPatient]);
 
   /* ==================== 檢查新通知 (輪詢) ==================== */
-  const checkForNewNotifications = async () => {
-    try {
-      const res = await fetch("/api/notifications", { 
-        credentials: "include",
-        cache: 'no-cache'
-      });
+  /* ==================== 檢查新通知 (輪詢) ==================== */
+const checkForNewNotifications = async () => {
+  try {
+    const res = await fetch("/api/notifications", { 
+      credentials: "include",
+      cache: 'no-cache'
+    });
+    
+    if (!res.ok) return;
+    
+    const data = await res.json();
+    const newNotificationsList = data.notifications || [];
+    
+    // 找出新的通知
+    setNotifications(prev => {
+      const existingIds = new Set(prev.map(n => n.notification_id));
+      const brandNewNotifications = newNotificationsList.filter(
+        n => !existingIds.has(n.notification_id)
+      );
       
-      if (!res.ok) return;
-      
-      const data = await res.json();
-      const newNotificationsList = data.notifications || [];
-      
-      // 找出新的通知
-      setNotifications(prev => {
-        const existingIds = new Set(prev.map(n => n.notification_id));
-        const brandNewNotifications = newNotificationsList.filter(
-          n => !existingIds.has(n.notification_id)
-        );
+      if (brandNewNotifications.length > 0) {
+        console.log('📬 發現新通知:', brandNewNotifications.length);
         
-        if (brandNewNotifications.length > 0) {
-          console.log('📬 發現新通知:', brandNewNotifications.length);
-          
-          // 標記為新通知
-          setNewNotifications(brandNewNotifications.map(n => n.notification_id));
-          
-          // 播放通知音效
-          playNotificationSound();
-          
-          // 3秒後移除新通知標記
-          setTimeout(() => {
-            setNewNotifications([]);
-          }, 3000);
-          
-          // 合併通知列表
-          return [...brandNewNotifications, ...prev];
-        }
+        // 標記為新通知
+        setNewNotifications(brandNewNotifications.map(n => n.notification_id));
         
-        return prev;
-      });
+        // 🔇 已移除音效播放
+        
+        // 3秒後移除新通知標記
+        setTimeout(() => {
+          setNewNotifications([]);
+        }, 3000);
+        
+        // 合併通知列表
+        return [...brandNewNotifications, ...prev];
+      }
       
-      // 更新未讀數量
-      setUnreadCount(data.unread_count || 0);
-      
-    } catch (err) {
-      console.error("檢查新通知失敗:", err);
-    }
-  };
+      return prev;
+    });
+    
+    // 更新未讀數量
+    setUnreadCount(data.unread_count || 0);
+    
+  } catch (err) {
+    console.error("檢查新通知失敗:", err);
+  }
+};
 
   /* ==================== 播放通知音效 ==================== */
-  const playNotificationSound = () => {
-    try {
-      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYHGGS57OmmVRALUKrk7LaUJwc0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgcYZLnn6KVXEQpMpOHutJ4kBSl+y/DajDgHGWe76OmmVRALUKvk7LaQJgY0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgcYZLnn6KVXEQpMpOHutJ4kBSl+y/DajDgHGWe76OmmVRALUKvk7LaQJgY0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgcYZLnn6KVXEQpMpOHutJ4kBSl+y/DajDgHGWe76OmmVRALUKvk7LaQJgY0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgcYZLnn6KVXEQpMpOHutJ4kBSl+y/DajDgHGWe76OmmVRALUKvk7LaQJgY0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgcYZLnn6KVXEQpMpOHutJ4kBSl+y/DajDgHGWe76OmmVRALUKvk7LaQJgY0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgc=');
-      audio.volume = 0.3;
-      audio.play().catch(e => console.log('無法播放音效'));
-    } catch (e) {
-      // 靜默失敗
-    }
-  };
+  // const playNotificationSound = () => {
+  //   try {
+  //     const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYHGGS57OmmVRALUKrk7LaUJwc0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgcYZLnn6KVXEQpMpOHutJ4kBSl+y/DajDgHGWe76OmmVRALUKvk7LaQJgY0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgcYZLnn6KVXEQpMpOHutJ4kBSl+y/DajDgHGWe76OmmVRALUKvk7LaQJgY0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgcYZLnn6KVXEQpMpOHutJ4kBSl+y/DajDgHGWe76OmmVRALUKvk7LaQJgY0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgcYZLnn6KVXEQpMpOHutJ4kBSl+y/DajDgHGWe76OmmVRALUKvk7LaQJgY0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgcYZLnn6KVXEQpMpOHutJ4kBSl+y/DajDgHGWe76OmmVRALUKvk7LaQJgY0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgc=');
+  //     audio.volume = 0.3;
+  //     audio.play().catch(e => console.log('無法播放音效'));
+  //   } catch (e) {
+  //     // 靜默失敗
+  //   }
+  // };
 
   /* ==================== 獲取通知列表 ==================== */
   const fetchNotifications = async () => {

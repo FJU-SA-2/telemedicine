@@ -95,9 +95,17 @@ export default function PatientVideoConsultation() {
       if (response.ok) {
         const data = await response.json();
         
-        const upcoming = data.filter(apt => 
-          apt.status === '待確認' || apt.status === '已確認'
-        );
+        // 過濾出未過期的預約
+        const now = new Date();
+        const upcoming = data.filter(apt => {
+          if (apt.status !== '待確認' && apt.status !== '已確認') {
+            return false;
+          }
+          
+          // 檢查預約時間是否已過期
+          const appointmentDateTime = new Date(`${apt.appointment_date} ${apt.appointment_time}`);
+          return appointmentDateTime > now;
+        });
         
         setAppointments(upcoming);
       } else {
@@ -489,8 +497,8 @@ export default function PatientVideoConsultation() {
           <Navbar setIsSidebarOpen={setIsOpen} />
 
           {/* ✅ 主內容區域 */}
-          <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="pt-5 relative min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+            {/* <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
               <div className="flex items-center justify-between">
                 <button
                   onClick={() => setShowHistory(!showHistory)}
@@ -500,7 +508,7 @@ export default function PatientVideoConsultation() {
                   <span>{showHistory ? "返回預約" : "看診記錄"}</span>
                 </button>
               </div>
-            </div>
+            </div> */}
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1">
               {error && (
