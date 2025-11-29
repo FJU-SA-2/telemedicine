@@ -159,7 +159,7 @@ export default function ExperienceSharing() {
                   placeholder="搜尋文章關鍵字..."
                   value={keyword}
                   onChange={(e) => setKeyword(e.target.value)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="text-gray-700 flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <button
                   type="submit"

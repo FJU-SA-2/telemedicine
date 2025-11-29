@@ -177,7 +177,7 @@ export default function DoctorAppointmentManagement() {
             {!isOpen && (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="p-3 fixed top-2 left-4 text-gray-700 z-50 bg-white/70 backdrop-blur-sm rounded-full hover:bg-white"
+                    className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
                 >
                     <Menu size={24} />
                 </button>
@@ -239,7 +239,7 @@ export default function DoctorAppointmentManagement() {
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 placeholder="搜尋患者姓名..."
-                                className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
+                                className="text-gray-900 w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
                             />
                         </div>
                     </div>
@@ -372,11 +372,11 @@ export default function DoctorAppointmentManagement() {
                                     </h4>
                                     <div className="flex items-start gap-4">
                                         <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-                                            {selectedAppointment.patient_last_name?.charAt(0)}
+                                            {selectedAppointment.patient_first_name?.charAt(0)}
                                         </div>
                                         <div className="flex-1">
                                             <p className="font-bold text-xl text-gray-800 mb-2">
-                                                {selectedAppointment.patient_last_name}{selectedAppointment.patient_first_name}
+                                                {selectedAppointment.patient_first_name}{selectedAppointment.patient_last_name}
                                             </p>
                                         </div>
                                     </div>

@@ -101,7 +101,7 @@ function DoctorDetailsPage({ doctor, onBack, onBookNow }) {
               />
             ) : (
               <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                {doctor.last_name?.charAt(0) || "醫師"}
+                {doctor.first_name?.charAt(0) || "醫師"}
               </div>
             )}
           </div>
@@ -308,7 +308,7 @@ function DoctorListPage({ onSelectDoctor, user }) {
       <div className="mb-6 bg-white rounded-lg shadow-sm p-6">
         <div className="flex items-center gap-2 mb-4">
           <Filter size={20} className="text-blue-600" />
-          <h3 className="text-lg font-semibold">篩選條件</h3>
+          <h3 className="text-lg font-semibold text-gray-800">篩選條件</h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -335,12 +335,12 @@ function DoctorListPage({ onSelectDoctor, user }) {
       </div>
 
       <div className="mb-4">
-        <h2 className="text-xl font-bold">
+        <h2 className="text-xl font-bold text-gray-800">
           搜尋結果 ({filteredDoctors.length} 位醫師)
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-gray-800">
         {filteredDoctors.map((doctor) => {
           const fullName = `${doctor.first_name}${doctor.last_name}`;
           const isFavorited = favorites.includes(doctor.doctor_id);
@@ -372,7 +372,7 @@ function DoctorListPage({ onSelectDoctor, user }) {
                   />
                 ) : (
                   <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                    {doctor.last_name?.charAt(0) || "醫"}
+                    {doctor.first_name?.charAt(0) || "醫"}
                   </div>
                 )}
 
@@ -501,7 +501,7 @@ export default function App() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-50 bg-white rounded-lg shadow hover:shadow-lg transition"
+          className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
         >
           <Menu size={24} />
         </button>

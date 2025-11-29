@@ -159,7 +159,7 @@ function DoctorFeedbackFormContent() {
               onChange={(e) => setFeedback(e.target.value)}
               placeholder="請詳細描述您遇到的問題，例如：在哪個功能、執行什麼操作時發生、錯誤訊息內容等..."
               rows="6"
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-indigo-600 focus:outline-none resize-none transition-colors"
+              className="text-gray-700 w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-indigo-600 focus:outline-none resize-none transition-colors"
               disabled={loading}
             />
             <p className="text-sm text-gray-500 mt-2">
@@ -224,7 +224,7 @@ export default function DoctorFeedbackPage() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray z-50"
+          className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
         >
           <Menu size={24} />
         </button>

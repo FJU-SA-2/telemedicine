@@ -255,7 +255,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
                   onChange={e => setSymptoms(e.target.value)}
                   placeholder="請詳細描述您的症狀,例如:&#10;• 發燒 38.5°C,已持續 2 天&#10;• 喉嚨痛、咳嗽有痰&#10;• 頭痛、全身無力"
                   rows={6}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-sm resize-none"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-sm resize-none text-gray-700"
                 />
                 <p className="text-xs text-gray-500 mt-2">
                   💡 提示:請包含症狀開始時間、嚴重程度、已採取的處理方式等
@@ -300,7 +300,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 mb-6">
                 <div className="flex items-start gap-4 mb-6 pb-6 border-b border-blue-200">
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-                    {doctor.last_name.charAt(0)}
+                    {doctor.first_name.charAt(0)}
                   </div>
                   <div className="flex-1">
                     <h5 className="font-bold text-xl text-gray-800 mb-1">{doctorFullName} 醫師</h5>

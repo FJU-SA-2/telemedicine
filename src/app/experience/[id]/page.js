@@ -250,7 +250,7 @@ export default function PostDetail() {
                   onChange={(e) => setNewComment({...newComment, content: e.target.value})}
                   rows="4"
                   placeholder="寫下您的留言..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+                  className="text-gray-700 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
                 />
                 <div className="flex justify-between items-center">
                   <label className="flex items-center cursor-pointer">

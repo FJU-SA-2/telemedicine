@@ -480,7 +480,7 @@ export default function PatientVideoConsultation() {
         {!isOpen && (
           <button
             onClick={() => setIsOpen(true)}
-            className="p-3 fixed top-2 left-4 text-gray-700 z-50 bg-white/70 backdrop-blur-sm rounded-full hover:bg-white"
+            className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
           >
             <Menu size={24} />
           </button>

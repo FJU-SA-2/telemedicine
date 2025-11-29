@@ -35,10 +35,10 @@ function DoctorDetailsPage({ doctor, schedules, onBack, onBooking }) {
           </button>
           
           <div className="w-24 h-24 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-3xl flex-shrink-0">
-            {doctor.last_name.charAt(0)}
+            {doctor.first_name.charAt(0)}
           </div>
           <div>
-            <h1 className="text-3xl font-bold mb-2">{doctorFullName}</h1>
+            <h1 className="text-3xl font-bold mb-2 text-gray-800">{doctorFullName}</h1>
             <p className="text-blue-600 text-lg mb-1">{doctor.specialty}</p>
             <p className="text-gray-600">{doctor.practice_hospital}</p>
           </div>
@@ -297,7 +297,7 @@ export default function FavoritesPage() {
         {!isOpen && (
           <button
             onClick={() => setIsOpen(true)}
-            className="fixed top-4 left-4 z-30 p-2 bg-white rounded-lg shadow hover:bg-gray-50"
+            className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
           >
             <Menu size={24} className="text-gray-600" />
           </button>
@@ -339,7 +339,7 @@ export default function FavoritesPage() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray z-50"
+          className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
         >
           <Menu size={24} />
         </button>

@@ -57,11 +57,11 @@ export default function SuccessPage({ bookingInfo, onClose }) {
             <div className="space-y-4">
               <div className="flex items-start gap-4 pb-4 border-b border-gray-200">
                 <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md flex-shrink-0">
-                  {bookingInfo.doctor.last_name.charAt(0)}
+                  {bookingInfo.doctor.first_name.charAt(0)}
                 </div>
                 <div>
                   <p className="font-bold text-gray-800 text-lg">
-                    {bookingInfo.doctor.last_name}{bookingInfo.doctor.first_name} 醫師
+                    {bookingInfo.doctor.first_name}{bookingInfo.doctor.last_name} 醫師
                   </p>
                   <p className="text-blue-600 font-semibold">{bookingInfo.doctor.specialty}</p>
                   <p className="text-sm text-gray-500">{bookingInfo.doctor.practice_hospital}</p>

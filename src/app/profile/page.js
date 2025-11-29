@@ -334,7 +334,7 @@ const handleSave = async () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-700 z-50 bg-white/70 backdrop-blur-sm rounded-full hover:bg-white"
+          className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
         >
           <Menu size={24} />
         </button>
@@ -589,7 +589,7 @@ const handleSave = async () => {
                   value={formData.id_number}
                   onChange={handleInputChange}
                   maxLength="10"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="請輸入身分證字號"
                 />
               </div>
@@ -603,7 +603,7 @@ const handleSave = async () => {
                   value={formData.drug_allergies}
                   onChange={handleInputChange}
                   rows="3"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="請輸入過敏藥物（如有多項請分行填寫）"
                 />
               </div>
@@ -617,7 +617,7 @@ const handleSave = async () => {
                   value={formData.medical_history}
                   onChange={handleInputChange}
                   rows="3"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="請輸入重大疾病史（如有多項請分行填寫）"
                 />
               </div>
@@ -629,7 +629,7 @@ const handleSave = async () => {
                   name="smoking_status"
                   value={formData.smoking_status}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="no">無</option>
                   <option value="yes">有吸菸</option>
@@ -647,7 +647,7 @@ const handleSave = async () => {
                   name="height"
                   value={formData.height}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="請輸入身高"
                 />
               </div>
@@ -662,7 +662,7 @@ const handleSave = async () => {
                   name="weight"
                   value={formData.weight}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="請輸入體重"
                 />
               </div>
@@ -676,7 +676,7 @@ const handleSave = async () => {
                 {/* ▼ 下拉按鈕 */}
                 <div
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white cursor-pointer flex justify-between items-center"
+                  className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg bg-white cursor-pointer flex justify-between items-center"
                 >
                   <span className="text-gray-700">
                     {formData.chronic_disease.length === 0
@@ -696,7 +696,7 @@ const handleSave = async () => {
 
                 {/* ▼ 下拉內容 */}
                 {dropdownOpen && (
-                  <div className="absolute mt-1 w-full border bg-white rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto p-3">
+                  <div className="text-gray-700 absolute mt-1 w-full border bg-white rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto p-3">
                     {[
                       "高血壓",
                       "糖尿病",
@@ -779,7 +779,7 @@ const handleSave = async () => {
                       name="emergency_contact_name"
                       value={formData.emergency_contact_name}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="請輸入緊急聯絡人姓名"
                     />
                   </div>
@@ -792,7 +792,7 @@ const handleSave = async () => {
                       name="emergency_contact_phone"
                       value={formData.emergency_contact_phone}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="請輸入緊急聯絡人電話"
                     />
                   </div>
@@ -957,7 +957,7 @@ const handleSave = async () => {
         onChange={(e) =>
           setDoctorForm({ ...doctorForm, specialty: e.target.value })
         }
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       />
     </div>
 
@@ -972,7 +972,7 @@ const handleSave = async () => {
         onChange={(e) =>
           setDoctorForm({ ...doctorForm, practice_hospital: e.target.value })
         }
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       />
     </div>
         {/* 個人簡介 */}
@@ -987,7 +987,7 @@ const handleSave = async () => {
           setDoctorForm({ ...doctorForm, description: e.target.value })
         }
         rows="3"
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       />
     </div>
 
@@ -1003,7 +1003,7 @@ const handleSave = async () => {
           setDoctorForm({ ...doctorForm, experience: e.target.value })
         }
         rows="3"
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       />
     </div>
 
@@ -1019,7 +1019,7 @@ const handleSave = async () => {
           setDoctorForm({ ...doctorForm, qualifications: e.target.value })
         }
         rows="3"
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="text-gray-700 s-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       />
     </div>
 
@@ -1035,7 +1035,7 @@ const handleSave = async () => {
           setDoctorForm({ ...doctorForm, education: e.target.value })
         }
         rows="2"
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       />
     </div>
 
@@ -1052,7 +1052,7 @@ const handleSave = async () => {
             consultation_fee: parseInt(e.target.value) || 0,
           })
         }
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       />
     </div>
 
