@@ -7,7 +7,7 @@ export default function FloatingChat() {
   const [messages, setMessages] = useState([
     { 
       sender: "bot", 
-      text: "您好！我是 MOG AI 健康助理 🏥\n\n我可以協助您解答關於健康、身體保養、營養等相關問題。請問有什麼我可以幫您的嗎？" 
+      text: "您好！我是 MOG AI 健康助理 🏥\n\n我可以協助您解答關於健康、身體保養、營養等相關問題。\n\n請問有什麼我可以幫您的嗎？" 
     },
   ]);
   const formattedMessages = messages.map(msg => ({
@@ -206,13 +206,27 @@ export default function FloatingChat() {
 
           {/* 輸入框 */}
           <div className="p-4 border-t bg-white">
+            {/* 插入警語區塊 - 醒目且完整的警語 */}
+            <div className="mb-3 p-3 border border-red-300 bg-red-50 rounded-lg text-xs text-red-700 leading-relaxed">
+              <p className="font-bold">🚨 重要警語：</p>
+              <p className="mt-1">
+                【此為 <b>OPEN AI</b> 生成之答案，<b>僅供參考</b>】
+              </p>
+              <ul className="list-disc list-inside mt-1 ml-1 space-y-0.5">
+                <li>本內容無法取代專業醫療判斷。</li>
+                <li>詳細症狀仍需透過<b>醫師診斷</b>。</li>
+                <li>若症狀相當嚴重，請<b>立即就醫</b>，切勿延誤。</li>
+              </ul>
+            </div>
+            {/* 警語區塊結束 */}
+
             <div className="flex gap-2">
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
                 className="flex-1 border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                placeholder="輸入您的健康問題..."
+                placeholder="輸入您遇到的健康問題..."
                 disabled={isLoading}
               />
               <button
@@ -224,9 +238,7 @@ export default function FloatingChat() {
                 <Send size={20} />
               </button>
             </div>
-            <div className="text-xs text-gray-500 mt-2 text-center">
-              💡 提醒：嚴重症狀請立即就醫
-            </div>
+            
           </div>
         </div>
       )}
