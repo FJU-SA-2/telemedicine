@@ -1,12 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Star, ArrowLeft, Trash2, Menu, CheckCircle } from "lucide-react";
+import { Heart, ArrowLeft, Trash2, Menu, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import BookingModal from "../reserve/BookingModal";
 import SuccessPage from "../reserve/SuccessPage";
-import LockedPageOverlay from "../components/LockedPageOverlay"; // ✅ 新增
+import LockedPageOverlay from "../components/LockedPageOverlay";
 
 // 醫師詳細資料頁面
 function DoctorDetailsPage({ doctor, schedules, onBack, onBooking }) {
@@ -106,12 +106,12 @@ export default function FavoritesPage() {
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [bookingInfo, setBookingInfo] = useState(null);
   
-  // ✅ 新增：登入狀態管理
+  // 新增：登入狀態管理
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const userId = 1; // 模擬登入使用者 ID
 
-  // ✅ 新增：檢查登入狀態
+  // 新增：檢查登入狀態
   useEffect(() => {
     async function checkAuth() {
       try {
@@ -130,7 +130,7 @@ export default function FavoritesPage() {
   }, []);
 
   useEffect(() => {
-    // ✅ 修改：只有登入時才載入資料
+    // 修改：只有登入時才載入資料
     if (user) {
       fetchFavorites();
       fetchSchedules();
@@ -282,7 +282,7 @@ export default function FavoritesPage() {
     setSelectedDoctor(null);
   };
 
-  // ✅ 新增：只在認證檢查時顯示載入
+  // 新增：只在認證檢查時顯示載入
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -328,8 +328,8 @@ export default function FavoritesPage() {
           />
         </div>
         
-        {/* ✅ 新增：未登入時顯示鎖定覆蓋層 */}
-        {!user && <LockedPageOverlay pageName="收藏列表" icon={Star} />}
+        {/* 新增：未登入時顯示鎖定覆蓋層 */}
+        {!user && <LockedPageOverlay pageName="收藏列表" icon={Heart} />}
       </div>
     );
   }
@@ -359,7 +359,7 @@ export default function FavoritesPage() {
       >
         <Navbar />
 
-        {/* ✅ 主內容區域加上 relative 定位並設定最小高度 */}
+        {/* 主內容區域加上 relative 定位並設定最小高度 */}
         <div className="relative min-h-screen">
           {showSuccess && !bookingInfo && (
             <div className="fixed top-20 right-6 bg-blue-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2">
@@ -371,7 +371,7 @@ export default function FavoritesPage() {
           <div className="p-6">
             <div className="max-w-6xl mx-auto mb-6">
               <div className="flex items-center gap-3 mb-2">
-                <Star size={28} className="text-yellow-400" fill="currentColor" />
+                <Heart size={28} className="text-red-500" fill="currentColor" />
                 <h1 className="text-3xl font-bold text-gray-800">我的收藏</h1>
               </div>
               <p className="text-gray-600">
@@ -382,16 +382,16 @@ export default function FavoritesPage() {
             <div className="max-w-6xl mx-auto">
               {favoriteDoctors.length === 0 ? (
                 <div className="bg-white rounded-lg shadow p-12 text-center">
-                  <Star
+                  <Heart
                     size={64}
-                    className="mx-auto text-yellow-300 mb-4"
+                    className="mx-auto text-red-300 mb-4"
                     fill="currentColor"
                   />
                   <h3 className="text-xl font-semibold text-gray-700 mb-2">
                     尚無收藏的醫師
                   </h3>
                   <p className="text-gray-500 mb-6">
-                    瀏覽醫師列表,點擊星星圖標來收藏您喜歡的醫師
+                    瀏覽醫師列表,點擊愛心圖標來收藏您喜歡的醫師
                   </p>
                   <button
                     onClick={() => router.push("/doctorlist")}
@@ -461,8 +461,8 @@ export default function FavoritesPage() {
             </div>
           </div>
           
-          {/* ✅ 鎖定覆蓋層現在只在主內容區域內 */}
-          {!user && <LockedPageOverlay pageName="收藏列表" icon={Star} />}
+          {/* 鎖定覆蓋層現在只在主內容區域內 */}
+          {!user && <LockedPageOverlay pageName="收藏列表" icon={Heart} />}
         </div>
       </div>
     </div>
