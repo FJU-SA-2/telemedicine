@@ -996,7 +996,14 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-
+      {/* Footer */}
+        <div className="bg-gray-800 text-white py-8">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <p className="text-gray-400">
+              © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
+            </p>
+          </div>
+        </div>
       {/* Modal - Rejection Reason */}
       {selectedDoctor && showRejectionModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">

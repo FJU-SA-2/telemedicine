@@ -881,7 +881,14 @@ export default function PatientVideoConsultation() {
           </div>
         </div>
       </div>
-
+      {/* Footer */}
+        <div className="bg-gray-800 text-white py-8">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <p className="text-gray-400">
+              © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
+            </p>
+          </div>
+        </div>
       {/* 評分彈窗 - 背景為原始頁面 */}
       {showRatingModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">

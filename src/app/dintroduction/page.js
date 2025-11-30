@@ -562,7 +562,6 @@ export default function DoctorIntroductionPage() {
               </>
             )}
           </div>
-
           {/* Keyboard Hint */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-sm">
             按 ESC 關閉 {lightboxImages.length > 1 && '• 使用 ← → 切換圖片'}
