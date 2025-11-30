@@ -167,6 +167,14 @@ export default function DoctorPatientList() {
           )}
         </div>
       </div>
+    {/* Footer */}
+        <div className="bg-gray-800 text-white py-8">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <p className="text-gray-400">
+              © 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。
+            </p>
+          </div>
+        </div>
     </div>
   );
 }
