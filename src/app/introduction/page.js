@@ -472,7 +472,7 @@ const steps = [
               立即註冊，體驗便捷的線上醫療服務
             </p>
             <a 
-              href="/login"
+              href="/doctorlist"
               className="inline-flex bg-white text-blue-600 px-10 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg items-center gap-3"
             >
               立即開始
