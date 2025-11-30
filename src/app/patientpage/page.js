@@ -244,7 +244,7 @@ export default function Page() {
                   return null;
                 })}
               </div>
-
+              
               {/* 資料來源 */}
               {selectedItem.source && (
                 <div className="mt-8 pt-6 border-t border-gray-200">
@@ -255,7 +255,7 @@ export default function Page() {
                   </div>
                 </div>
               )}
-
+              
               {/* 關閉按鈕 */}
               <button
                 onClick={() => setSelectedId(null)}

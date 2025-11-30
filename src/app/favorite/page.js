@@ -460,11 +460,18 @@ export default function FavoritesPage() {
               )}
             </div>
           </div>
-          
           {/* 鎖定覆蓋層現在只在主內容區域內 */}
           {!user && <LockedPageOverlay pageName="收藏列表" icon={Heart} />}
         </div>
       </div>
+      {/* Footer */}
+        <div className="bg-gray-800 text-white py-8">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <p className="text-gray-400">
+              © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
+            </p>
+          </div>
+        </div>
     </div>
   );
 }
