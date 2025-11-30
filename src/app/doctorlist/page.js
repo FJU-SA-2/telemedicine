@@ -289,7 +289,9 @@ function DoctorListPage({ onSelectDoctor, user }) {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {showFavoriteToast && (
-        <div className="fixed top-20 right-6 bg-blue-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2">
+        <div className={`fixed top-20 right-6 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2 ${
+          favoriteMessage === "已加入收藏" ? "bg-blue-500" : "bg-red-500"
+        }`}>
           <CheckCircle size={20} />
           <span>{favoriteMessage}</span>
         </div>
