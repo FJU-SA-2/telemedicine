@@ -15,6 +15,9 @@ import {
   Menu,
 } from "lucide-react";
 
+// 假設這些顏色變數已在全域 CSS 或 Tailwind Config 中定義
+// --color-mahogany, --color-lime-cream, --color-azure, --color-periwinkle, --color-light-cyan
+
 const TelemedicineDashboard = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [isOpen, setIsOpen] = useState(false);
@@ -138,12 +141,13 @@ const TelemedicineDashboard = () => {
   const isNotApproved = approvalStatus !== 'approved';
 
   return (
-    <div className="relative min-h-screen bg-gray-50">
+    
+    <div className="relative min-h-screen bg-[var(--color-azure)]/5">
       {/* Sidebar 開關按鈕（只在 Sidebar 關閉時顯示） */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
+          className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
         >
           <Menu size={24} />
         </button>
@@ -159,11 +163,12 @@ const TelemedicineDashboard = () => {
       />
 
       {/* 主內容 */}
+      {/* 移除 flex-1 overflow-auto，讓 p-8 成為主要內容的 padding */}
       <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
         {/* 頂部導覽列 */}
         <Navbar />
 
-        <div className="flex-1 overflow-auto p-8">
+        <div className="p-8">
           {/* 未核准提示框 */}
           {isNotApproved && (
             <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg shadow-sm">
@@ -181,7 +186,7 @@ const TelemedicineDashboard = () => {
             </div>
           )}
 
-          {/* 統計卡片 - 改為置中並使用真實數據 */}
+          {/* 2. 統計卡片 - 更改背景色為 COLOR_LIME_CREAM */}
           <div className="flex justify-center mb-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full">
               {healthMetrics.map((metric, idx) => {
@@ -189,7 +194,8 @@ const TelemedicineDashboard = () => {
                 return (
                   <div
                     key={idx}
-                    className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow"
+                    // 更改背景色為 COLOR_LIME_CREAM
+                    className="bg-[var(--color-lime-cream)]/20 rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow"
                   >
                     <div className="flex items-center justify-between mb-4">
                       <div className={`${metric.color} p-3 rounded-lg`}>
@@ -210,11 +216,12 @@ const TelemedicineDashboard = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* 今日預約 */}
+            {/* 今日預約 - 保持背景白色，更改按鈕顏色 */}
             <div className="lg:col-span-2 bg-white rounded-xl shadow-md p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold text-gray-800">今日預約</h3>
-                <button className="text-blue-600 text-sm font-medium hover:underline">
+                {/* 更改按鈕文字顏色為 COLOR_AZURE */}
+                <button className="text-[var(--color-azure)] text-sm font-medium hover:underline">
                   查看全部
                 </button>
               </div>
@@ -251,8 +258,8 @@ const TelemedicineDashboard = () => {
               </div>
             </div>
 
-            {/* 本週日曆 */}
-            <div className="bg-white rounded-xl shadow-md p-6">
+            {/* 3. 本週日曆 - 更改背景色為 COLOR_PERIWINKLE，並更改日曆強調色 */}
+            <div className="bg-[var(--color-periwinkle)]/30 rounded-xl shadow-md p-6">
               <h3 className="text-xl font-bold text-gray-800 mb-4">本週日曆</h3>
               <div className="space-y-3">
                 {isNotApproved ? (
@@ -265,14 +272,15 @@ const TelemedicineDashboard = () => {
                     <div
                       key={idx}
                       className={`p-3 rounded-lg ${
-                        idx === 0 ? "bg-blue-500 text-white" : "bg-gray-50"
+                        // 更改今日強調色為 COLOR_MAHOGANY，非今日背景色為 COLOR_LIGHT_CYAN
+                        idx === 0 ? "bg-[var(--color-mahogany)]/20 text-white" : "bg-[var(--color-light-cyan)]/30"
                       }`}
                     >
                       <div className="flex justify-between items-center">
-                        <span className="font-medium">星期{day}</span>
+                        <span className="font-medium text-[var(--color-mahogany)]">星期{day}</span>
                         <span className="text-sm">{25 + idx}日</span>
                       </div>
-                      <p className="text-xs mt-1 opacity-80">
+                      <p className="text-xs mt-1 opacity-80 text-[var(--color-mahogany)">
                         {idx === 0 ? "8 個預約" : `${[4, 6, 5, 3][idx] || 4} 個預約`}
                       </p>
                     </div>
@@ -282,8 +290,8 @@ const TelemedicineDashboard = () => {
             </div>
           </div>
 
-          {/* 快速操作 */}
-          <div className="mt-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+          {/* 4. 快速操作 - 更改背景色為 COLOR_MAHOGANY */}
+          <div className="mt-8 bg-[var(--color-mahogany)]/10 rounded-xl shadow-lg p-6 ">
             <h3 className="text-xl font-bold mb-4">快速操作</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <button 

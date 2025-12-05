@@ -330,25 +330,16 @@ const handleSave = async () => {
   
     return (
     <div className="relative min-h-screen bg-gray-50">
-      {/* Sidebar 開關按鈕（只在 Sidebar 關閉時顯示） */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
+          className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
         >
           <Menu size={24} />
         </button>
       )}
 
-      {/* 側邊欄 */}
-      {isPatient && (
-        <Sidebar  
-          isOpen={isOpen} 
-          setIsOpen={setIsOpen} 
-          activeTab={activeTab} 
-          setActiveTab={setActiveTab} 
-        />
-      )}
+      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
       {isDoctor && (
         <DoctorSidebar  
@@ -923,14 +914,7 @@ const handleSave = async () => {
                   {doctorProfile.qualifications || "未填寫"}
                 </p>
               </div> 
-              <div>
-                  <p className="text-sm text-gray-500">掛號費</p>
-                  <p className="text-lg font-medium text-gray-800">
-                    {doctorProfile.consultation_fee !== undefined && doctorProfile.consultation_fee !== null 
-                      ? doctorProfile.consultation_fee 
-                      : "未填寫"}
-                  </p>
-              </div>
+        
               </div>
               <div>
                 <p className="text-sm text-gray-500">學歷</p>
