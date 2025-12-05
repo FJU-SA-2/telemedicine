@@ -64,6 +64,7 @@ export default function AppointmentRecords() {
         appointment_time: item.appointment_time,
         status: item.status,
         cancellation_reason: item.cancellation_reason || null,
+        doctor_advice:item.doctor_advice || null,
         doctor: {
           first_name: item.first_name,
           last_name: item.last_name,
@@ -308,6 +309,16 @@ export default function AppointmentRecords() {
                             <p className="text-sm text-red-800 mb-1">
                               <span className="font-semibold">取消原因：</span>
                               <span className="text-red-700 font-normal">{appointment.cancellation_reason}</span>
+                            </p>
+                          </div>
+                        )}
+
+
+                        {appointment.status === "已完成" && appointment.doctor_advice && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                            <p className="text-sm text-blue-800 mb-1">
+                              <span className="font-semibold">醫生建議與處方：</span>
+                              <span className="text-blue-700 font-normal">{appointment.doctor_advice}</span>
                             </p>
                           </div>
                         )}
