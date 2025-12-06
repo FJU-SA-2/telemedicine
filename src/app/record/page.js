@@ -1,18 +1,17 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Calendar, Clock, User, Stethoscope, RefreshCw, Menu, X } from "lucide-react";
+import { Calendar, Clock, User, Stethoscope, RefreshCw, Menu, X, LayoutGrid, List } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
-import LockedPageOverlay from "../components/LockedPageOverlay"; // ✅ 新增
-import { Video } from 'lucide-react';
+import LockedPageOverlay from "../components/LockedPageOverlay";
 
 export default function AppointmentRecords() {
   const [isOpen, setIsOpen] = useState(false);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [viewMode, setViewMode] = useState("card"); 
   
-  // ✅ 新增：登入狀態管理
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   
@@ -21,7 +20,6 @@ export default function AppointmentRecords() {
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [refundInfo, setRefundInfo] = useState({ percentage: 0, message: "" });
 
-  // ✅ 新增：檢查登入狀態
   useEffect(() => {
     async function checkAuth() {
       try {
@@ -40,7 +38,6 @@ export default function AppointmentRecords() {
   }, []);
 
   useEffect(() => {
-    // ✅ 只有登入時才載入資料
     if (user) {
       fetchAppointments();
     } else if (!authLoading) {
@@ -64,6 +61,7 @@ export default function AppointmentRecords() {
         appointment_time: item.appointment_time,
         status: item.status,
         cancellation_reason: item.cancellation_reason || null,
+        doctor_advice: item.doctor_advice || null,
         doctor: {
           first_name: item.first_name,
           last_name: item.last_name,
@@ -183,7 +181,6 @@ export default function AppointmentRecords() {
     (apt) => filter === "all" || apt.status === filter
   );
 
-  // ✅ 只在認證檢查時顯示載入
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
@@ -211,7 +208,6 @@ export default function AppointmentRecords() {
       <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
         <Navbar />
 
-        {/* ✅ 主內容區域 */}
         <div className="relative min-h-screen p-6">
           {loading ? (
             <div className="flex items-center justify-center min-h-screen">
@@ -222,21 +218,51 @@ export default function AppointmentRecords() {
             </div>
           ) : (
             <>
+              {/* 篩選器與視圖切換 */}
               <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-                <div className="flex flex-wrap gap-2">
-                  {["all", "已確認", "已完成", "已取消"].map((status) => (
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  {/* 狀態篩選 */}
+                  <div className="flex flex-wrap gap-2">
+                    {["all", "已確認", "已完成", "已取消"].map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => setFilter(status)}
+                        className={`px-4 py-2 rounded-full font-medium transition-all ${
+                          filter === status
+                            ? "bg-blue-600 text-white shadow-md"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        {status === "all" ? "全部" : status}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* 視圖切換按鈕 */}
+                  <div className="flex gap-2 bg-gray-100 rounded-lg p-1">
                     <button
-                      key={status}
-                      onClick={() => setFilter(status)}
-                      className={`px-4 py-2 rounded-full font-medium transition-all ${
-                        filter === status
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      onClick={() => setViewMode("card")}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all ${
+                        viewMode === "card"
+                          ? "bg-white text-blue-600 shadow-sm"
+                          : "text-gray-600 hover:text-gray-800"
                       }`}
                     >
-                      {status === "all" ? "全部" : status}
+                      <LayoutGrid size={18} />
+                      <span className="hidden sm:inline">卡片式</span>
                     </button>
-                  ))}
+                    <button
+                      onClick={() => setViewMode("table")}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all ${
+                        viewMode === "table"
+                          ? "bg-white text-blue-600 shadow-sm"
+                          : "text-gray-600 hover:text-gray-800"
+                      }`}
+                    >
+                      <List size={18} />
+                      <span className="hidden sm:inline">橫列式</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -245,7 +271,8 @@ export default function AppointmentRecords() {
                   <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 text-lg">目前沒有符合條件的預約紀錄</p>
                 </div>
-              ) : (
+              ) : viewMode === "card" ? (
+                /* 卡片式視圖 */
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
                   {filteredAppointments.map((appointment) => (
                     <div
@@ -311,15 +338,94 @@ export default function AppointmentRecords() {
                             </p>
                           </div>
                         )}
+
+                        {appointment.status === "已完成" && appointment.doctor_advice && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                            <p className="text-sm text-blue-800 mb-1">
+                              <span className="font-semibold">醫生建議與處方：</span>
+                              <span className="text-blue-700 font-normal">{appointment.doctor_advice}</span>
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
+                </div>
+              ) : (
+                /* 表格式視圖 */
+                <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b-2 border-gray-200">
+                        <tr>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">狀態</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">醫師</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">科別</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">日期</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">時間</th>
+                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
+                            <span className="text-blue-600">醫生建議</span>
+                            <span className="text-gray-400 mx-1">/</span>
+                            <span className="text-red-600">取消原因</span>
+                          </th>
+                          <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {filteredAppointments.map((appointment) => (
+                          <tr key={appointment.appointment_id} className="hover:bg-gray-50 transition">
+                            <td className="px-6 py-4">
+                              <span
+                                className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(
+                                  appointment.status
+                                )}`}
+                              >
+                                {appointment.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="font-medium text-gray-800">
+                                {appointment.doctor.first_name}
+                                {appointment.doctor.last_name} 
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-gray-600 text-sm">
+                              {appointment.doctor.specialty}
+                            </td>
+                            <td className="px-6 py-4 text-gray-700 text-sm">
+                              {formatDate(appointment.appointment_date)}
+                            </td>
+                            <td className="px-6 py-4 text-gray-700 text-sm font-medium">
+                              {formatTime(appointment.appointment_time)}
+                            </td>
+                            <td className="px-6 py-4 text-sm">
+                              {appointment.status === "已取消" && appointment.cancellation_reason && (
+                                <span className="text-red-600">{appointment.cancellation_reason}</span>
+                              )}
+                              {appointment.status === "已完成" && appointment.doctor_advice && (
+                                <span className="text-blue-600">{appointment.doctor_advice}</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              {appointment.status === "已確認" && (
+                                <button
+                                  onClick={() => handleCancelClick(appointment)}
+                                  className="bg-red-500 hover:bg-red-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
+                                >
+                                  取消
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </>
           )}
           
-          {/* ✅ 未登入時顯示鎖定覆蓋層 */}
           {!user && <LockedPageOverlay pageName="預約紀錄" icon={Calendar} />}
         </div>
       </div>
@@ -371,14 +477,14 @@ export default function AppointmentRecords() {
           </div>
         </div>
       )}
-      {/* Footer */}
-        <div className="bg-gray-800 text-white py-8">
-          <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400">
-              © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
-            </p>
-          </div>
+
+      <div className="bg-gray-800 text-white py-8">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <p className="text-gray-400">
+            © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
+          </p>
         </div>
+      </div>
     </div>
   );
 }

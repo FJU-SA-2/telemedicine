@@ -1117,6 +1117,7 @@ def get_record():
             a.appointment_time,
             a.status,
             a.cancellation_reason,
+            a.doctor_advice,
             d.first_name,
             d.last_name,
             d.specialty as doctor_specialty
