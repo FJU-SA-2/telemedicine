@@ -65,7 +65,7 @@ export default function Page() {
   const featuredItems = info.slice(0, 3);
 
   return (
-    <div className="relative">
+    <div className="relative min-h-screen flex flex-col">
       {/* 只在 Sidebar 關閉時顯示打開按鈕 */}
       {!isOpen && (
         <button
@@ -80,10 +80,10 @@ export default function Page() {
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
       {/* 主內容區 */}
-      <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+      <div className={`transition-all duration-300 flex-1 flex flex-col ${isOpen ? "ml-64" : "ml-0"}`}>
         <Navbar />
 
-        <div className="p-6 max-w-7xl mx-auto">
+        <div className="p-6 max-w-7xl mx-auto flex-1 w-full">
           {/* 精選輪播區 */}
           <div>
             <h2 className="text-3xl font-bold text-gray-800 mb-6">衛教資訊</h2>
@@ -174,6 +174,15 @@ export default function Page() {
             </div>
           </div>
         </div>
+
+        {/* Footer - 放在這裡 */}
+        <footer className="bg-gray-800 text-white py-8 mt-auto">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <p className="text-gray-400">
+              © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
+            </p>
+          </div>
+        </footer>
       </div>
 
       {/* 文章詳細內容彈窗 */}
@@ -267,14 +276,6 @@ export default function Page() {
           </div>
         </div>
       )}
-      {/* Footer */}
-        <div className="bg-gray-800 text-white py-8">
-          <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400">
-              © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
-            </p>
-          </div>
-        </div>
     </div>
   );
 }
