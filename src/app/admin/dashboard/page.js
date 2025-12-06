@@ -8,7 +8,6 @@ function FeedbackList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
-  
 
   useEffect(() => {
     fetchFeedbacks();
@@ -76,7 +75,6 @@ function FeedbackList() {
         throw new Error(message || '操作失敗');
       }
 
-      const data = await res.json();
       alert('已標示為已處理');
       fetchFeedbacks();
     } catch (err) {
@@ -124,10 +122,7 @@ function FeedbackList() {
       ) : (
         <div className="grid gap-6">
           {feedbacks.map((f) => (
-            <div
-              key={f.feedback_id}
-              className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border"
-            >
+            <div key={f.feedback_id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-2">
                   <div>
@@ -143,13 +138,9 @@ function FeedbackList() {
                       {new Date(f.created_at).toLocaleString('zh-TW')}
                     </p>
                   </div>
-                  <span
-                    className={`px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-1 ${
-                      f.status === 'unread'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-green-100 text-green-700'
-                    }`}
-                  >
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center space-x-1 ${
+                      f.status === 'unread' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
+                    }`}>
                     {f.status === 'unread' ? (
                       <>
                         <Clock size={14} />
@@ -169,10 +160,7 @@ function FeedbackList() {
                 {f.categories && f.categories.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-4">
                     {f.categories.map((cat, index) => (
-                      <span
-                        key={index}
-                        className="inline-block bg-indigo-100 text-indigo-700 text-xs font-medium px-3 py-1 rounded-full"
-                      >
+                      <span key={index} className="inline-block bg-indigo-100 text-indigo-700 text-xs font-medium px-3 py-1 rounded-full">
                         {cat}
                       </span>
                     ))}
@@ -254,7 +242,7 @@ export default function AdminDashboard() {
     try {
       const url = `/api/admin/users?type=${userType}${searchQuery ? `&search=${searchQuery}` : ''}`;
       
-      const res = await fetch(url, { // <-- 使用包含搜尋參數的 url
+      const res = await fetch(url, {
         credentials: 'include',
       });
 
@@ -264,12 +252,10 @@ export default function AdminDashboard() {
           const errorData = await res.json();
           errorMessage = errorData.message || errorMessage;
         } catch (e) {
-          // 如果後端沒有回傳 JSON，則使用回應文字
           const text = await res.text();
           errorMessage = text || errorMessage;
         }
         throw new Error(errorMessage);
-        
       }
 
       const data = await res.json();
@@ -283,46 +269,32 @@ export default function AdminDashboard() {
   const fetchRatings = async () => {
     setRatingsLoading(true);
     try {
-      console.log('正在獲取評論資料...');
-      console.log('API URL: /api/admin/ratings');
-      
       const res = await fetch('/api/admin/ratings', {
         credentials: 'include',
       });
 
-      console.log('API 回應狀態:', res.status);
-      console.log('API 回應 OK?:', res.ok);
-
-      // 先取得回應文字，看看是什麼內容
       const responseText = await res.text();
-      console.log('API 回應內容:', responseText);
 
       if (!res.ok) {
         let errorData;
         try {
           errorData = JSON.parse(responseText);
         } catch (e) {
-          console.error('無法解析錯誤回應:', e);
           throw new Error(`HTTP ${res.status}: ${responseText || 'Failed to fetch ratings'}`);
         }
-        console.error('API 錯誤:', errorData);
         throw new Error(errorData.message || `HTTP ${res.status}: Failed to fetch ratings`);
       }
 
-      // 解析成功的回應
       let data;
       try {
         data = JSON.parse(responseText);
       } catch (e) {
-        console.error('無法解析成功回應:', e);
         throw new Error('回應格式錯誤');
       }
 
-      console.log('成功獲取評論:', data.length, '則');
       setRatings(data);
     } catch (err) {
       console.error('載入評論錯誤:', err);
-      console.error('錯誤堆疊:', err.stack);
       alert(`載入評論失敗: ${err.message}`);
     } finally {
       setRatingsLoading(false);
@@ -440,31 +412,31 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = async () => {
-  if (confirm('確定要登出嗎?')) {
-    try {
-      // 調用後端登出 API
-      const res = await fetch('/api/admin/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
+    if (confirm('確定要登出嗎?')) {
+      try {
+        // 調用後端登出 API
+        await fetch('/api/admin/logout', {
+          method: 'POST',
+          credentials: 'include',
+        });
 
-      // 清除本地存儲的用戶資訊
-      localStorage.removeItem('user_id');
-      localStorage.removeItem('user_type');
-      localStorage.removeItem('email');
-      
-      // 跳轉到登入頁面（身份選擇頁）
-      router.push('/login');
-    } catch (err) {
-      console.error('登出錯誤:', err);
-      // 即使 API 調用失敗，仍然清除本地資訊並跳轉
-      localStorage.removeItem('user_id');
-      localStorage.removeItem('user_type');
-      localStorage.removeItem('email');
-      router.push('/login');
+        // 清除本地存儲的用戶資訊
+        localStorage.removeItem('user_id');
+        localStorage.removeItem('user_type');
+        localStorage.removeItem('email');
+        
+        // 跳轉到登入頁面（身份選擇頁）
+        router.push('/login');
+      } catch (err) {
+        console.error('登出錯誤:', err);
+        // 即使 API 調用失敗，仍然清除本地資訊並跳轉
+        localStorage.removeItem('user_id');
+        localStorage.removeItem('user_type');
+        localStorage.removeItem('email');
+        router.push('/login');
+      }
     }
-  }
-};
+  };
 
   const loadCertificate = async (certificatePath) => {
     if (!certificatePath) {
@@ -522,9 +494,9 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col">
       
-      {/* Header */}
+       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
@@ -548,16 +520,14 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
         
-        {/* 導覽按鈕 */}
+           {/* 導覽按鈕 */}
         <div className="bg-white rounded-xl shadow-sm p-2 mb-6 border flex space-x-2">
           <button
             onClick={() => setActiveTab('doctors')}
             className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
-              activeTab === 'doctors'
-                ? 'bg-purple-600 text-white'
-                : 'text-gray-600 hover:bg-gray-100'
+              activeTab === 'doctors' ? 'bg-purple-600 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
             待審核醫師
@@ -565,9 +535,7 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab('users')}
             className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
-              activeTab === 'users'
-                ? 'bg-purple-600 text-white'
-                : 'text-gray-600 hover:bg-gray-100'
+              activeTab === 'users' ? 'bg-purple-600 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
             使用者管理
@@ -575,9 +543,7 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab('ratings')}
             className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
-              activeTab === 'ratings'
-                ? 'bg-purple-600 text-white'
-                : 'text-gray-600 hover:bg-gray-100'
+              activeTab === 'ratings' ? 'bg-purple-600 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
             查看評論
@@ -585,16 +551,14 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab('feedback')}
             className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
-              activeTab === 'feedback'
-                ? 'bg-purple-600 text-white'
-                : 'text-gray-600 hover:bg-gray-100'
+              activeTab === 'feedback' ? 'bg-purple-600 text-white' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
             問題回報
           </button>
         </div>
 
-        {/* 待審核醫師頁面 */}
+             {/* 待審核醫師頁面 */}
         {activeTab === 'doctors' && (
           <>
             {/* Stats */}
@@ -608,7 +572,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Doctors List */}
+             {/* Doctors List */}
             {doctors.length === 0 ? (
               <div className="bg-white rounded-xl shadow-sm p-12 text-center border">
                 <Clock className="mx-auto text-gray-300 mb-4" size={48} />
@@ -700,9 +664,7 @@ export default function AdminDashboard() {
               <button
                 onClick={() => setUserType('doctor')}
                 className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
-                  userType === 'doctor'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
+                  userType === 'doctor' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 醫師管理
@@ -710,16 +672,14 @@ export default function AdminDashboard() {
               <button
                 onClick={() => setUserType('patient')}
                 className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
-                  userType === 'patient'
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
+                  userType === 'patient' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
                 }`}
               >
                 患者管理
               </button>
             </div>
             
-            {/* ✨ 新增搜尋欄位 */}
+            {/* 新增搜尋欄位 */}
             <div className="mb-6">
               <input
                 type="text"
@@ -750,10 +710,7 @@ export default function AdminDashboard() {
             ) : (
               <div className="grid gap-6">
                 {users.map((user) => (
-                  <div
-                    key={user.user_id}
-                    className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border"
-                  >
+                  <div key={user.user_id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border">
                     <div className="p-6">
                       <div className="flex items-center justify-between mb-4">
                         <div>
@@ -764,13 +721,9 @@ export default function AdminDashboard() {
                             註冊時間: {new Date(user.registration_date).toLocaleString('zh-TW')}
                           </p>
                         </div>
-                        <span
-                          className={`px-3 py-1 rounded-full text-sm font-medium ${
-                            user.account_status === 'active'
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-red-100 text-red-700'
-                          }`}
-                        >
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            user.account_status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                          }`}>
                           {user.account_status === 'active' ? '正常' : '已停用'}
                         </span>
                       </div>
@@ -869,10 +822,7 @@ export default function AdminDashboard() {
             ) : (
               <div className="grid gap-6">
                 {ratings.map((rating) => (
-                  <div
-                    key={rating.rating_id}
-                    className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border"
-                  >
+                  <div key={rating.rating_id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border">
                     <div className="p-6">
                       <div className="flex items-start justify-between mb-4">
                         <div>
@@ -888,12 +838,7 @@ export default function AdminDashboard() {
                         </div>
                         <div className="flex items-center space-x-1">
                           {[...Array(5)].map((_, i) => (
-                            <span
-                              key={i}
-                              className={`text-2xl ${
-                                i < rating.rating ? 'text-yellow-400' : 'text-gray-300'
-                              }`}
-                            >
+                            <span key={i} className={`text-2xl ${i < rating.rating ? 'text-yellow-400' : 'text-gray-300'}`}>
                               ★
                             </span>
                           ))}
@@ -920,12 +865,17 @@ export default function AdminDashboard() {
         )}
 
         {/* 病患問題回報頁面 */}
-        {activeTab === 'feedback' && (
-          <FeedbackList />
-        )}
+        {activeTab === 'feedback' && <FeedbackList />}
       </main>
 
-      {/* Modal - View Certificate */}
+      <footer className="bg-gray-800 text-white py-8 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <p className="text-gray-400">
+            © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
+          </p>
+        </div>
+      </footer>
+
       {selectedDoctor && !showRejectionModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
@@ -996,15 +946,7 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-      {/* Footer */}
-        <div className="bg-gray-800 text-white py-8">
-          <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400">
-              © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
-            </p>
-          </div>
-        </div>
-      {/* Modal - Rejection Reason */}
+
       {selectedDoctor && showRejectionModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl max-w-md w-full">
