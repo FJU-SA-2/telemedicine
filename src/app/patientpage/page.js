@@ -394,16 +394,103 @@ export default function Page() {
 
       {/* 文章詳細內容彈窗 */}
       {selectedItem && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 p-4 overflow-y-auto flex" onClick={() => setSelectedId(null)}>
-          <div className="bg-white rounded-2xl max-w-4xl w-full mx-auto p-8 relative" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setSelectedId(null)} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
-              <X size={24} />
-            </button>
-            <h2 className="text-3xl font-bold mb-4">{selectedItem.title}</h2>
-            <p className="text-gray-700 whitespace-pre-line">{selectedItem.content}</p>
+       <div 
+         className="fixed inset-0 bg-black/30 bg-opacity-30 backdrop-blur-sm z-50 p-4 overflow-y-auto flex"
+          onClick={() => setSelectedId(null)}
+            >
+
+          <div 
+               className="bg-white/95 backdrop-blur-lg rounded-3xl max-w-4xl w-full mx-auto my-12 
+             shadow-[0_8px_30px_rgba(0,0,0,0.15)] border border-white/40 
+             max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+                >
+
+            {/* 文章標題區 */}
+            <div className={`bg-gradient-to-br ${colors[info.findIndex(i => i.id === selectedItem.id) % colors.length]} p-8 relative`}>
+              <button
+                onClick={() => setSelectedId(null)}
+                className="absolute top-6 right-6 bg-white bg-opacity-30 hover:bg-opacity-100 backdrop-blur-sm rounded-full p-2 transition-all"
+              >
+                <X size={24} className="text-black hover:text-gray-700" />
+              </button>
+              
+              {selectedItem.department_name && (
+                <span className="inline-block bg-white bg-opacity-30 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold text-black mb-4">
+                  {selectedItem.department_name}
+                </span>
+              )}
+              
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 drop-shadow-lg pr-12">
+                {selectedItem.title}
+              </h2>
+              
+              <div className="flex flex-wrap items-center gap-4 text-white text-sm">
+                {selectedItem.author && (
+                  <span className="flex items-center">
+                    <User size={16} className="mr-2" />
+                    {selectedItem.author}
+                  </span>
+                )}
+                {selectedItem.date && (
+                  <span className="flex items-center">
+                    <Calendar size={16} className="mr-2" />
+                    {selectedItem.date}
+                  </span>
+                )}
+               
+              </div>
+            </div>
+
+            {/* 文章內容 */}
+            <div className="p-8 md:p-12">
+              <div className="prose prose-lg max-w-none">
+                {selectedItem.content.split('\n').map((paragraph, idx) => {
+                  if (paragraph.startsWith('## ')) {
+                    return <h2 key={idx} className="text-2xl font-bold text-gray-800 mt-8 mb-4">{paragraph.replace('## ', '')}</h2>;
+                  } else if (paragraph.startsWith('### ')) {
+                    return <h3 key={idx} className="text-xl font-semibold text-gray-700 mt-6 mb-3">{paragraph.replace('### ', '')}</h3>;
+                  } else if (paragraph.startsWith('- ')) {
+                    return <li key={idx} className="text-gray-700 ml-6 mb-2">{paragraph.replace('- ', '')}</li>;
+                  } else if (paragraph.startsWith('**') && paragraph.endsWith('**')) {
+                    return <p key={idx} className="font-bold text-gray-800 mt-4 mb-2">{paragraph.replace(/\*\*/g, '')}</p>;
+                  } else if (paragraph.trim()) {
+                    return <p key={idx} className="text-gray-700 leading-relaxed mb-4">{paragraph}</p>;
+                  }
+                  return null;
+                })}
+              </div>
+              
+              {/* 資料來源 */}
+              {selectedItem.source && (
+                <div className="mt-8 pt-6 border-t border-gray-200">
+                  <div className="flex items-center text-sm text-gray-500">
+                    <BookOpen size={18} className="mr-2 text-blue-500" />
+                    <span className="font-semibold mr-2">資料來源：</span>
+                    {selectedItem.source}
+                  </div>
+                </div>
+              )}
+              
+              {/* 關閉按鈕 */}
+              <button
+                onClick={() => setSelectedId(null)}
+                className="mt-8 w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-4 rounded-xl transition-all shadow-lg"
+              >
+                關閉文章
+              </button>
+            </div>
           </div>
         </div>
       )}
+      {/* Footer */}
+        <div className="bg-gray-800 text-white py-8">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <p className="text-gray-400">
+              © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
+            </p>
+          </div>
+        </div>
     </div>
   );
 }

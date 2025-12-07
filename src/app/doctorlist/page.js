@@ -1,11 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Menu, Filter, CheckCircle, ArrowLeft, Calendar, Clock, X, ArrowRight, CreditCard, FileText, CircleAlert, LogIn, UserPlus } from "lucide-react";
+import { Menu, Filter, CheckCircle, ArrowLeft, Calendar, Clock, X, ArrowRight, CreditCard, FileText, CircleAlert, LogIn, UserPlus, Heart } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import LockedPageOverlay from "../components/LockedPageOverlay";
 
-// ✅ 新增：登入提示弹窗组件
+// ✅ 新增：登入提示彈窗組件
 function LoginRequiredModal({ onClose, onLogin, onRegister }) {
   return (
     <div className="fixed inset-0 backdrop-blur-sm bg-opacity-20 flex items-center justify-center z-50 p-4">
@@ -19,9 +19,7 @@ function LoginRequiredModal({ onClose, onLogin, onRegister }) {
 
         <div className="flex flex-col items-center mb-6">
           <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4 relative">
-            <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-            </svg>
+            <Heart size={48} className="text-gray-300" />
             <div className="absolute bottom-0 right-0 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
               <CircleAlert size={18} className="text-white" />
             </div>
@@ -291,7 +289,9 @@ function DoctorListPage({ onSelectDoctor, user }) {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {showFavoriteToast && (
-        <div className="fixed top-20 right-6 bg-blue-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2">
+        <div className={`fixed top-20 right-6 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2 ${
+          favoriteMessage === "已加入收藏" ? "bg-blue-500" : "bg-red-500"
+        }`}>
           <CheckCircle size={20} />
           <span>{favoriteMessage}</span>
         </div>
@@ -350,17 +350,23 @@ function DoctorListPage({ onSelectDoctor, user }) {
               key={doctor.doctor_id}
               className="bg-white rounded-lg shadow p-6 relative hover:shadow-lg transition"
             >
-              {/* 收藏按钮 */}
+              {/* 收藏按鈕 - 改為愛心 */}
               <div
                 onClick={() => toggleFavorite(doctor.doctor_id)}
-                className={`absolute top-3 right-3 text-xl cursor-pointer select-none transition-all ${
-                  user 
-                    ? 'text-yellow-400 hover:scale-110' 
-                    : 'text-gray-300 hover:text-gray-400'
-                }`}
+                className="absolute top-3 right-3 cursor-pointer select-none transition-all"
                 title={user ? (isFavorited ? "取消收藏" : "加入收藏") : "需要登入才能收藏"}
               >
-                {isFavorited ? "★" : "☆"}
+                <Heart 
+                  size={24}
+                  className={`${
+                    isFavorited 
+                      ? 'text-red-500 fill-red-500' 
+                      : user 
+                        ? 'text-gray-300 hover:text-red-400' 
+                        : 'text-gray-200'
+                  } transition-colors`}
+                  fill={isFavorited ? 'currentColor' : 'none'}
+                />
               </div>
 
               <div className="flex items-start gap-4 mb-4">
@@ -547,7 +553,14 @@ export default function App() {
             )}
           </>
         )}
-        
+        {/* Footer */}
+        <div className="bg-gray-800 text-white py-8">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <p className="text-gray-400">
+              © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
+            </p>
+          </div>
+        </div>
         {activeTab === "settings" && <SettingsPage />}
       </div>
     </div>

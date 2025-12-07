@@ -9,8 +9,6 @@ export default function HomePage() {
   const [isOpen, setIsOpen] = useState(false);
   const [currentFeedback, setCurrentFeedback] = useState(0);
 
-  // === 保持 const 變數用於字串組裝和邏輯判讀 ===
-  // 實際上 Tailwind 會讀取 CSS 變數，但我們保留這些變數來定義回饋卡片的漸層
   const COLOR_MAHOGANY = "var(--color-mahogany)"; 
   const COLOR_LIME_CREAM = "var(--color-lime-cream)"; 
   const COLOR_AZURE = "var(--color-azure)"; 
@@ -77,6 +75,18 @@ export default function HomePage() {
     <div className={`min-h-screen bg-gradient-to-br from-[${COLOR_PERIWINKLE}]/30 via-white to-[${COLOR_LIGHT_CYAN}]/30`}>
       
       {/* 引用共用的 Sidebar 元件 */}
+    <div className="relative">
+      {/* 只在 Sidebar 關閉時顯示打開按鈕 */}
+      {!isOpen && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
+        >
+          <Menu size={24} />
+        </button>
+      )}
+
+      {/* 側邊欄 */}
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
       <div className={`transition-all duration-300 ${isOpen ? "md:ml-64" : "ml-0"}`}>
@@ -213,7 +223,7 @@ export default function HomePage() {
                                 </div>
                                 <div className={`p-4 bg-gradient-to-br from-[var(--color-azure)]/10 to-[var(--color-azure)]/15 rounded-xl border border-[var(--color-azure)]/50 shadow-lg flex flex-col items-start justify-center`}>
                                     <span className={`text-2xl font-bold drop-shadow`}>低延遲</span> 
-                                    <p className={`text-sm text80 drop-shadow`}>即時流暢溝通</p>
+                                    <p className={`text-sm drop-shadow`}>即時流暢溝通</p>
                                 </div>
                             </div></div>
                         </div>
@@ -255,7 +265,7 @@ export default function HomePage() {
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                 {/* 替換為引用 CSS 變數 */}
                                 <div className={`p-4 bg-gradient-to-br from-[var(--color-azure)]/5 to-[var(--color-azure)]/10 rounded-xl border border-[var(--color-azure)]/30 shadow-lg flex flex-col items-start justify-center`}>
-                                    <span className={`text-2xl font-bold drop-shadow]`}>多達 15+ 專科醫師</span>
+                                    <span className="text-2xl font-bold drop-shadow">多達 15+ 專科醫師</span>
                                     <p className={`text-sm text-[var(--color-mahogany)]/80`}>在家輕鬆診</p>
                                 </div>
                                 <div className={`p-4 bg-gradient-to-br from-[var(--color-lime-cream)]/5 to-[var(--color-lime-cream)]/10 rounded-xl border border-[var(--color-lime-cream)]/30 shadow-lg flex flex-col items-start justify-center`}>
@@ -371,5 +381,6 @@ export default function HomePage() {
         </main>
       </div>
     </div>
-  );
+    </div>
+   );
 }

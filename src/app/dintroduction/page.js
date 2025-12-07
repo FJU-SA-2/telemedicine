@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Calendar, Video, FileText, Users, Clock, CheckCircle, ChevronRight, ChevronLeft, AlertCircle, Menu, X, ZoomIn, Stethoscope, ClipboardCheck, UserCheck, MessageSquare, Star, Shield } from 'lucide-react';
+import { Calendar, Video, FileText, Users, Clock, CheckCircle, ChevronRight, ChevronLeft, AlertCircle, Menu, X, ZoomIn, ClipboardCheck, UserCheck, MessageSquare, Star, Shield } from 'lucide-react';
 import DoctorSidebar from "../components/DoctorSidebar";
 import Navbar from "../components/Navbar";
 
@@ -47,7 +47,7 @@ export default function DoctorIntroductionPage() {
     details: [
       "選擇「醫師」身份進行註冊,填寫基本聯絡資訊",
       "設定安全的帳號密碼,保護您的專業帳戶",
-      "上傳醫師執照及相關證明文件(支援 PDF、JPG 格式)",
+      "上傳醫師執照及相關證明文件(支持 PDF、JPG 格式)",
       "系統將在 1-3 個工作天內完成審核並通知結果",
       "審核通過後立即啟用帳號,開始使用完整平台功能"
     ]
@@ -113,7 +113,7 @@ export default function DoctorIntroductionPage() {
       "進入「預約紀錄」功能,查看歷史預約資料",
       "可檢視已完成的看診記錄與診療內容",
       "查看已取消的預約及取消原因,便於追蹤管理",
-      "支援日期範圍篩選,快速找到特定時期的紀錄"
+      "支持日期範圍篩選,快速找到特定時期的紀錄"
     ]
   },
   {
@@ -220,12 +220,12 @@ export default function DoctorIntroductionPage() {
     {
       icon: Clock,
       title: "彈性排班",
-      description: "自由安排看診時間，工作生活平衡"
+      description: "自由安排看診時間,工作生活平衡"
     },
     {
       icon: Shield,
       title: "資料安全",
-      description: "醫療資訊加密保護，符合法規要求"
+      description: "醫療資訊加密保護,符合法規要求"
     },
     {
       icon: Video,
@@ -235,7 +235,7 @@ export default function DoctorIntroductionPage() {
     {
       icon: Star,
       title: "專業形象",
-      description: "建立個人品牌，獲得更多病患信任"
+      description: "建立個人品牌,獲得更多病患信任"
     }
   ];
 
@@ -262,14 +262,11 @@ export default function DoctorIntroductionPage() {
         <div className="max-w-7xl mx-auto px-4 py-12">
           {/* Hero Section */}
           <div className="text-center mb-16">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <Stethoscope size={48} className="text-blue-600" />
-            </div>
             <h2 className="text-5xl font-bold text-gray-800 mb-6">
               醫師專用平台使用指南
             </h2>
             <p className="text-xl text-gray-600 mb-8">
-              歡迎加入線上醫療平台，為更多病患提供專業醫療服務
+              歡迎加入線上醫療平台,為更多病患提供專業醫療服務
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <div className="bg-white rounded-full px-6 py-3 shadow-md">
@@ -463,8 +460,8 @@ export default function DoctorIntroductionPage() {
                   <li>• 請確保您的醫師執照在有效期限內</li>
                   <li>• 線上看診需遵守醫療法規與倫理規範</li>
                   <li>• 建議在安靜、光線充足的環境進行視訊看診</li>
-                  <li>• 請保護病患隱私，不得洩露病患資訊</li>
-                  <li>• 如遇緊急狀況，請引導病患就近就醫</li>
+                  <li>• 請保護病患隱私,不得洩露病患資訊</li>
+                  <li>• 如遇緊急狀況,請引導病患就近就醫</li>
                 </ul>
               </div>
             </div>
@@ -472,9 +469,9 @@ export default function DoctorIntroductionPage() {
 
           {/* CTA Section */}
           <div className="text-center bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl p-12 text-white shadow-2xl">
-            <h3 className="text-4xl font-bold mb-4">準備好開始了嗎？</h3>
+            <h3 className="text-4xl font-bold mb-4">準備好開始了嗎?</h3>
             <p className="text-xl mb-8 text-blue-100">
-              立即註冊成為平台醫師，開啟線上醫療新篇章
+              立即註冊成為平台醫師,開啟線上醫療新篇章
             </p>
             <a 
               href="/login"
@@ -565,7 +562,6 @@ export default function DoctorIntroductionPage() {
               </>
             )}
           </div>
-
           {/* Keyboard Hint */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-sm">
             按 ESC 關閉 {lightboxImages.length > 1 && '• 使用 ← → 切換圖片'}
