@@ -105,6 +105,11 @@ export default function HomePage() {
                 >
                   <Menu size={22} className="text-gray-700" />
                 </button>
+                <img
+                    src="/images/logo.png"
+                    alt="New Telehealth Logo"
+                    className="h-16 w-auto"
+                  />
                 <img 
                   src="/images/logo3.png"
                   alt="MedonGO Logo"
