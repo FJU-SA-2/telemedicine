@@ -156,13 +156,18 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
 
   const colors = [
-    "from-rose-400 to-pink-500",
-    "from-amber-400 to-orange-500",
-    "from-emerald-400 to-teal-500",
-    "from-blue-400 to-indigo-500",
-    "from-purple-400 to-violet-500",
-    "from-fuchsia-400 to-pink-500",
-  ];
+  "from-blue-100 via-blue-50 to-indigo-100",      // 柔和藍色
+  "from-pink-100 via-rose-50 to-purple-100",      // 柔和粉紫
+  "from-green-100 via-emerald-50 to-teal-100",    // 柔和綠色
+  "from-amber-100 via-yellow-50 to-orange-100",   // 柔和橙黃
+  "from-purple-100 via-violet-50 to-pink-100",    // 柔和紫粉
+  "from-cyan-100 via-sky-50 to-blue-100",         // 柔和青藍
+  "from-rose-100 via-pink-50 to-red-100",         // 柔和玫瑰
+  "from-teal-100 via-cyan-50 to-emerald-100",     // 柔和青綠
+  "from-orange-100 via-amber-50 to-yellow-100",   // 柔和橘黃
+  "from-indigo-100 via-blue-50 to-cyan-100",      // 柔和靛青
+  "from-violet-100 via-purple-50 to-fuchsia-100", // 柔和紫紅
+];
 
   // 載入衛教資料
   useEffect(() => {
@@ -249,18 +254,28 @@ export default function Page() {
   // 衛教輪播自動播放
   useEffect(() => {
     if (!autoPlay || info.length === 0) return;
-    const timer = setInterval(() => setCurrentSlide((prev) => (prev + 1) % Math.min(info.length, 3)), 5000);
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % info.length);
+    }, 5000);
+
     return () => clearInterval(timer);
   }, [autoPlay, info.length]);
 
   const selectedItem = info.find(item => item.id === selectedId);
-  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % Math.min(info.length, 3));
-  const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + Math.min(info.length, 3)) % Math.min(info.length, 3));
   const handleAddAppointment = () => window.location.href = '/reserve';
   const handleViewAllHistory = () => window.location.href = '/record';
   const handleJoinMeeting = (id) => window.location.href = `/videochat?appointment_id=${id}`;
 
-  if (loading || !user) {
+  // 修正：使用所有資料長度
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % info.length);
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + info.length) % info.length);
+  };
+
+  if (info.length === 0) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -390,6 +405,15 @@ export default function Page() {
             </div>
           </div>
         </div>
+
+        {/* Footer - 放在這裡 */}
+        <footer className="bg-gray-800 text-white py-8 mt-auto">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <p className="text-gray-400">
+              © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
+            </p>
+          </div>
+        </footer>
       </div>
 
       {/* 文章詳細內容彈窗 */}
@@ -421,11 +445,11 @@ export default function Page() {
                 </span>
               )}
               
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 drop-shadow-lg pr-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-black mb-4 drop-shadow-lg pr-12">
                 {selectedItem.title}
               </h2>
               
-              <div className="flex flex-wrap items-center gap-4 text-white text-sm">
+              <div className="flex flex-wrap items-center gap-4 text-black text-sm">
                 {selectedItem.author && (
                   <span className="flex items-center">
                     <User size={16} className="mr-2" />
@@ -483,14 +507,6 @@ export default function Page() {
           </div>
         </div>
       )}
-      {/* Footer */}
-        <div className="bg-gray-800 text-white py-8">
-          <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400">
-              © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
-            </p>
-          </div>
-        </div>
     </div>
   );
 }

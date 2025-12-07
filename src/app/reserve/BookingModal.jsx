@@ -428,16 +428,12 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
               <div className="bg-gray-50 rounded-xl p-4 mb-6">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-gray-600">掛號費</span>
-                  <span className="font-semibold text-gray-800">NT$ 150</span>
-                </div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-gray-600">診療費</span>
-                  <span className="font-semibold text-gray-800">NT$ 350</span>
+                  <span className="font-semibold text-gray-800">NT$ {doctor.consultation_fee}</span>
                 </div>
                 <div className="border-t border-gray-300 my-3" />
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-bold text-gray-800">總計</span>
-                  <span className="text-2xl font-bold text-blue-600">NT$ 500</span>
+                  <span className="text-2xl font-bold text-blue-600">NT$ {doctor.consultation_fee}</span>
                 </div>
               </div>
 
