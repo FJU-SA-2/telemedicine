@@ -171,8 +171,8 @@ export default function HomePage() {
                   <NextImage
                     src="/images/hero1.png"
                     alt="遠距醫療示意圖" 
-                    width={700} 
-                    height={400} 
+                    width={1000} 
+                    height={700} 
                     className="rounded-3xl shadow-lg object-cover mx-auto"
                     priority
                   />

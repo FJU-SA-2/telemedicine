@@ -27,11 +27,19 @@ export default function Navbar() {
     <header className="bg-[var(--background)]/50 backdrop-blur-sm border-b border-gray-100  ">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
+           <div className="flex items-center gap-1">
+            <img 
+                  src="/images/logo.png"
+                  alt="MedonGO Logo"
+                  className="h-16"
+                />
           <img 
                   src="/images/logo3.png"
                   alt="MedonGO Logo"
                   className="h-16 w-auto"
                 />
+           </div>
+          
 
           <div className="flex items-center gap-2">
             {/* 通知鈴鐺 - 只有患者才顯示 */}
