@@ -21,6 +21,11 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   const pathname = usePathname();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // 為了確保主色調能被正確引用 (這是從 globals.css 中取值)
+  const COLOR_AZURE = "var(--color-azure)"; 
+  const COLOR_PERIWINKLE = "var(--color-periwinkle)"; 
+  const COLOR_LIGHT_CYAN = "var(--color-light-cyan)";
 
   // 檢查登入狀態
   useEffect(() => {
@@ -57,7 +62,8 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
   return (
     <div
-      className={`fixed top-0 left-0 h-full w-64 bg-white text-gray-900 transform
+      // 背景使用全域背景變數
+      className={`fixed top-0 left-0 h-full w-64 bg-[var(--background)]/50 text-gray-900 transform
         ${isOpen ? "translate-x-0" : "-translate-x-full"}
         transition-transform duration-300 ease-in-out z-40 shadow-lg`}
     >
@@ -79,10 +85,11 @@ export default function Sidebar({ isOpen, setIsOpen }) {
               href={item.href}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-all relative ${
                 pathname === item.href
-                  ? "bg-blue-500 text-white shadow-md"
+                  // 已點選的項目：使用 bg-[var(--color-azure)]
+                  ? `bg-[var(--color-azure)]/80 text-white shadow-md`
                   : isLocked
-                  ? "text-gray-400 hover:bg-gray-50 cursor-pointer"
-                  : "text-gray-700 hover:bg-gray-100"
+                  ? `text-gray-400 hover:bg-[var(--color-light-cyan)] cursor-pointer`
+                  : `text-gray-700 hover:bg-[var(--color-periwinkle)]`
               }`}
             >
               <Icon size={20} />

@@ -130,11 +130,11 @@ export default function ExperienceSharing() {
   }, [currentPage]);
 
   return (
-    <div className="relative min-h-screen bg-gray-50">
+    <div className="relative min-h-screen bg-gray-50 flex flex-col">
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
+          className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
         >
           <Menu size={24} />
         </button>
@@ -142,10 +142,10 @@ export default function ExperienceSharing() {
 
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
-      <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+      <div className={`transition-all duration-300 flex-1 flex flex-col ${isOpen ? "ml-64" : "ml-0"}`}>
         <Navbar />
         
-        <div className="py-8">
+        <div className="py-8 flex-1">
           <div className="max-w-5xl mx-auto px-4">
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-gray-800 mb-2">經驗分享區</h1>
@@ -225,7 +225,7 @@ export default function ExperienceSharing() {
             )}
 
             {totalPages > 1 && (
-              <div className="flex justify-center gap-2 mt-8">
+              <div className="flex justify-center gap-2 mt-8 mb-8">
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
@@ -245,76 +245,77 @@ export default function ExperienceSharing() {
                 </button>
               </div>
             )}
-
-            {showCreateModal && (
-              <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
-                  <h2 className="text-2xl font-bold mb-4">發布新文章</h2>
-                  <form onSubmit={handleCreatePost}>
-                    <div className="mb-4">
-                      <label className="block text-gray-700 mb-2">標題</label>
-                      <input
-                        type="text"
-                        value={newPost.title}
-                        onChange={(e) => setNewPost({...newPost, title: e.target.value})}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="請輸入文章標題"
-                      />
-                    </div>
-                    <div className="mb-4">
-                      <label className="block text-gray-700 mb-2">內容</label>
-                      <textarea
-                        value={newPost.content}
-                        onChange={(e) => setNewPost({...newPost, content: e.target.value})}
-                        rows="10"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="分享您的經驗..."
-                      />
-                    </div>
-                    <div className="mb-6">
-                      <label className="flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={newPost.is_anonymous}
-                          onChange={(e) => setNewPost({...newPost, is_anonymous: e.target.checked})}
-                          className="mr-2 w-4 h-4"
-                        />
-                        <span className="text-gray-700">匿名發布</span>
-                      </label>
-                    </div>
-                    <div className="flex gap-4">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowCreateModal(false);
-                          setNewPost({ title: '', content: '', is_anonymous: false });
-                        }}
-                        className="flex-1 px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
-                      >
-                        取消
-                      </button>
-                      <button
-                        type="submit"
-                        className="flex-1 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
-                      >
-                        發布
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
           </div>
         </div>
-      </div>
-    {/* Footer */}
-        <div className="bg-gray-800 text-white py-8">
+
+        {/* Footer - 移到這裡，在 transition div 內但在內容區域之後 */}
+        <footer className="bg-gray-800 text-white py-8 mt-auto">
           <div className="max-w-7xl mx-auto px-4 text-center">
             <p className="text-gray-400">
               © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
             </p>
           </div>
+        </footer>
+      </div>
+
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <h2 className="text-2xl font-bold mb-4">發布新文章</h2>
+            <form onSubmit={handleCreatePost}>
+              <div className="mb-4">
+                <label className="block text-gray-700 mb-2">標題</label>
+                <input
+                  type="text"
+                  value={newPost.title}
+                  onChange={(e) => setNewPost({...newPost, title: e.target.value})}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="請輸入文章標題"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 mb-2">內容</label>
+                <textarea
+                  value={newPost.content}
+                  onChange={(e) => setNewPost({...newPost, content: e.target.value})}
+                  rows="10"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="分享您的經驗..."
+                />
+              </div>
+              <div className="mb-6">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newPost.is_anonymous}
+                    onChange={(e) => setNewPost({...newPost, is_anonymous: e.target.checked})}
+                    className="mr-2 w-4 h-4"
+                  />
+                  <span className="text-gray-700">匿名發布</span>
+                </label>
+              </div>
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setNewPost({ title: '', content: '', is_anonymous: false });
+                  }}
+                  className="flex-1 px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+                >
+                  發布
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
+      )}
     </div>
   );
 }

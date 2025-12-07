@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Menu } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import Sidebar from "../../components/Sidebar";
 import Navbar from "../../components/Navbar";
 
@@ -188,7 +189,7 @@ export default function PostDetail() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
+          className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
         >
           <Menu size={24} />
         </button>
@@ -205,12 +206,14 @@ export default function PostDetail() {
         {/* 文章詳情內容 */}
         <div className="py-8">
           <div className="max-w-4xl mx-auto px-4">
+
             {/* 返回按鈕 */}
             <button
               onClick={() => router.push('/experience')}
-              className="mb-6 text-blue-500 hover:text-blue-600 flex items-center gap-2"
+              className="mb-6 p-3 hover:bg-gray-100 rounded-full transition-colors inline-flex items-center justify-center"
+              aria-label="返回"
             >
-              ← 返回
+              <ArrowLeft size={24} className="text-gray-700" />
             </button>
 
             {/* 文章內容 */}
