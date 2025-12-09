@@ -246,17 +246,19 @@ export default function Page() {
     fetchHistory();
   }, []);
 
+  const MAX_FEATURED_ITEMS = 11; // 設置最大顯示數量為 8 (可依需求調整)
+
   // 衛教輪播自動播放
   useEffect(() => {
     if (!autoPlay || info.length === 0) return;
-    const timer = setInterval(() => setCurrentSlide((prev) => (prev + 1) % Math.min(info.length, 3)), 5000);
+    // 調整 Math.min(info.length, 3) 為 Math.min(info.length, MAX_FEATURED_ITEMS)
+    const timer = setInterval(() => setCurrentSlide((prev) => (prev + 1) % Math.min(info.length, MAX_FEATURED_ITEMS)), 5000); 
     return () => clearInterval(timer);
   }, [autoPlay, info.length]);
 
   const selectedItem = info.find(item => item.id === selectedId);
-  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % Math.min(info.length, 3));
-  const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + Math.min(info.length, 3)) % Math.min(info.length, 3));
-  const handleAddAppointment = () => window.location.href = '/reserve';
+  const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % Math.min(info.length, MAX_FEATURED_ITEMS));
+  const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + Math.min(info.length, MAX_FEATURED_ITEMS)) % Math.min(info.length, MAX_FEATURED_ITEMS));  const handleAddAppointment = () => window.location.href = '/reserve';
   const handleViewAllHistory = () => window.location.href = '/record';
   const handleJoinMeeting = (id) => window.location.href = `/videochat?appointment_id=${id}`;
 
@@ -271,8 +273,19 @@ export default function Page() {
     );
   }
 
-  const featuredItems = info.slice(0, 3);
+  const featuredItems = info.slice(0, MAX_FEATURED_ITEMS);
   const userName = user.first_name && user.last_name ? `${user.last_name}${user.first_name}` : user.username;
+
+  const softColors = [
+    "from-blue-100/70 to-blue-200/70",    // 柔和藍
+    "from-green-100/70 to-green-200/70",  // 柔和綠
+    "from-pink-100/70 to-pink-200/70",    // 柔和粉
+    "from-yellow-100/70 to-yellow-200/70",// 柔和黃
+    "from-indigo-100/70 to-indigo-200/70",// 柔和靛
+    "from-red-100/70 to-red-200/70",      // 柔和紅
+    "from-purple-100/70 to-purple-200/70",// 柔和紫
+    "from-teal-100/70 to-teal-200/70"     // 柔和青
+  ];
 
   return (
     <div className="relative min-h-screen bg-gray-50">
@@ -309,23 +322,23 @@ export default function Page() {
                         idx === currentSlide ? "opacity-100 translate-x-0" : "opacity-0 translate-x-full"
                       }`}
                     >
-                      <div className={`h-full bg-gradient-to-br ${colors[idx % colors.length]} p-8 md:p-12 flex flex-col justify-between`}>
+                      <div className={`h-full bg-gradient-to-br ${softColors[idx % colors.length]} p-8 md:p-12 flex flex-col justify-between`}>
                         <div>
                           {item.department_name && (
                             <span className="inline-block bg-white bg-opacity-30 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold text-black mb-4">
                               {item.department_name}
                             </span>
                           )}
-                          <h3 className="text-3xl md:text-4xl font-bold text-white mb-4 drop-shadow-lg">
-                            {item.title}
+                          <h3 className="text-3xl md:text-4xl font-bold text-black mb-4 drop-shadow-sm"> 
+                           {item.title}
                           </h3>
-                          <p className="text-white text-lg mb-6 line-clamp-3 drop-shadow">
-                            {item.summary}
+                          <p className="text-gray-700 text-lg mb-6 line-clamp-3 drop-shadow"> 
+                           {item.summary}
                           </p>
                         </div>
 
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4 text-white text-sm">
+                          <div className="flex items-center space-x-4 text-gray-700 text-sm">
                             {item.date && (
                               <span className="flex items-center">
                                 <Calendar size={16} className="mr-2" />
@@ -407,7 +420,7 @@ export default function Page() {
                 >
 
             {/* 文章標題區 */}
-            <div className={`bg-gradient-to-br ${colors[info.findIndex(i => i.id === selectedItem.id) % colors.length]} p-8 relative`}>
+            <div className={`bg-gradient-to-br ${softColors[info.findIndex(i => i.id === selectedItem.id) % colors.length]} p-8 relative`}>
               <button
                 onClick={() => setSelectedId(null)}
                 className="absolute top-6 right-6 bg-white bg-opacity-30 hover:bg-opacity-100 backdrop-blur-sm rounded-full p-2 transition-all"
@@ -421,11 +434,11 @@ export default function Page() {
                 </span>
               )}
               
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 drop-shadow-lg pr-12">
-                {selectedItem.title}
+              <h2 className="text-3xl md:text-4xl font-bold text-black mb-4 drop-shadow-lg pr-12">
+                  {selectedItem.title}
               </h2>
               
-              <div className="flex flex-wrap items-center gap-4 text-white text-sm">
+              <div className="flex flex-wrap items-center gap-4 text-gray-700 text-sm"> 
                 {selectedItem.author && (
                   <span className="flex items-center">
                     <User size={16} className="mr-2" />
