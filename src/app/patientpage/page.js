@@ -277,14 +277,17 @@ export default function Page() {
   const userName = user.first_name && user.last_name ? `${user.last_name}${user.first_name}` : user.username;
 
   const softColors = [
-    "from-blue-100/70 to-blue-200/70",    // 柔和藍
-    "from-green-100/70 to-green-200/70",  // 柔和綠
-    "from-pink-100/70 to-pink-200/70",    // 柔和粉
-    "from-yellow-100/70 to-yellow-200/70",// 柔和黃
-    "from-indigo-100/70 to-indigo-200/70",// 柔和靛
-    "from-red-100/70 to-red-200/70",      // 柔和紅
-    "from-purple-100/70 to-purple-200/70",// 柔和紫
-    "from-teal-100/70 to-teal-200/70"     // 柔和青
+    "from-blue-100 via-blue-50 to-indigo-100",      // 柔和藍色
+    "from-pink-100 via-rose-50 to-purple-100",      // 柔和粉紫
+    "from-green-100 via-emerald-50 to-teal-100",    // 柔和綠色
+    "from-amber-100 via-yellow-50 to-orange-100",   // 柔和橙黃
+    "from-purple-100 via-violet-50 to-pink-100",    // 柔和紫粉
+    "from-cyan-100 via-sky-50 to-blue-100",         // 柔和青藍
+    "from-rose-100 via-pink-50 to-red-100",         // 柔和玫瑰
+    "from-teal-100 via-cyan-50 to-emerald-100",     // 柔和青綠
+    "from-orange-100 via-amber-50 to-yellow-100",   // 柔和橘黃
+    "from-indigo-100 via-blue-50 to-cyan-100",      // 柔和靛青
+    "from-violet-100 via-purple-50 to-fuchsia-100", // 柔和紫紅
   ];
 
   return (
