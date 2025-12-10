@@ -5,9 +5,6 @@ import DoctorSidebar from "../components/DoctorSidebar";
 import { Clock, Save, ChevronLeft, ChevronRight, Menu } from "lucide-react";
 
 export default function DoctorSchedulePage() {
-    console.log("🚀🚀🚀 DoctorSchedulePage 組件已載入！");
-    console.log("🚀🚀🚀 時間:", new Date().toLocaleTimeString());
-
     const [doctor_id, setDoctorId] = useState(null);
     const [currentWeekStart, setCurrentWeekStart] = useState(() => {
         const today = new Date();
@@ -28,106 +25,61 @@ export default function DoctorSchedulePage() {
         "15:00", "15:30", "16:00", "16:30", "17:00"
     ];
 
-
     useEffect(() => {
-    console.log("🔥🔥🔥 fetchApprovalStatus useEffect 被觸發了！");
-    
-    async function fetchApprovalStatus() {
-        console.log("🔥 Step 1: fetchApprovalStatus 函數開始執行");
-        
-        try {
-            console.log("🔥 Step 2: 準備呼叫 /api/me");
-            
-            const res = await fetch("/api/me", {
-                credentials: 'include'
-            });
-            
-            console.log("🔥 Step 3: 收到回應，status:", res.status);
-            
-            const data = await res.json();
-            
-            console.log("🔥 Step 4: 解析完成");
-            console.log("📡 完整 API 回應:", data);
-            console.log("📡 data.authenticated:", data.authenticated);
-            console.log("📡 data.user:", data.user);
-            console.log("📡 data.user?.role:", data.user?.role);
-            console.log("📡 data.user?.approval_status:", data.user?.approval_status);
-            
-            if (data.authenticated && data.user && data.user.role === 'doctor') {
-                console.log("🔥 Step 5: 進入 if 判斷");
-                const status = data.user.approval_status;
-                console.log("🔥 Step 6: 準備設定 approvalStatus 為:", status);
-                setApprovalStatus(status);
-                console.log("✅ Step 7: 已設定 approvalStatus 為:", status);
-            } else {
-                console.log("⚠️ 條件不符合:");
-                console.log("   authenticated:", data.authenticated);
-                console.log("   user exists:", !!data.user);
-                console.log("   role:", data.user?.role);
+        async function fetchApprovalStatus() {
+            try {
+                const res = await fetch("/api/me", {
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                
+                if (data.authenticated && data.user && data.user.role === 'doctor') {
+                    const status = data.user.approval_status;
+                    setApprovalStatus(status);
+                }
+            } catch (error) {
+                console.error("❌ fetchApprovalStatus 發生錯誤:", error);
             }
-        } catch (error) {
-            console.error("❌ fetchApprovalStatus 發生錯誤:", error);
-            console.error("❌ 錯誤堆疊:", error.stack);
         }
-    }
-    
-    console.log("🔥 Step 0: 準備執行 fetchApprovalStatus 函數");
-    fetchApprovalStatus();
-    console.log("🔥 Step -1: fetchApprovalStatus 函數已呼叫（等待執行）");
-}, []);
-
-console.log("📝 fetchApprovalStatus useEffect 已定義");
+        
+        fetchApprovalStatus();
+    }, []);
    
-    // 🔥 修正: 從後端取得真實的 doctor_id
     useEffect(() => {
         const fetchDoctorId = async () => {
             try {
-                console.log('🔍 開始取得醫師資料...');
-
                 const res = await fetch("/api/me", {
                     credentials: 'include'
                 });
 
-                console.log('📡 /api/me 響應狀態:', res.status);
-
                 if (res.ok) {
                     const data = await res.json();
-                    console.log('👤 使用者資料:', data);
 
                     if (data.authenticated && data.user.role === 'doctor') {
-                        console.log(`🔍 查詢 user_id=${data.user.user_id} 的 doctor 資料`);
-
-                        // 🔥 需要從 doctor 表取得 doctor_id
                         const doctorRes = await fetch(
                             `/api/doctor/profile?user_id=${data.user.user_id}`,
                             { credentials: 'include' }
                         );
 
-                        console.log('📡 /api/doctor/profile 響應狀態:', doctorRes.status);
-
                         if (doctorRes.ok) {
                             const doctorData = await doctorRes.json();
-                            console.log('👨‍⚕️ 醫師資料:', doctorData);
                             setDoctorId(doctorData.doctor_id);
-                            console.log('✅ 成功設定 doctor_id:', doctorData.doctor_id);
                         } else {
                             const errorData = await doctorRes.json();
                             console.error('❌ 取得醫師資料失敗:', errorData);
                             alert(`無法取得醫師資料: ${errorData.message}`);
                         }
                     } else {
-                        console.error('❌ 使用者未登入或不是醫師角色');
                         alert('請先以醫師身份登入');
                         window.location.href = '/auth';
                     }
                 } else {
-                    console.error('❌ 使用者未登入');
                     alert('請先登入');
                     window.location.href = '/auth';
                 }
             } catch (err) {
                 console.error("❌ 取得 doctor_id 失敗:", err);
-                alert('無法連接到伺服器，請檢查網路連線');
+                alert('無法連接到伺服器,請檢查網路連線');
             }
         };
         fetchDoctorId();
@@ -153,7 +105,6 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
         return dates;
     };
 
-
     const weekDates = getWeekDates(currentWeekStart);
 
     const getWeekRangeText = () => {
@@ -162,26 +113,29 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
         return `${start.fullDate.substring(5).replace('-', '月')}日 - ${end.fullDate.substring(5).replace('-', '月')}日`;
     };
 
-    const isPastDate = (dateString) => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const checkDate = new Date(dateString);
-        checkDate.setHours(0, 0, 0, 0);
-        return checkDate < today;
+    // ⭐ 改進的過期判斷函數 - 精確到小時和分鐘
+    const isTimeSlotPast = (dateString, timeString) => {
+        const now = new Date();
+        
+        // 解析日期和時間
+        const [year, month, day] = dateString.split('-').map(Number);
+        const [hour, minute] = timeString.split(':').map(Number);
+        
+        // 創建時段的完整時間
+        const slotDateTime = new Date(year, month - 1, day, hour, minute);
+        
+        // 比較:如果時段時間小於當前時間,則已過期
+        return slotDateTime < now;
     };
 
-    // 🔥 修正: 加入 doctor_id 作為依賴項
     useEffect(() => {
         async function loadSchedules() {
             if (!doctor_id || !weekDates || weekDates.length === 0) {
-                console.log('⏳ 等待 doctor_id 載入...');
                 return;
             }
 
             const startDate = weekDates[0].fullDate;
             const endDate = weekDates[6].fullDate;
-
-            console.log(`🔍 載入排班: doctor_id=${doctor_id}, ${startDate} ~ ${endDate}`);
 
             try {
                 const res = await fetch(
@@ -192,7 +146,6 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
                 if (!res.ok) throw new Error("抓取失敗");
 
                 const data = await res.json();
-                console.log('📦 後端返回資料:', data);
 
                 // 初始化所有時段為 false
                 const newSchedules = {};
@@ -202,6 +155,7 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
                         newSchedules[day.fullDate][time] = false;
                     });
                 });
+                
                 if (Array.isArray(data)) {
                     data.forEach(item => {
                         if (!item.schedule_date || !item.time_slot) return;
@@ -212,18 +166,11 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
                         const timeSlot = `${h}:${m}`;
 
                         if (newSchedules[date] && timeSlots.includes(timeSlot)) {
-                            // 🔥 修正:使用 !! 將任何真值轉為 true,假值轉為 false
                             newSchedules[date][timeSlot] = !!item.is_available && item.is_available !== 0 && item.is_available !== "0";
-
-                            console.log(`✅ 設定 ${newSchedules[date][timeSlot] ? "可" : "不可"}預約: ${date} ${timeSlot}`,
-                                `(原始值: ${item.is_available}, 類型: ${typeof item.is_available})`);
                         }
                     });
-                } else {
-                    console.error('❌ 後端回傳資料不是陣列', data);
                 }
 
-                console.log('📋 最終排班狀態:', newSchedules);
                 setSchedules(newSchedules);
 
             } catch (err) {
@@ -235,12 +182,10 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
         loadSchedules();
     }, [currentWeekStart, doctor_id]);
 
-
-
-
     const toggleSlot = (date, time) => {
-        if (isPastDate(date)) {
-            alert('無法設定過去的排班時段');
+        // ⭐ 使用新的判斷函數
+        if (isTimeSlotPast(date, time)) {
+            alert('無法設定已過期的排班時段');
             return;
         }
 
@@ -260,7 +205,13 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
     };
 
     const setWholeDay = (date, available) => {
-        if (isPastDate(date)) {
+        // ⭐ 檢查是否整天都已過期
+        const now = new Date();
+        const [year, month, day] = date.split('-').map(Number);
+        const dateObj = new Date(year, month - 1, day);
+        
+        // 如果日期小於今天,則整天過期
+        if (dateObj.setHours(0,0,0,0) < now.setHours(0,0,0,0)) {
             alert('無法設定過去的排班日期');
             return;
         }
@@ -275,7 +226,10 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
             const updatedDate = { ...newSchedules[date] };
 
             timeSlots.forEach(time => {
-                updatedDate[time] = available;
+                // ⭐ 只設定未過期的時段
+                if (!isTimeSlotPast(date, time)) {
+                    updatedDate[time] = available;
+                }
             });
 
             newSchedules[date] = updatedDate;
@@ -302,8 +256,6 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
                 });
             });
 
-            console.log('💾 儲存排班:', { doctor_id, schedules: scheduleList });
-
             const res = await fetch('http://127.0.0.1:5000/api/schedules', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -312,7 +264,6 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
 
             if (res.ok) {
                 const result = await res.json();
-                console.log('✅ 儲存成功:', result);
                 setSaveSuccess(true);
                 setTimeout(() => setSaveSuccess(false), 3000);
             } else {
@@ -322,7 +273,7 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
 
         } catch (error) {
             console.error("儲存排班失敗:", error);
-            alert('儲存排班失敗，請稍後再試');
+            alert('儲存排班失敗,請稍後再試');
         } finally {
             setLoading(false);
         }
@@ -365,7 +316,8 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
                 setActiveTab={setActiveTab}
                 approvalStatus={approvalStatus}  
             />
-                <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+            
+            <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
                 <Navbar setIsSidebarOpen={setIsOpen} />
                 <div className="p-6">
                     {saveSuccess && (
@@ -399,7 +351,6 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
                         <div className="grid grid-cols-8 gap-3 mb-4">
                             <div className="font-medium text-gray-700 flex items-center"><Clock size={18} className="mr-2" />時段</div>
                             {weekDates.map(item => {
-                                const isPast = isPastDate(item.fullDate);
                                 return (
                                     <div key={item.fullDate} className="text-center">
                                         <div className="font-medium text-gray-700">{item.day}</div>
@@ -407,21 +358,13 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
                                         <div className="mt-2 flex gap-1 justify-center">
                                             <button
                                                 onClick={() => setWholeDay(item.fullDate, true)}
-                                                disabled={isPast}
-                                                className={`text-xs px-2 py-1 rounded ${isPast
-                                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                                    : "bg-green-100 text-green-700 hover:bg-green-200"
-                                                    }`}
+                                                className="text-xs px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200"
                                             >
                                                 全開
                                             </button>
                                             <button
                                                 onClick={() => setWholeDay(item.fullDate, false)}
-                                                disabled={isPast}
-                                                className={`text-xs px-2 py-1 rounded ${isPast
-                                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                                    }`}
+                                                className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
                                             >
                                                 全關
                                             </button>
@@ -436,7 +379,8 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
                                 <div key={time} className="grid grid-cols-8 gap-3 items-center">
                                     <div className="font-medium text-gray-600 text-sm">{time}</div>
                                     {weekDates.map(item => {
-                                        const isPast = isPastDate(item.fullDate);
+                                        // ⭐ 使用新的判斷函數
+                                        const isPast = isTimeSlotPast(item.fullDate, time);
                                         const isAvailable = isSlotAvailable(item.fullDate, time);
 
                                         return (
@@ -444,12 +388,13 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
                                                 key={`${item.fullDate}-${time}`}
                                                 onClick={() => toggleSlot(item.fullDate, time)}
                                                 disabled={isPast}
-                                                className={`py-3 rounded-lg text-sm font-medium transition-all ${isPast
-                                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-50"
-                                                    : isAvailable
-                                                        ? "bg-green-500 text-white hover:bg-green-600"
-                                                        : "bg-gray-200 text-gray-500 hover:bg-gray-300"
-                                                    }`}
+                                                className={`py-3 rounded-lg text-sm font-medium transition-all ${
+                                                    isPast
+                                                        ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-50"
+                                                        : isAvailable
+                                                            ? "bg-green-500 text-white hover:bg-green-600"
+                                                            : "bg-gray-200 text-gray-500 hover:bg-gray-300"
+                                                }`}
                                             >
                                                 {isPast ? "已過期" : isAvailable ? "可預約" : "不可預約"}
                                             </button>
@@ -461,14 +406,14 @@ console.log("📝 fetchApprovalStatus useEffect 已定義");
                     </div>
                 </div>
             </div>
-        {/* Footer */}
-        <div className="bg-gray-800 text-white py-8">
-          <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400">
-              © 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。
-            </p>
-          </div>
-        </div>
+
+            <div className="bg-gray-800 text-white py-8">
+                <div className="max-w-7xl mx-auto px-4 text-center">
+                    <p className="text-gray-400">
+                        © 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。
+                    </p>
+                </div>
+            </div>
         </div>
     );
 }
