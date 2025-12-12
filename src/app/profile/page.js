@@ -302,6 +302,10 @@ const handleSave = async () => {
 
       if (res.ok) {
         alert("登出成功");
+          // 清除 localStorage
+        localStorage.removeItem('user_id');
+        localStorage.removeItem('user_type');
+        localStorage.removeItem('email');
         router.push("/login");
       } else {
         alert("登出失敗，請再試一次");
