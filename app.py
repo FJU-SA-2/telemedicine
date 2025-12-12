@@ -1235,139 +1235,6 @@ def get_record():
         cursor.close()
         db.close()
 
-@app.route("/api/cancel_appointment", methods=["POST"])
-def cancel_appointment():
-    """取消預約並發送通知"""
-    try:
-        data = request.get_json()
-        appointment_id = data.get("appointment_id")
-        cancel_reason = data.get("cancellation_reason", "")
-
-        if not cancel_reason.strip():
-            return jsonify({"success": False, "message": "請填寫取消原因"}), 400
-
-        db = get_db()
-        cursor = db.cursor(dictionary=True)
-
-        # 🔍 獲取完整預約資訊
-        cursor.execute("""
-            SELECT 
-                a.appointment_id,
-                a.patient_id,
-                a.doctor_id,
-                a.appointment_date, 
-                a.appointment_time, 
-                a.status,
-                d.first_name as doctor_first_name,
-                d.last_name as doctor_last_name,
-                d.specialty,
-                p.first_name as patient_first_name,
-                p.last_name as patient_last_name
-            FROM appointments a
-            LEFT JOIN doctor d ON a.doctor_id = d.doctor_id
-            LEFT JOIN patient p ON a.patient_id = p.patient_id
-            WHERE a.appointment_id = %s
-        """, (appointment_id,))
-        
-        appt = cursor.fetchone()
-
-        if not appt:
-            return jsonify({"success": False, "message": "找不到此預約"}), 404
-
-        if appt["status"] == "已取消":
-            return jsonify({"success": False, "message": "預約已取消"}), 400
-
-        if appt["status"] == "已完成":
-            return jsonify({"success": False, "message": "已完成的預約無法取消"}), 400
-
-        appointment_date = appt["appointment_date"]
-        appointment_time = appt["appointment_time"]
-        
-        # 處理 timedelta 轉換為 time
-        if isinstance(appointment_time, timedelta):
-            total_seconds = int(appointment_time.total_seconds())
-            hours = total_seconds // 3600
-            minutes = (total_seconds % 3600) // 60
-            seconds = total_seconds % 60
-            appointment_time = datetime.min.time().replace(hour=hours, minute=minutes, second=seconds)
-        elif isinstance(appointment_time, datetime):
-            appointment_time = appointment_time.time()
-
-        appointment_datetime = datetime.combine(appointment_date, appointment_time)
-        now = datetime.now()
-
-        # 計算退款比例
-        diff = appointment_datetime - now
-        diff_days = diff.total_seconds() / (24 * 3600)
-        is_same_day = appointment_date == now.date()
-        
-        if is_same_day:
-            refund_percentage = 20
-            refund_message = "取消成功,將退回 20% 款項,於三日內退款"
-        elif diff_days <= 2:
-            refund_percentage = 50
-            refund_message = "取消成功,將退回 50% 款項,於三日內退款"
-        else:
-            refund_percentage = 100
-            refund_message = "取消成功,將全額退款,於三日內退款"
-
-        # ✅ 更新預約狀態
-        cursor.execute("""
-            UPDATE appointments 
-            SET status = '已取消', 
-                cancellation_reason = %s,
-                updated_at = NOW()
-            WHERE appointment_id = %s
-        """, (cancel_reason, appointment_id))
-
-        # ✅ 釋放時段
-        cursor.execute("""
-            UPDATE schedules 
-            SET is_available = '1' 
-            WHERE doctor_id = %s AND schedule_date = %s AND time_slot = %s
-        """, (appt["doctor_id"], appointment_date, appointment_time))
-
-        # ✅ 創建通知給患者
-        doctor_name = f"{appt['doctor_last_name']}{appt['doctor_first_name']}"
-        notification_title = "預約已取消"
-        notification_message = f"""您與 {doctor_name} 醫師的預約已取消
-
-📅 原預約時間: {appointment_date.strftime('%Y年%m月%d日')} {str(appointment_time)[:5]}
-🏥 醫師: {doctor_name} ({appt['specialty']})
-📝 取消原因: {cancel_reason}
-💰 退款說明: {refund_message}
-
-如有疑問,請聯繫客服。"""
-
-        cursor.execute("""
-            INSERT INTO notifications (patient_id, type, title, message, related_id)
-            VALUES (%s, 'appointment_cancelled', %s, %s, %s)
-        """, (appt["patient_id"], notification_title, notification_message, appointment_id))
-
-        db.commit()
-
-        print(f"✅ 預約 {appointment_id} 已取消,通知已發送給患者 {appt['patient_id']}")
-
-        return jsonify({
-            "success": True, 
-            "message": refund_message,
-            "refund_percentage": refund_percentage,
-            "notification_sent": True
-        }), 200
-
-    except Exception as e:
-        if 'db' in locals():
-            db.rollback()
-        print(f"❌ 取消預約錯誤: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({"success": False, "message": "伺服器錯誤"}), 500
-
-    finally:
-        if 'cursor' in locals():
-            cursor.close()
-        if 'db' in locals():
-            db.close()
         
 @app.route("/api/recordoc", methods=["GET"])
 def get_recordoc():
@@ -3714,6 +3581,612 @@ def get_dashboard_stats():
         print(f"錯誤: {str(e)}")
         return jsonify({'error': '伺服器錯誤'}), 500
 
+@app.route("/api/patient/<int:patient_id>/medical-records", methods=["GET"])
+def get_patient_medical_records(patient_id):
+    """獲取病患的完整就診記錄"""
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        # 獲取該病患所有已完成的就診記錄
+        query = """
+            SELECT 
+                a.appointment_id,
+                a.appointment_date,
+                a.appointment_time,
+                a.symptoms,
+                a.consultation_notes,
+                a.doctor_advice,
+                a.recording_url,
+                a.recording_duration,
+                d.doctor_id,
+                d.first_name as doctor_first_name,
+                d.last_name as doctor_last_name,
+                d.specialty as doctor_specialty
+            FROM appointments a
+            INNER JOIN doctor d ON a.doctor_id = d.doctor_id
+            WHERE a.patient_id = %s 
+            AND a.status = '已完成'
+            ORDER BY a.appointment_date DESC, a.appointment_time DESC
+        """
+        
+        cursor.execute(query, (patient_id,))
+        records = cursor.fetchall()
+        
+        # 格式化日期時間
+        formatted_records = []
+        for record in records:
+            formatted_records.append({
+                'appointment_id': record['appointment_id'],
+                'appointment_date': serialize_datetime(record['appointment_date']),
+                'appointment_time': serialize_datetime(record['appointment_time']),
+                'symptoms': record['symptoms'] or '',
+                'consultation_notes': record['consultation_notes'] or '',
+                'doctor_advice': record['doctor_advice'] or '',
+                'recording_url': record['recording_url'],
+                'recording_duration': record['recording_duration'],
+                'doctor_first_name': record['doctor_first_name'] or '',
+                'doctor_last_name': record['doctor_last_name'] or '',
+                'doctor_specialty': record['doctor_specialty']
+            })
+        
+        return jsonify(formatted_records), 200
+        
+    except Exception as e:
+        print(f"❌ 獲取病歷記錄失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"message": f"獲取病歷記錄失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+@app.route("/api/doctor/notifications", methods=["GET"])
+def get_doctor_notifications():
+    """獲取醫師的通知列表"""
+    print("=" * 60)
+    print("🔔 收到醫師通知請求")
+    
+    # 檢查登入狀態
+    if 'user_id' not in session:
+        print("❌ 用戶未登入")
+        return jsonify({"message": "請先登入"}), 401
+    
+    # 檢查是否為醫師
+    if session.get('role') != 'doctor':
+        print(f"❌ 角色錯誤: {session.get('role')}")
+        return jsonify({"message": "請先登入醫師帳號"}), 401
+    
+    doctor_id = session.get('doctor_id')
+    if not doctor_id:
+        print("❌ 找不到 doctor_id")
+        return jsonify({"message": "找不到醫師資料"}), 404
+    
+    print(f"✅ 醫師 ID: {doctor_id}")
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        # 獲取通知列表(最近30天)
+        query = """
+            SELECT 
+                notification_id,
+                type,
+                title,
+                message,
+                related_id,
+                is_read,
+                created_at
+            FROM doctor_notifications
+            WHERE doctor_id = %s
+            AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            ORDER BY created_at DESC
+            LIMIT 50
+        """
+        
+        cursor.execute(query, (doctor_id,))
+        notifications = cursor.fetchall()
+        
+        print(f"📬 找到 {len(notifications)} 則通知")
+        
+        # 格式化時間
+        for n in notifications:
+            if n.get('created_at'):
+                n['created_at'] = n['created_at'].isoformat()
+        
+        # 獲取未讀數量
+        cursor.execute("""
+            SELECT COUNT(*) as unread_count
+            FROM doctor_notifications
+            WHERE doctor_id = %s AND is_read = FALSE
+        """, (doctor_id,))
+        
+        unread_count = cursor.fetchone()['unread_count']
+        print(f"📨 未讀數量: {unread_count}")
+        
+        response_data = {
+            "notifications": notifications,
+            "unread_count": unread_count
+        }
+        
+        print("✅ 成功返回通知")
+        print("=" * 60)
+        
+        return jsonify(response_data), 200
+        
+    except Exception as e:
+        print(f"❌ 獲取醫師通知失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"message": f"獲取通知失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@app.route("/api/doctor/notifications/<int:notification_id>/read", methods=["PATCH"])
+def mark_doctor_notification_read(notification_id):
+    """標記單個醫師通知為已讀"""
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return jsonify({"message": "請先登入醫師帳號"}), 401
+    
+    doctor_id = session.get('doctor_id')
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    try:
+        cursor.execute("""
+            UPDATE doctor_notifications 
+            SET is_read = TRUE 
+            WHERE notification_id = %s AND doctor_id = %s
+        """, (notification_id, doctor_id))
+        
+        db.commit()
+        
+        if cursor.rowcount == 0:
+            return jsonify({"message": "通知不存在或無權限"}), 404
+        
+        return jsonify({
+            "success": True,
+            "message": "已標記為已讀"
+        }), 200
+        
+    except Exception as e:
+        db.rollback()
+        print(f"❌ 標記已讀失敗: {str(e)}")
+        return jsonify({"message": f"操作失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@app.route("/api/doctor/notifications/read-all", methods=["PATCH"])
+def mark_all_doctor_notifications_read():
+    """標記所有醫師通知為已讀"""
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return jsonify({"message": "請先登入醫師帳號"}), 401
+    
+    doctor_id = session.get('doctor_id')
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    try:
+        cursor.execute("""
+            UPDATE doctor_notifications 
+            SET is_read = TRUE 
+            WHERE doctor_id = %s AND is_read = FALSE
+        """, (doctor_id,))
+        
+        db.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": f"已標記 {cursor.rowcount} 則通知為已讀"
+        }), 200
+        
+    except Exception as e:
+        db.rollback()
+        print(f"❌ 全部標記已讀失敗: {str(e)}")
+        return jsonify({"message": f"操作失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+
+@app.route("/api/doctor/notifications/count", methods=["GET"])
+def get_doctor_unread_count():
+    """快速獲取醫師未讀通知數量"""
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return jsonify({"count": 0}), 200
+    
+    doctor_id = session.get('doctor_id')
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM doctor_notifications
+            WHERE doctor_id = %s AND is_read = FALSE
+        """, (doctor_id,))
+        
+        result = cursor.fetchone()
+        return jsonify({"count": result['count']}), 200
+        
+    except Exception as e:
+        return jsonify({"count": 0}), 200
+    finally:
+        cursor.close()
+        db.close()
+
+
+
+def create_doctor_notification(doctor_id, notification_type, title, message, related_id=None):
+    """創建醫師通知的通用函數"""
+    db = get_db()
+    cursor = db.cursor()
+    
+    try:
+        cursor.execute("""
+            INSERT INTO doctor_notifications (doctor_id, type, title, message, related_id)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (doctor_id, notification_type, title, message, related_id))
+        
+        db.commit()
+        print(f"✅ 醫師通知已創建: {title}")
+        return True
+        
+    except Exception as e:
+        db.rollback()
+        print(f"❌ 創建醫師通知失敗: {str(e)}")
+        return False
+    finally:
+        cursor.close()
+        db.close()
+
+
+@app.route("/api/cancel_appointment", methods=["POST"])
+def cancel_appointment():
+    """取消預約並發送通知給醫師和患者（含退款計算）"""
+    print("=" * 60)
+    print("🚫 收到取消預約請求")
+    
+    try:
+        data = request.get_json()
+        appointment_id = data.get("appointment_id")
+        cancel_reason = data.get("cancellation_reason", "")
+
+        if not cancel_reason.strip():
+            return jsonify({"success": False, "message": "請填寫取消原因"}), 400
+
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        # 📋 獲取完整預約資訊
+        cursor.execute("""
+            SELECT 
+                a.appointment_id,
+                a.patient_id,
+                a.doctor_id,
+                a.appointment_date, 
+                a.appointment_time, 
+                a.status,
+                d.first_name as doctor_first_name,
+                d.last_name as doctor_last_name,
+                d.specialty,
+                p.first_name as patient_first_name,
+                p.last_name as patient_last_name
+            FROM appointments a
+            LEFT JOIN doctor d ON a.doctor_id = d.doctor_id
+            LEFT JOIN patient p ON a.patient_id = p.patient_id
+            WHERE a.appointment_id = %s
+        """, (appointment_id,))
+        
+        appt = cursor.fetchone()
+
+        if not appt:
+            print("❌ 找不到此預約")
+            return jsonify({"success": False, "message": "找不到此預約"}), 404
+
+        if appt["status"] == "已取消":
+            print("❌ 預約已取消")
+            return jsonify({"success": False, "message": "預約已取消"}), 400
+
+        if appt["status"] == "已完成":
+            print("❌ 已完成的預約無法取消")
+            return jsonify({"success": False, "message": "已完成的預約無法取消"}), 400
+
+        appointment_date = appt["appointment_date"]
+        appointment_time = appt["appointment_time"]
+        
+        # 處理 timedelta 轉換為 time
+        if isinstance(appointment_time, timedelta):
+            total_seconds = int(appointment_time.total_seconds())
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) // 60
+            seconds = total_seconds % 60
+            appointment_time = datetime.min.time().replace(hour=hours, minute=minutes, second=seconds)
+        elif isinstance(appointment_time, datetime):
+            appointment_time = appointment_time.time()
+
+        appointment_datetime = datetime.combine(appointment_date, appointment_time)
+        now = datetime.now()
+
+        # 💰 計算退款比例
+        diff = appointment_datetime - now
+        diff_days = diff.total_seconds() / (24 * 3600)
+        is_same_day = appointment_date == now.date()
+        
+        if is_same_day:
+            refund_percentage = 20
+            refund_message = "取消成功，將退回 20% 款項，於三日內退款"
+        elif diff_days <= 2:
+            refund_percentage = 50
+            refund_message = "取消成功，將退回 50% 款項，於三日內退款"
+        else:
+            refund_percentage = 100
+            refund_message = "取消成功，將全額退款，於三日內退款"
+
+        patient_name = f"{appt['patient_last_name']}{appt['patient_first_name']}"
+        doctor_name = f"{appt['doctor_last_name']}{appt['doctor_first_name']}"
+        
+        print(f"預約 ID: {appointment_id}")
+        print(f"患者: {patient_name}")
+        print(f"醫師: {doctor_name}")
+        print(f"退款比例: {refund_percentage}%")
+        print(f"原因: {cancel_reason}")
+
+        # ✅ 更新預約狀態
+        cursor.execute("""
+            UPDATE appointments 
+            SET status = '已取消', 
+                cancellation_reason = %s,
+                updated_at = NOW()
+            WHERE appointment_id = %s
+        """, (cancel_reason, appointment_id))
+
+        # ✅ 釋放時段
+        cursor.execute("""
+            UPDATE schedules 
+            SET is_available = '1' 
+            WHERE doctor_id = %s AND schedule_date = %s AND time_slot = %s
+        """, (appt["doctor_id"], appointment_date, appointment_time))
+
+        db.commit()
+        print("✅ 預約已取消，時段已釋放")
+
+        # ✅ 發送通知給醫師
+        doctor_notification = f"""患者已取消預約
+
+📅 原預約時間: {appointment_date.strftime('%Y年%m月%d日')} {str(appointment_time)[:5]}
+👤 患者: {patient_name}
+📝 取消原因: {cancel_reason}
+
+該時段已自動釋放，可供其他患者預約。"""
+
+        try:
+            cursor.execute("""
+                INSERT INTO doctor_notifications (doctor_id, type, title, message, related_id)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (appt["doctor_id"], 'appointment_cancelled', '預約已取消', doctor_notification, appointment_id))
+            db.commit()
+            print(f"✅ 已發送取消通知給醫師 {appt['doctor_id']}")
+        except Exception as e:
+            print(f"⚠️ 發送醫師通知失敗: {str(e)}")
+
+        # ✅ 發送通知給患者
+        patient_notification = f"""預約已取消
+
+👨‍⚕️ 醫師: {doctor_name} ({appt['specialty']})
+📅 原預約時間: {appointment_date.strftime('%Y年%m月%d日')} {str(appointment_time)[:5]}
+📝 取消原因: {cancel_reason}
+💰 退款說明: {refund_message}
+
+如有疑問，請聯絡客服。"""
+
+        try:
+            cursor.execute("""
+                INSERT INTO notifications (patient_id, type, title, message, related_id)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (appt["patient_id"], 'appointment_cancelled', '預約已取消', patient_notification, appointment_id))
+            db.commit()
+            print(f"✅ 已發送取消通知給患者 {appt['patient_id']}")
+        except Exception as e:
+            print(f"⚠️ 發送患者通知失敗: {str(e)}")
+
+        print("=" * 60)
+
+        return jsonify({
+            "success": True, 
+            "message": refund_message,
+            "refund_percentage": refund_percentage,
+            "notification_sent": True
+        }), 200
+
+    except Exception as e:
+        if 'db' in locals():
+            db.rollback()
+        print(f"❌ 取消預約錯誤: {e}")
+        import traceback
+        traceback.print_exc()
+        print("=" * 60)
+        return jsonify({"success": False, "message": "伺服器錯誤"}), 500
+
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'db' in locals():
+            db.close()
+
+
+# 檢查即將到來的預約並發送提醒(醫師版)
+def check_upcoming_appointments_for_doctor():
+    """檢查醫師即將到來的預約並發送提醒"""
+    while True:
+        try:
+            db = get_db()
+            cursor = db.cursor(dictionary=True)
+            
+            ten_minutes_later = datetime.now() + timedelta(minutes=10)
+            
+            # 查詢 10 分鐘後的預約
+            cursor.execute("""
+                SELECT 
+                    a.appointment_id, a.doctor_id, a.patient_id,
+                    a.appointment_date, a.appointment_time,
+                    p.first_name as patient_first_name,
+                    p.last_name as patient_last_name,
+                    p.date_of_birth
+                FROM appointments a
+                INNER JOIN patient p ON a.patient_id = p.patient_id
+                WHERE a.status = '已確認'
+                AND CONCAT(a.appointment_date, ' ', a.appointment_time) 
+                    BETWEEN %s AND %s
+                AND NOT EXISTS (
+                    SELECT 1 FROM doctor_notifications n 
+                    WHERE n.related_id = a.appointment_id 
+                    AND n.type = 'appointment_reminder'
+                )
+            """, (
+                ten_minutes_later.strftime('%Y-%m-%d %H:%M:%S'),
+                (ten_minutes_later + timedelta(minutes=1)).strftime('%Y-%m-%d %H:%M:%S')
+            ))
+            
+            appointments = cursor.fetchall()
+            
+            for apt in appointments:
+                # 創建醫師提醒通知
+                patient_name = f"{apt['patient_last_name']}{apt['patient_first_name']}"
+                
+                # 計算患者年齡
+                age = ""
+                if apt['date_of_birth']:
+                    today = date.today()
+                    age = today.year - apt['date_of_birth'].year
+                    age = f", {age}歲"
+                
+                notification_message = f"""即將開始看診!
+
+📅 看診時間: {apt['appointment_date']} {apt['appointment_time']}
+👤 患者: {patient_name}{age}
+
+⏰ 請準備進入視訊會議室"""
+
+                create_doctor_notification(
+                    apt['doctor_id'],
+                    'appointment_reminder',
+                    '看診提醒',
+                    notification_message,
+                    apt['appointment_id']
+                )
+                
+                print(f"✅ 已發送看診提醒給醫師 {apt['doctor_id']}")
+            
+            db.commit()
+            cursor.close()
+            db.close()
+            
+        except Exception as e:
+            print(f"❌ 檢查醫師預約提醒失敗: {str(e)}")
+        
+        import time
+        time.sleep(60)
+
+
+# 檢查已完成但未填寫建議的預約
+def check_consultation_reminder():
+    """檢查已完成但未填寫醫囑的預約,發送提醒"""
+    while True:
+        try:
+            db = get_db()
+            cursor = db.cursor(dictionary=True)
+            
+            # 查詢 30 分鐘前完成但未填寫醫囑的預約
+            cursor.execute("""
+                SELECT 
+                    a.appointment_id, a.doctor_id,
+                    a.meeting_ended_at,
+                    p.first_name as patient_first_name,
+                    p.last_name as patient_last_name
+                FROM appointments a
+                INNER JOIN patient p ON a.patient_id = p.patient_id
+                WHERE a.status = '已完成'
+                AND a.meeting_ended_at IS NOT NULL
+                AND (a.doctor_advice IS NULL OR a.doctor_advice = '')
+                AND a.meeting_ended_at >= DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+                AND NOT EXISTS (
+                    SELECT 1 FROM doctor_notifications n 
+                    WHERE n.related_id = a.appointment_id 
+                    AND n.type = 'consultation_reminder'
+                )
+            """)
+            
+            appointments = cursor.fetchall()
+            
+            for apt in appointments:
+                patient_name = f"{apt['patient_last_name']}{apt['patient_first_name']}"
+                
+                notification_message = f"""請記得填寫醫囑建議
+
+👤 患者: {patient_name}
+⏰ 看診結束時間: {apt['meeting_ended_at'].strftime('%H:%M')}
+
+📝 請盡快填寫診療建議和處方,以便患者查看。"""
+
+                create_doctor_notification(
+                    apt['doctor_id'],
+                    'consultation_reminder',
+                    '請填寫醫囑',
+                    notification_message,
+                    apt['appointment_id']
+                )
+                
+                print(f"✅ 已發送填寫醫囑提醒給醫師 {apt['doctor_id']}")
+            
+            db.commit()
+            cursor.close()
+            db.close()
+            
+        except Exception as e:
+            print(f"❌ 檢查醫囑提醒失敗: {str(e)}")
+        
+        import time
+        time.sleep(300)  # 每 5 分鐘檢查一次
+
+
+# 修改 start_background_tasks 函數
+def start_background_tasks():
+    """啟動背景任務"""
+    # 患者預約提醒
+    patient_reminder_thread = threading.Thread(
+        target=check_upcoming_appointments, 
+        daemon=True
+    )
+    patient_reminder_thread.start()
+    
+    # 醫師預約提醒
+    doctor_reminder_thread = threading.Thread(
+        target=check_upcoming_appointments_for_doctor, 
+        daemon=True
+    )
+    doctor_reminder_thread.start()
+    
+    # 醫囑填寫提醒
+    consultation_reminder_thread = threading.Thread(
+        target=check_consultation_reminder, 
+        daemon=True
+    )
+    consultation_reminder_thread.start()
+    
+    print("✅ 背景任務已啟動: 預約提醒、醫囑提醒")
 
 if __name__ == "__main__":
     start_background_tasks()
