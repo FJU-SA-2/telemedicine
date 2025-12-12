@@ -427,6 +427,80 @@ def send_registration_received_email(recipient_email, doctor_name):
         print(f"❌ 郵件發送失敗: {str(e)}")
         return False
 
+
+
+@app.route('/api/doctor/appointments-data', methods=['GET'])
+def get_doctor_dashboard_data():
+    # 這裡的 doctor_id = 1 是硬編碼，在真實環境中應從 Session 或 Token 中取得
+    doctor_id = 1
+    
+    # 假設您有一個 get_db 函數來獲取資料庫連接
+    # 在您的程式碼中，這裡應該是 get_db_connection()，我沿用您提供的名稱
+    conn = get_db() 
+    if conn is None:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    try:
+        cursor = conn.cursor(dictionary=True) # 使用 dictionary=True 讓結果為字典列表
+
+        # A. 今天的預約列表 (修正 TIME_FORMAT 為單個 %)
+        today_appointments_query = """
+            SELECT
+                a.appointment_id,
+                -- 將姓氏和名字合併為 patient_name
+                CONCAT(p.last_name, p.first_name) AS patient_name, 
+                -- 修正：使用單個 % 讓 MySQL 正確輸出時間格式
+                TIME_FORMAT(a.appointment_time, '%H:%i') AS time, 
+                -- 將 symptoms 設為 '未知'，如果它是 NULL
+                IFNULL(a.symptoms, '未知') AS symptoms,
+                a.status
+            FROM
+                appointments a
+            JOIN
+                patient p ON a.patient_id = p.patient_id
+            WHERE
+                a.doctor_id = %s AND a.appointment_date = CURDATE()
+            ORDER BY
+                a.appointment_time ASC;
+        """
+        cursor.execute(today_appointments_query, (doctor_id,))
+        today_appointments = cursor.fetchall()
+
+        # B. 本週日曆統計 (未來七天) (修正 DATE_FORMAT 為單個 %)
+        weekly_stats_query = """
+            SELECT
+                -- 修正：使用單個 % 讓 MySQL 正確輸出日期格式，解決前端 Key 重複問題
+                DATE_FORMAT(appointment_date, '%Y-%m-%d') AS date_day, 
+                COUNT(appointment_id) AS total_appointments
+            FROM
+                appointments
+            WHERE
+                doctor_id = %s
+                AND appointment_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 6 DAY)
+            GROUP BY
+                appointment_date
+            ORDER BY
+                appointment_date ASC;
+        """
+        cursor.execute(weekly_stats_query, (doctor_id,))
+        weekly_stats = cursor.fetchall()
+
+        return jsonify({
+            "todayAppointments": today_appointments,
+            "weeklyStats": weekly_stats
+        })
+
+    except Exception as e:
+        # 建議在這裡使用 traceback.print_exc() 來獲取更詳細的錯誤資訊
+        print(f"Error fetching dashboard data: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+    finally:
+        # 確保 conn 和 cursor 存在且未關閉
+        if 'cursor' in locals() and cursor is not None:
+             cursor.close()
+        if conn is not None:
+             conn.close()
+
 @app.route("/api/doctors", methods=["GET"])
 def get_doctors():
     db = get_db()
