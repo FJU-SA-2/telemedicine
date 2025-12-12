@@ -395,46 +395,51 @@ const TelemedicineDashboard = () => {
             </div>
           </div>
 
-          {/* 快速操作 */}
+         {/* 快速操作 */}
           <div className="mt-8 bg-[var(--color-mahogany)]/10 rounded-xl shadow-lg p-6 ">
             <h3 className="text-xl font-bold mb-4">快速操作</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <button 
-                className={`bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-4 transition-all ${
-                  isNotApproved ? 'opacity-50 cursor-not-allowed' : ''
+              <a 
+                href={isNotApproved ? "#" : "/facetime"}
+                className={`bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-6 transition-all flex flex-col items-center justify-center ${
+                  isNotApproved ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
                 }`}
-                disabled={isNotApproved}
+                onClick={(e) => isNotApproved && e.preventDefault()}
               >
-                <Video size={24} className="mb-2" />
-                <p className="text-sm font-medium">開始視訊</p>
-              </button>
-              <button 
-                className={`bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-4 transition-all ${
-                  isNotApproved ? 'opacity-50 cursor-not-allowed' : ''
+                <Video size={32} className="mb-3" />
+                <p className="text-base font-semibold text-center">開始視訊</p>
+              </a>
+              <a 
+                href={isNotApproved ? "#" : "/schedules"}
+                className={`bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-6 transition-all flex flex-col items-center justify-center ${
+                  isNotApproved ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
                 }`}
-                disabled={isNotApproved}
+                onClick={(e) => isNotApproved && e.preventDefault()}
               >
-                <Calendar size={24} className="mb-2" />
-                <p className="text-sm font-medium">新增預約</p>
-              </button>
-              <button 
-                className={`bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-4 transition-all ${
-                  isNotApproved ? 'opacity-50 cursor-not-allowed' : ''
+                <Calendar size={32} className="mb-3" />
+                <p className="text-base font-semibold text-center">新增排班</p>
+              </a>
+              <a 
+                href={isNotApproved ? "#" : "/patientmanage"}
+                className={`bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-6 transition-all flex flex-col items-center justify-center ${
+                  isNotApproved ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
                 }`}
-                disabled={isNotApproved}
+                onClick={(e) => isNotApproved && e.preventDefault()}
               >
-                <FileText size={24} className="mb-2" />
-                <p className="text-sm font-medium">寫病歷</p>
-              </button>
-              <button 
-                className={`bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-4 transition-all ${
-                  isNotApproved ? 'opacity-50 cursor-not-allowed' : ''
+                <FileText size={32} className="mb-3" />
+                <p className="text-base font-semibold text-center">寫病歷</p>
+              </a>
+              <a 
+                href={isNotApproved ? "#" : "/patientmanage"}
+                className={`bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-6 transition-all flex flex-col items-center justify-center ${
+                  isNotApproved ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
                 }`}
-                disabled={isNotApproved}
+                onClick={(e) => isNotApproved && e.preventDefault()}
               >
-                <Users size={24} className="mb-2" />
-                <p className="text-sm font-medium">查看患者</p>
-              </button>
+                <Users size={32} className="mb-3" />
+                <p className="text-base font-semibold text-center">查看患者</p>
+              </a>
+              
             </div>
           </div>
         </div>
