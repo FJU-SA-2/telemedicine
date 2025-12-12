@@ -34,7 +34,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "該時段已被預約或不存在" }, { status: 409 });
     }
 
-    // 2. 獲取醫師資訊
+    // 2. 獲取醫師資訊和患者資訊
     const [doctorInfo] = await connection.execute(
       `SELECT first_name, last_name, specialty, practice_hospital 
        FROM doctor WHERE doctor_id = ?`,
@@ -48,6 +48,17 @@ export async function POST(request) {
 
     const doctor = doctorInfo[0];
     const doctorName = `${doctor.last_name}${doctor.first_name}`;
+
+    // 獲取患者資訊
+    const [patientInfo] = await connection.execute(
+      `SELECT first_name, last_name 
+       FROM patient WHERE patient_id = ?`,
+      [patient_id]
+    );
+
+    const patientName = patientInfo.length > 0 
+      ? `${patientInfo[0].last_name}${patientInfo[0].first_name}`
+      : '患者';
 
     // 3. 創建預約
     const [result] = await connection.execute(
@@ -82,10 +93,26 @@ export async function POST(request) {
 ⚠️ 請在預約時間前 10 分鐘準備好進入視訊會議室
 📱 系統將會提前提醒您`;
 
+    // 5-1. 創建患者通知
     await connection.execute(
       `INSERT INTO notifications (patient_id, type, title, message, related_id, is_read)
        VALUES (?, 'appointment_confirmed', '預約成功', ?, ?, FALSE)`,
       [patient_id, notificationMessage, appointmentId]
+    );
+
+    // 5-2. 創建醫師通知
+    const doctorNotificationMessage = `您有新的預約!
+
+📅 預約時間: ${appointment_date} ${appointment_time}
+👤 患者: ${patientName}
+📝 症狀描述: ${symptoms || '未填寫'}
+
+請準時為患者提供看診服務。`;
+
+    await connection.execute(
+      `INSERT INTO doctor_notifications (doctor_id, type, title, message, related_id, is_read)
+       VALUES (?, 'new_appointment', '新預約通知', ?, ?, FALSE)`,
+      [doctor_id, doctorNotificationMessage, appointmentId]
     );
 
     await connection.commit();
@@ -190,7 +217,7 @@ export async function PATCH(request) {
     connection = await mysql.createConnection(dbConfig);
     await connection.beginTransaction();
 
-    // 查詢預約資料
+    // 查詢預約資料（包含患者資訊）
     const [appointments] = await connection.execute(
       `SELECT 
         a.doctor_id, 
@@ -200,9 +227,12 @@ export async function PATCH(request) {
         a.status,
         d.first_name as doctor_first_name,
         d.last_name as doctor_last_name,
-        d.specialty
+        d.specialty,
+        p.first_name as patient_first_name,
+        p.last_name as patient_last_name
        FROM appointments a
        LEFT JOIN doctor d ON a.doctor_id = d.doctor_id
+       LEFT JOIN patient p ON a.patient_id = p.patient_id
        WHERE a.appointment_id = ?`,
       [appointment_id]
     );
@@ -263,6 +293,11 @@ export async function PATCH(request) {
 
     // 創建取消通知
     const doctorName = `${appointment.doctor_last_name}${appointment.doctor_first_name}`;
+    const patientName = appointment.patient_last_name && appointment.patient_first_name
+      ? `${appointment.patient_last_name}${appointment.patient_first_name}`
+      : '患者';
+
+    // 患者取消通知
     const cancelNotificationMessage = `預約已取消
 
 📅 原預約時間: ${appointment.appointment_date} ${appointment.appointment_time}
@@ -278,6 +313,21 @@ export async function PATCH(request) {
       `INSERT INTO notifications (patient_id, type, title, message, related_id, is_read)
        VALUES (?, 'appointment_cancelled', '預約已取消', ?, ?, FALSE)`,
       [appointment.patient_id, cancelNotificationMessage, appointment_id]
+    );
+
+    // 醫師取消通知
+    const doctorCancelNotificationMessage = `患者已取消預約
+
+📅 原預約時間: ${appointment.appointment_date} ${appointment.appointment_time}
+👤 患者: ${patientName}
+📝 取消原因: ${cancellation_reason}
+
+該時段已自動釋放，可供其他患者預約。`;
+
+    await connection.execute(
+      `INSERT INTO doctor_notifications (doctor_id, type, title, message, related_id, is_read)
+       VALUES (?, 'appointment_cancelled', '預約已取消', ?, ?, FALSE)`,
+      [appointment.doctor_id, doctorCancelNotificationMessage, appointment_id]
     );
 
     await connection.commit();

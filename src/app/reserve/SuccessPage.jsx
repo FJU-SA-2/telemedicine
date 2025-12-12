@@ -94,7 +94,7 @@ export default function SuccessPage({ bookingInfo, onClose }) {
                   <CreditCard size={16} className="text-green-600" />
                   <p className="text-sm text-green-700 font-semibold">支付狀態</p>
                 </div>
-                <p className="font-bold text-green-600">已支付 NT$ 500</p>
+                <p className="font-bold text-green-600">已支付 NT$ 250</p>
               </div>
 
               <div className="bg-white border border-gray-200 rounded-lg p-3">

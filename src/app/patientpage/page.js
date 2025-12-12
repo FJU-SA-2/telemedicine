@@ -177,7 +177,7 @@ export default function Page() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/me", { credentials: 'include' });
+        const res = await fetch("/api/me", { credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
           if (data.authenticated && data.user) setUser(data.user);
@@ -193,7 +193,7 @@ export default function Page() {
   useEffect(() => {
     const fetchUpcoming = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/appointments/", { credentials: 'include' });
+        const res = await fetch("/api/appointments/", { credentials: 'include' });
         if (res.ok) {
           const appointments = await res.json();
           if (appointments.length > 0) {
@@ -226,7 +226,7 @@ export default function Page() {
     const fetchHistory = async () => {
       try {
         setLoading(true);
-        const res = await fetch("http://localhost:5000/api/record", { credentials: 'include' });
+        const res = await fetch("/api/record", { credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
           setAppointmentHistory(data.map(item => ({
