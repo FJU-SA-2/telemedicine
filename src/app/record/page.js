@@ -4,6 +4,7 @@ import { Calendar, Clock, User, Stethoscope, RefreshCw, Menu, X, LayoutGrid, Lis
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import LockedPageOverlay from "../components/LockedPageOverlay";
+import FloatingChat from "../components/FloatingChat";
 
 export default function AppointmentRecords() {
   const [isOpen, setIsOpen] = useState(false);
@@ -485,6 +486,7 @@ export default function AppointmentRecords() {
           </p>
         </div>
       </div>
+      <FloatingChat />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, Video, Star, FileText, CreditCard, User, Clock, CheckCircle, ArrowRight, Stethoscope, Heart, Monitor, ChevronRight, ChevronLeft, AlertCircle, Menu, X, ZoomIn } from 'lucide-react';
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
+import FloatingChat from "../components/FloatingChat";
 
 export default function IntroductionPage() {
   const [activeStep, setActiveStep] = useState(null);
@@ -567,6 +568,7 @@ const steps = [
           </div>
         </div>
       )}
+      <FloatingChat />
     </div>
   );
 }

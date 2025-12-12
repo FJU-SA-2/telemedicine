@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import RatingModal from '../components/RatingModal';
 import LockedPageOverlay from '../components/LockedPageOverlay'; // ✅ 新增
+import FloatingChat from "../components/FloatingChat";
 
 export default function PatientVideoConsultation() {
   const [appointments, setAppointments] = useState([]);
@@ -878,6 +879,7 @@ export default function PatientVideoConsultation() {
           />
         </div>
       )}
+      <FloatingChat />
     </>
   );
 };

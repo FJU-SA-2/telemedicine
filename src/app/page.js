@@ -4,6 +4,7 @@ import Link from "next/link";
 import NextImage from "next/image";
 import Sidebar from "./components/Sidebar"; // 請確保路徑正確
 import { Menu, User, MessageSquare, Star, ChevronRight, ChevronLeft } from "lucide-react";
+import FloatingChat from "./components/FloatingChat";
 
 export default function HomePage() {
   const [isOpen, setIsOpen] = useState(false);
@@ -394,6 +395,7 @@ export default function HomePage() {
           </div>
         </div>
     </div>
+    <FloatingChat />
     </div>
    );
 }

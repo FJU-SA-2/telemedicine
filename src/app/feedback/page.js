@@ -4,6 +4,7 @@ import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import { Menu, AlertCircle, Send } from 'lucide-react';
 import LockedPageOverlay from "../components/LockedPageOverlay"; // ✅ 新增
+import FloatingChat from "../components/FloatingChat";
 
 function FeedbackFormContent() {
   const [selectedCategories, setSelectedCategories] = useState([]);
@@ -249,6 +250,7 @@ export default function FeedbackPage() {
             </p>
           </div>
         </div>
+        <FloatingChat />
     </div>
   );
 }

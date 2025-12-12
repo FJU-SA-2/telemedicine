@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import { Menu, X, ChevronRight, ChevronLeft, Calendar, BookOpen, Clock, User, FileText, Activity } from "lucide-react";
+import FloatingChat from "../components/FloatingChat";
 
 // 顏色變數
 const COLOR_MAHOGANY = "var(--color-mahogany)"; 
@@ -507,6 +508,7 @@ export default function Page() {
             </p>
           </div>
         </div>
+        <FloatingChat />
     </div>
   );
 }
