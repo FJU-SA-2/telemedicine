@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, User, RefreshCw, Menu } from 'lucide-react';
+import { Calendar, Clock, User, RefreshCw, Menu, X } from 'lucide-react';
 import DoctorSidebar from "../components/DoctorSidebar";
 import Navbar from "../components/Navbar";
 
@@ -11,6 +11,10 @@ export default function AppointmentRecords() {
   const [filter, setFilter] = useState('all');
   const [approvalStatus, setApprovalStatus] = useState(null);
   const [activeTab, setActiveTab] = useState("home");
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [refundInfo, setRefundInfo] = useState({ percentage: 0, message: "" });
 
   // ... (fetchApprovalStatus 相關的 useEffect 保持不變)
   useEffect(() => {
@@ -47,8 +51,19 @@ export default function AppointmentRecords() {
         credentials: 'include'
       });
       
-      if (!res.ok) throw new Error("API 取得資料失敗");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `API 取得資料失敗 (狀態碼: ${res.status})`);
+      }
+      
       const data = await res.json();
+
+      // 確保 data 是陣列
+      if (!Array.isArray(data)) {
+        console.error("API 返回的資料不是陣列:", data);
+        setAppointments([]);
+        return;
+      }
 
       const formattedData = data.map((item) => ({
         appointment_id: item.appointment_id,
@@ -68,7 +83,8 @@ export default function AppointmentRecords() {
 
       setAppointments(formattedData);
     } catch (error) {
-      console.error(error);
+      console.error("取得預約記錄失敗:", error);
+      alert(`取得預約記錄失敗: ${error.message}`);
       setAppointments([]);
     } finally {
       setLoading(false);
@@ -134,6 +150,80 @@ export default function AppointmentRecords() {
 
   const formatTime = (timeString) => {
     return timeString.slice(0, 5);
+  };
+
+  const calculateRefund = (appointmentDate, appointmentTime) => {
+    const appointmentDateTime = new Date(`${appointmentDate}T${appointmentTime}`);
+    const now = new Date();
+    const diffMs = appointmentDateTime - now;
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+    const isSameDay = appointmentDateTime.toDateString() === now.toDateString();
+
+    if (isSameDay) {
+      return { percentage: 20, message: "若您於當天取消，將僅退回 20% 款項" };
+    } else if (diffDays <= 2) {
+      return { percentage: 50, message: "若您於2天內取消，將僅退回 50% 款項" };
+    } else {
+      return { percentage: 100, message: "若您於超過2天前取消，將全額退款" };
+    }
+  };
+
+  const handleCancelClick = (appointment) => {
+    const refund = calculateRefund(appointment.appointment_date, appointment.appointment_time);
+    setRefundInfo(refund);
+    setSelectedAppointment(appointment);
+    
+    const confirmed = window.confirm(
+      `${refund.message}\n\n確定要取消預約嗎？`
+    );
+    
+    if (confirmed) {
+      setShowCancelModal(true);
+    }
+  };
+
+  const handleSubmitCancel = async () => {
+    if (!cancelReason.trim()) {
+      alert("請輸入取消原因");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/cancel_appointment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          appointment_id: selectedAppointment.appointment_id,
+          cancellation_reason: cancelReason,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message);
+
+        setAppointments((prev) =>
+          prev.map((a) =>
+            a.appointment_id === selectedAppointment.appointment_id
+              ? { ...a, status: "已取消", cancellation_reason: cancelReason }
+              : a
+          )
+        );
+
+        setShowCancelModal(false);
+        setCancelReason("");
+        setSelectedAppointment(null);
+        // 重新載入預約列表
+        fetchAppointments();
+      } else {
+        alert(data.message || "取消失敗，請稍後再試");
+      }
+    } catch (error) {
+      console.error("取消失敗：", error);
+      alert("取消失敗，請稍後再試");
+    }
   };
 
   const filteredAppointments = appointments.filter(apt => filter === 'all' || apt.status === filter);
@@ -242,12 +332,22 @@ export default function AppointmentRecords() {
 
                   {/* 顯示取消原因（已取消狀態且有原因時）(保持不變) */}
                   {appointment.status === '已取消' && appointment.cancellation_reason && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                       <p className="text-sm text-red-800">
                         <span className="font-semibold">取消原因：</span>
                         <span className="text-red-700 font-normal ml-1">{appointment.cancellation_reason}</span>
                       </p>
                     </div>
+                  )}
+
+                  {/* 取消預約按鈕（只在已確認狀態時顯示） */}
+                  {appointment.status === "已確認" && (
+                    <button
+                      onClick={() => handleCancelClick(appointment)}
+                      className="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-2 rounded-lg transition mt-4"
+                    >
+                      取消預約
+                    </button>
                   )}
 
                  {/* 醫生建議（只在已完成時顯示） **重點調整區塊** */}
@@ -356,6 +456,55 @@ export default function AppointmentRecords() {
             </p>
           </div>
         </div>
+
+      {/* 取消預約模態框 */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 border border-gray-200">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-800">請說明取消原因</h3>
+              <button
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setCancelReason("");
+                }}
+                className="text-gray-500 hover:text-gray-700 transition"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-blue-600 font-medium mb-3">{refundInfo.message}</p>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="請輸入取消原因..."
+                className="text-gray-700 w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                rows="4"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setCancelReason("");
+                }}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2.5 rounded-lg transition"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSubmitCancel}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 rounded-lg transition"
+              >
+                確定取消預約
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
