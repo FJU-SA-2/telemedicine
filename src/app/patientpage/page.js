@@ -44,43 +44,61 @@ const AppointmentCard = ({ appointment, onJoinMeeting }) => {
     );
   }
 
+  
   return (
-    <div className="bg-[var(--color-lime-cream)] p-6 rounded-2xl shadow-xl border-l-4 border-blue-500 mb-10">
+    <div className="bg-[var(--color-lime-cream)]/30 p-6 rounded-2xl shadow-xl mb-10">
       <div className="flex justify-between items-start">
-        <div>
+        <div className="flex-1">
           <h3 className="text-2xl font-bold text-gray-900 mb-2">最近預約</h3>
           <p className="text-sm text-gray-500 mb-4">{appointment.date}</p>
-          <div className="flex flex-wrap items-center space-x-6">
-            <div className="flex items-center mb-2 md:mb-0">
+          
+          <div className="flex flex-wrap items-center gap-4 mb-4">
+            <div className="flex items-center">
               <User size={20} className="text-[var(--color-mahogany)] mr-2" />
-              <span className="text-lg font-medium">{appointment.doctor}</span>
+              <span className="text-lg font-medium">{appointment.doctor} 醫師</span>
             </div>
             <div className="flex items-center">
               <Clock size={20} className="text-[var(--color-mahogany)] mr-2" />
               <span className="text-lg font-medium">{appointment.time}</span>
             </div>
           </div>
+
+          {/* 科別顯示 */}
+          {appointment.specialty && (
+            <div className="inline-block bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium mb-3">
+              {appointment.specialty}
+            </div>
+          )}
         </div>
-        <div className="text-right">
-          <span className={`inline-block font-bold px-4 py-1 rounded-full text-sm mb-2 ${
+
+        <div className="text-right ml-4">
+          <span className={`inline-block font-bold px-4 py-1 rounded-full text-sm mb-3 ${
             appointment.status === '已確認' ? 'bg-green-100 text-green-700' :
             appointment.status === '已完成' ? 'bg-blue-100 text-blue-700' :
             'bg-yellow-100 text-yellow-700'
           }`}>
             {appointment.status}
           </span>
+          
+          {/* 倒數計時顯示 */}
           {appointment.countdown && (
-            <p className="text-sm text-gray-600 font-semibold">{appointment.countdown}</p>
+            <div className="mb-3">
+              <p className="text-sm text-gray-600 font-semibold bg-gray-100 px-3 py-2 rounded-lg">
+                ⏰ {appointment.countdown}
+              </p>
+            </div>
           )}
+          
+          {/* 進入診間按鈕 */}
           {appointment.canJoin ? (
             <button 
               onClick={() => onJoinMeeting(appointment.appointment_id)}
-              className="mt-3 bg-[var(--color-azure)] hover:bg-[var(--color-azure-dark)] text-white font-semibold px-4 py-2 rounded-lg transition-all"
+              className="w-full bg-[var(--color-azure)] hover:bg-[var(--color-azure-dark)] text-white font-semibold px-4 py-2 rounded-lg transition-all shadow-md hover:shadow-lg"
             >
-              進入診間
+              🎥 進入診間
             </button>
           ) : (
-            <button className="mt-3 bg-[var(--color-azure-light)] text-[var(--color-azure)] font-semibold px-4 py-2 rounded-lg cursor-not-allowed opacity-50">
+            <button className="w-full bg-gray-200 text-gray-500 font-semibold px-4 py-2 rounded-lg cursor-not-allowed">
               進入診間
             </button>
           )}
@@ -118,7 +136,7 @@ const HistorySidebar = ({ history, onViewAll }) => {
       <h3 className="text-2xl font-bold text-gray-800 mb-6">我的紀錄</h3>
       <ul className="space-y-4">
         {history.slice(0,5).map(item => (
-          <li key={item.appointment_id} className="flex items-center p-3  rounded-lg hover:bg-[var(--color-light-cyan)] transition-colors cursor-pointer">
+          <li key={item.appointment_id} className="flex items-center p-3  rounded-lg hover:bg-[var(--color-light-cyan)]/30 transition-colors cursor-pointer">
             <div className="mr-3 p-2 bg-white rounded-full shadow-sm border border-gray-100">
               {getIcon(item.status)}
             </div>
@@ -190,35 +208,133 @@ export default function Page() {
 
   // 載入即將預約
   useEffect(() => {
-    const fetchUpcoming = async () => {
-      try {
-        const res = await fetch("http://localhost:5000/api/appointments/", { credentials: 'include' });
-        if (res.ok) {
-          const appointments = await res.json();
-          if (appointments.length > 0) {
-            const apt = appointments[0];
-            setUpcomingAppointment({
-              appointment_id: apt.appointment_id,
-              doctor: `${apt.doctor_last_name}${apt.doctor_first_name} 醫師`,
-              specialty: apt.doctor_specialty,
-              time: `${apt.appointment_date} ${apt.appointment_time}`,
-              status: apt.status,
-              date: apt.appointment_date,
-              countdown: apt.minutes_since_appointment !== undefined 
-                ? `${apt.minutes_since_appointment >=0 ? '已過':'尚餘'} ${Math.abs(apt.minutes_since_appointment)} 分鐘`
-                : null,
-              canJoin: apt.can_join || false
-            });
-          }
+  const fetchUpcoming = async () => {
+    try {
+      const res = await fetch("/api/appointments/", { 
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
         }
-      } catch (err) {
-        console.error("載入預約失敗:", err);
+      });
+
+      console.log('API Response Status:', res.status); // 除錯用
+
+      if (!res.ok) {
+        console.error('API 回應錯誤:', res.status, res.statusText);
+        return;
       }
-    };
-    fetchUpcoming();
-    const interval = setInterval(fetchUpcoming, 60000);
-    return () => clearInterval(interval);
-  }, []);
+
+      const appointments = await res.json();
+      console.log('取得的預約資料:', appointments); // 除錯用
+
+      if (!appointments || appointments.length === 0) {
+        console.log('沒有預約資料');
+        setUpcomingAppointment(null);
+        return;
+      }
+
+      // 處理第一筆預約（最近的預約）
+      const apt = appointments[0];
+      
+      // 檢查必要欄位是否存在
+      if (!apt.appointment_id || !apt.appointment_date) {
+        console.error('預約資料格式錯誤:', apt);
+        return;
+      }
+
+      // 計算時間差
+      const appointmentDateTime = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
+      const now = new Date();
+      const diffMinutes = Math.floor((appointmentDateTime - now) / (1000 * 60));
+      
+      // 判斷是否可以進入診間（預約時間前15分鐘到預約時間後30分鐘）
+      const canJoin = diffMinutes >= -30 && diffMinutes <= 15;
+
+      setUpcomingAppointment({
+        appointment_id: apt.appointment_id,
+        doctor: `${apt.doctor_last_name || ''}${apt.doctor_first_name || ''} 醫師`,
+        specialty: apt.doctor_specialty || '未指定科別',
+        time: `${apt.appointment_date} ${apt.appointment_time}`,
+        status: apt.status || '未確認',
+        date: apt.appointment_date,
+        countdown: diffMinutes >= 0 
+          ? `尚餘 ${diffMinutes} 分鐘` 
+          : `已過 ${Math.abs(diffMinutes)} 分鐘`,
+        canJoin: canJoin
+      });
+
+    } catch (err) {
+      console.error("載入預約失敗:", err);
+      setUpcomingAppointment(null);
+    }
+  };
+
+  fetchUpcoming();
+  const interval = setInterval(fetchUpcoming, 60000); // 每分鐘更新
+  return () => clearInterval(interval);
+}, []);
+
+useEffect(() => {
+  const fetchUpcomingAlternative = async () => {
+    try {
+      const res = await fetch("/api/record", { 
+        credentials: 'include' 
+      });
+
+      if (!res.ok) {
+        console.error('API 回應錯誤:', res.status);
+        return;
+      }
+
+      const allAppointments = await res.json();
+      console.log('所有預約資料:', allAppointments);
+
+      // 篩選「已確認」的預約
+      const confirmedAppointments = allAppointments.filter(
+        apt => apt.status === '已確認'
+      );
+
+      if (confirmedAppointments.length === 0) {
+        setUpcomingAppointment(null);
+        return;
+      }
+
+      // 按日期時間排序，取最近的一筆
+      const sortedAppointments = confirmedAppointments.sort((a, b) => {
+        const dateA = new Date(`${a.appointment_date}T${a.appointment_time}`);
+        const dateB = new Date(`${b.appointment_date}T${b.appointment_time}`);
+        return dateA - dateB;
+      });
+
+      const apt = sortedAppointments[0];
+      const appointmentDateTime = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
+      const now = new Date();
+      const diffMinutes = Math.floor((appointmentDateTime - now) / (1000 * 60));
+      const canJoin = diffMinutes >= -30 && diffMinutes <= 15;
+
+      setUpcomingAppointment({
+        appointment_id: apt.appointment_id,
+        doctor: `${apt.last_name || ''}${apt.first_name || ''} 醫師`,
+        specialty: apt.doctor_specialty || '未指定科別',
+        time: `${apt.appointment_date} ${apt.appointment_time}`,
+        status: apt.status,
+        date: apt.appointment_date,
+        countdown: diffMinutes >= 0 
+          ? `尚餘 ${diffMinutes} 分鐘` 
+          : `已過 ${Math.abs(diffMinutes)} 分鐘`,
+        canJoin: canJoin
+      });
+
+    } catch (err) {
+      console.error("載入預約失敗:", err);
+      setUpcomingAppointment(null);
+    }
+  };
+
+  fetchUpcomingAlternative();
+  const interval = setInterval(fetchUpcomingAlternative, 60000);
+  return () => clearInterval(interval);
+}, []);
 
   // 載入歷史紀錄
   useEffect(() => {

@@ -31,7 +31,7 @@ export default function Navbar() {
             <img 
                   src="/images/logo.png"
                   alt="MedonGO Logo"
-                  className="h-16"
+                  className="h-12"
                 />
           <img 
                   src="/images/logo3.png"

@@ -389,7 +389,7 @@ const handleSave = async () => {
   )}
 
   <button
-    onClick={() => router.push("/pricing")}
+    onClick={() => router.push("/plan")}
     className="mt-4 w-full py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition"
   >
     查看方案 & 升級
@@ -1019,23 +1019,6 @@ const handleSave = async () => {
           setDoctorForm({ ...doctorForm, education: e.target.value })
         }
         rows="2"
-        className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-      />
-    </div>
-
-
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">掛號費</label>
-      <input
-        type="number"
-        name="consultation_fee"
-        value={doctorForm.consultation_fee}
-        onChange={(e) =>
-          setDoctorForm({
-            ...doctorForm,
-            consultation_fee: parseInt(e.target.value) || 0,
-          })
-        }
         className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       />
     </div>

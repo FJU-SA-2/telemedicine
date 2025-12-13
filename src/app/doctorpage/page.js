@@ -15,9 +15,6 @@ import {
   Menu,
 } from "lucide-react";
 
-// 假設這些顏色變數已在全域 CSS 或 Tailwind Config 中定義
-// --color-mahogany, --color-lime-cream, --color-azure, --color-periwinkle, --color-light-cyan
-
 const TelemedicineDashboard = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [isOpen, setIsOpen] = useState(false);

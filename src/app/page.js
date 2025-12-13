@@ -108,7 +108,7 @@ export default function HomePage() {
                 <img
                     src="/images/logo.png"
                     alt="New Telehealth Logo"
-                    className="h-16 w-auto"
+                    className="h-12 w-auto"
                   />
                 <img 
                   src="/images/logo3.png"
@@ -151,7 +151,7 @@ export default function HomePage() {
                   </h2>
                   {/* 描述文字調大為 text-xl */}
                   <p className="text-gray-500 text-xl mb-8 max-w-md mx-auto md:mx-0">
-                    走到哪裡， 醫師就跟到哪裡<br></br>
+                    走到哪， 醫師就在哪<br></br>
                     隨時隨地，輕鬆看診
                   </p>
                   
@@ -213,7 +213,7 @@ export default function HomePage() {
                         <div className="flex-1 p-6 md:p-12">
                             <h4 className="text-3xl font-bold text-gray-900 mb-6">即時互動，細節不遺漏</h4>
                             <p className="text-gray-600 mb-8 max-w-2xl">
-                                我們採用業界領先的**加密視訊技術**，確保醫師在診斷過程中，能清晰地觀察您的狀況，提供如同面對面一般的診斷品質。所有看診過程皆經過高度隱私保護。
+                                收藏、預約、線上支付，一站完成。無需繁瑣手續，讓您專注於健康管理。
                             </p>
                             
                             {/* 視覺卡片：替換為引用 CSS 變數 */}
@@ -223,12 +223,12 @@ export default function HomePage() {
                                     <p className={`text-sm text-[var(--color-azure)]/80`}>影像細節清晰</p>
                                 </div>
                                 <div className={`p-4 bg-gradient-to-br from-[var(--color-lime-cream)]/10 to-[var(--color-lime-cream)]/15 rounded-xl border border-[var(--color-lime-cream)]/50 shadow-lg flex flex-col items-start justify-center`}>
-                                    <span className={`text-2xl font-bold text-[var(--color-mahogany)]`}>AES-256</span> {/* 紅木色作為深色點綴 */}
-                                    <p className={`text-sm text-[var(--color-mahogany)]/80`}>軍用級加密</p>
+                                    <span className={`text-2xl font-bold text-[var(--color-mahogany)]`}>就醫紀錄儲存</span> {/* 紅木色作為深色點綴 */}
+                                    <p className={`text-sm text-[var(--color-mahogany)]/80`}>不怕忘記看診細節</p>
                                 </div>
                                 <div className={`p-4 bg-gradient-to-br from-[var(--color-azure)]/10 to-[var(--color-azure)]/15 rounded-xl border border-[var(--color-azure)]/50 shadow-lg flex flex-col items-start justify-center`}>
-                                    <span className={`text-2xl font-bold drop-shadow`}>低延遲</span> 
-                                    <p className={`text-sm drop-shadow`}>即時流暢溝通</p>
+                                    <span className={`text-2xl font-bold drop-shadow`}>經驗分享區</span> 
+                                    <p className={`text-sm drop-shadow`}>交流看診心得</p>
                                 </div>
                             </div></div>
                         </div>
@@ -265,7 +265,7 @@ export default function HomePage() {
                         <div className="flex-1 p-6 md:p-12">
                             <h4 className="text-3xl font-bold text-gray-900 mb-6">不用出門，在家即可享有專業照護</h4>
                             <p className="text-gray-600 text-lg max-w-3xl mb-8">
-                                我們嚴格篩選合作醫師，確保所有在平台上的執業醫師皆具備**專業認證**和**豐富經驗**。無論您需要皮膚科、家醫科或心理諮詢，都能隨時隨地，快速找到合適的專業人士。
+                                我們嚴格篩選合作醫師，確保所有在平台上的執業醫師皆具備專業認證和豐富經驗。無論您需要皮膚科、家醫科或心理諮詢，都能隨時隨地，快速找到合適的專業人士。
                             </p>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                 {/* 替換為引用 CSS 變數 */}
@@ -278,7 +278,7 @@ export default function HomePage() {
                                     <p className={`text-sm text-[var(--color-mahogany)]/80`}>不怕突發狀況</p>
                                 </div>
                                 <div className={`p-4 bg-gradient-to-br from-[var(--color-mahogany)]/5 to-[var(--color-mahogany)]/8 rounded-xl border border-[var(--color-mahogany)]/30 shadow-lg flex flex-col items-start justify-center`}>
-                                    <span className={`text-2xl font-bold text-[var(--color-mahogany)]`}>一站式電子處方與藥物遞送</span>
+                                    <span className={`text-2xl font-bold text-[var(--color-mahogany)]`}>達到真正的遠距醫療</span>
                                     <p className={`text-sm text-[var(--color-mahogany)]/80`}>達到真正的遠距醫療</p>
                                 </div>
                             </div>
