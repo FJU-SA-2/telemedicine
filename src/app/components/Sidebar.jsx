@@ -57,7 +57,6 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     { id: "/facetime", label: "視訊看診", icon: Video, href: "/pfacetime", requiresAuth: true },
     { id: "/experience", label: "經驗分享區", icon: MessageCircleMore, href: "/experience", requiresAuth: false },
     { id: "/feedback", label: "問題回報", icon: MessageCircleMore, href: "/feedback", requiresAuth: true },
-    { id: "/settings", label: "以後再想", icon: Settings, href: "/settings", requiresAuth: false },
   ];
 
   return (
