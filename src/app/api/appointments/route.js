@@ -65,7 +65,7 @@ export async function POST(request) {
       `INSERT INTO appointments 
        (patient_id, doctor_id, appointment_date, appointment_time, status, symptoms, payment_method, amount) 
        VALUES (?, ?, ?, ?, '已確認', ?, ?, ?)`,
-      [patient_id, doctor_id, appointment_date, appointment_time, symptoms || null, payment_method || null, amount || 500]
+      [patient_id, doctor_id, appointment_date, appointment_time, symptoms || null, payment_method || null, amount || 250]
     );
 
     const appointmentId = result.insertId;
@@ -88,7 +88,7 @@ export async function POST(request) {
 🏢 執業醫院: ${doctor.practice_hospital}
 
 💳 付款方式: ${payment_method || '未指定'}
-💰 費用: NT$ ${amount || 500}
+💰 費用: NT$ ${amount || 250}
 
 ⚠️ 請在預約時間前 10 分鐘準備好進入視訊會議室
 📱 系統將會提前提醒您`;

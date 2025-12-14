@@ -98,7 +98,7 @@ function BookingPage({ doctors, schedules, setSchedules }) {
           symptoms: bookingData.symptoms,
           payment_method: bookingData.paymentMethod,
           appointment_type: bookingData.appointmentType,
-          amount: 500
+          amount: 250
         }),
         credentials: "include",
       });
