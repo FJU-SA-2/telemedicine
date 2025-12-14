@@ -102,7 +102,6 @@ function FeedbackList() {
 
   return (
     <>
-      {/* 統計卡片 */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border">
         <div className="flex items-center space-x-3">
           <FileText className="text-indigo-600" size={24} />
@@ -113,7 +112,6 @@ function FeedbackList() {
         </div>
       </div>
 
-      {/* 回報列表 */}
       {feedbacks.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm p-12 text-center border">
           <Clock className="mx-auto text-gray-300 mb-4" size={48} />
@@ -205,6 +203,7 @@ export default function AdminDashboard() {
     fetchPendingDoctors();
   }, []);
 
+  // 修正：當 activeTab, userType 或 searchQuery 改變時重新載入資料
   useEffect(() => {
     if (activeTab === 'users') {
       fetchUsers();
@@ -212,6 +211,15 @@ export default function AdminDashboard() {
       fetchRatings();
     }
   }, [activeTab, userType, searchQuery]);
+
+  // 修正：清理證書 URL 以防止記憶體洩漏
+  useEffect(() => {
+    return () => {
+      if (certificateUrl) {
+        URL.revokeObjectURL(certificateUrl);
+      }
+    };
+  }, [certificateUrl]);
 
   const fetchPendingDoctors = async () => {
     try {
@@ -240,7 +248,7 @@ export default function AdminDashboard() {
 
   const fetchUsers = async () => {
     try {
-      const url = `/api/admin/users?type=${userType}${searchQuery ? `&search=${searchQuery}` : ''}`;
+      const url = `/api/admin/users?type=${userType}${searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : ''}`;
       
       const res = await fetch(url, {
         credentials: 'include',
@@ -383,53 +391,21 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleToggleUserStatus = async (userId, currentStatus) => {
-    const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-    const action = newStatus === 'suspended' ? '停用' : '啟用';
-
-    if (!confirm(`確定要${action}此使用者嗎?`)) return;
-
-    try {
-      const res = await fetch(`/api/admin/toggle-user-status/${userId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        alert(`使用者已${action}`);
-        fetchUsers();
-      } else {
-        alert(data.message || '操作失敗');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('操作失敗');
-    }
-  };
-
   const handleLogout = async () => {
     if (confirm('確定要登出嗎?')) {
       try {
-        // 調用後端登出 API
         await fetch('/api/admin/logout', {
           method: 'POST',
           credentials: 'include',
         });
 
-        // 清除本地存儲的用戶資訊
         localStorage.removeItem('user_id');
         localStorage.removeItem('user_type');
         localStorage.removeItem('email');
         
-        // 跳轉到登入頁面（身份選擇頁）
         router.push('/login');
       } catch (err) {
         console.error('登出錯誤:', err);
-        // 即使 API 調用失敗，仍然清除本地資訊並跳轉
         localStorage.removeItem('user_id');
         localStorage.removeItem('user_type');
         localStorage.removeItem('email');
@@ -496,7 +472,6 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col">
       
-       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
@@ -522,7 +497,6 @@ export default function AdminDashboard() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full">
         
-           {/* 導覽按鈕 */}
         <div className="bg-white rounded-xl shadow-sm p-2 mb-6 border flex space-x-2">
           <button
             onClick={() => setActiveTab('doctors')}
@@ -558,10 +532,8 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-             {/* 待審核醫師頁面 */}
         {activeTab === 'doctors' && (
           <>
-            {/* Stats */}
             <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border">
               <div className="flex items-center space-x-3">
                 <Clock className="text-orange-500" size={24} />
@@ -572,7 +544,6 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-             {/* Doctors List */}
             {doctors.length === 0 ? (
               <div className="bg-white rounded-xl shadow-sm p-12 text-center border">
                 <Clock className="mx-auto text-gray-300 mb-4" size={48} />
@@ -662,7 +633,10 @@ export default function AdminDashboard() {
           <>
             <div className="bg-white rounded-xl shadow-sm p-4 mb-6 border flex space-x-2">
               <button
-                onClick={() => setUserType('doctor')}
+                onClick={() => {
+                  setUserType('doctor');
+                  setSearchQuery('');
+                }}
                 className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
                   userType === 'doctor' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
                 }`}
@@ -670,7 +644,10 @@ export default function AdminDashboard() {
                 醫師管理
               </button>
               <button
-                onClick={() => setUserType('patient')}
+                onClick={() => {
+                  setUserType('patient');
+                  setSearchQuery('');
+                }}
                 className={`flex-1 px-6 py-3 rounded-lg font-medium transition-colors ${
                   userType === 'patient' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
                 }`}
@@ -679,7 +656,6 @@ export default function AdminDashboard() {
               </button>
             </div>
             
-            {/* 新增搜尋欄位 */}
             <div className="mb-6">
               <input
                 type="text"
@@ -705,7 +681,9 @@ export default function AdminDashboard() {
             {users.length === 0 ? (
               <div className="bg-white rounded-xl shadow-sm p-12 text-center border">
                 <Users className="mx-auto text-gray-300 mb-4" size={48} />
-                <p className="text-gray-500 text-lg">目前沒有{userType === 'doctor' ? '醫師' : '患者'}資料</p>
+                <p className="text-gray-500 text-lg">
+                  {searchQuery ? '找不到符合的結果' : `目前沒有${userType === 'doctor' ? '醫師' : '患者'}資料`}
+                </p>
               </div>
             ) : (
               <div className="grid gap-6">
@@ -761,26 +739,6 @@ export default function AdminDashboard() {
 
                       <div className="flex items-center space-x-3">
                         <button
-                          onClick={() => handleToggleUserStatus(user.user_id, user.account_status)}
-                          className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                            user.account_status === 'active'
-                              ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-                              : 'bg-green-600 text-white hover:bg-green-700'
-                          }`}
-                        >
-                          {user.account_status === 'active' ? (
-                            <>
-                              <XCircle size={18} />
-                              <span>停用帳號</span>
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle size={18} />
-                              <span>啟用帳號</span>
-                            </>
-                          )}
-                        </button>
-                        <button
                           onClick={() => handleDeleteUser(user.user_id, userType)}
                           className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                         >
@@ -796,7 +754,6 @@ export default function AdminDashboard() {
           </>
         )}
 
-        {/* 評論管理頁面 */}
         {activeTab === 'ratings' && (
           <>
             <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border">
@@ -864,7 +821,6 @@ export default function AdminDashboard() {
           </>
         )}
 
-        {/* 病患問題回報頁面 */}
         {activeTab === 'feedback' && <FeedbackList />}
       </main>
 
