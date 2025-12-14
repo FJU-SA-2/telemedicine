@@ -94,7 +94,7 @@ const AppointmentCard = ({ appointment, onJoinMeeting }) => {
           {appointment.canJoin ? (
             <button 
               onClick={() => onJoinMeeting(appointment.appointment_id)}
-              className="w-full bg-[var(--color-azure)] hover:bg-[var(--color-azure-dark)] text-white font-semibold px-4 py-2 rounded-lg transition-all shadow-md hover:shadow-lg"
+              className="w-full bg-[var(--color-azure)] hover:bg-[var(--color-lime-cream)]/80 text-white font-semibold px-4 py-2 rounded-lg transition-all shadow-md hover:shadow-lg"
             >
               🎥 進入診間
             </button>
@@ -207,177 +207,141 @@ export default function Page() {
     fetchUserData();
   }, []);
 
-  // 載入即將預約
+  // 載入未來預約和歷史紀錄
   useEffect(() => {
-  const fetchUpcoming = async () => {
-    try {
-      const res = await fetch("/api/appointments/", { 
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log('API Response Status:', res.status); // 除錯用
-
-      if (!res.ok) {
-        console.error('API 回應錯誤:', res.status, res.statusText);
-        return;
-      }
-
-      const appointments = await res.json();
-      console.log('取得的預約資料:', appointments); // 除錯用
-
-      if (!appointments || appointments.length === 0) {
-        console.log('沒有預約資料');
-        setUpcomingAppointment(null);
-        return;
-      }
-
-      // 處理第一筆預約（最近的預約）
-      const apt = appointments[0];
-      
-      // 檢查必要欄位是否存在
-      if (!apt.appointment_id || !apt.appointment_date) {
-        console.error('預約資料格式錯誤:', apt);
-        return;
-      }
-
-      // 計算時間差
-      const appointmentDateTime = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
-      const now = new Date();
-      const diffMinutes = Math.floor((appointmentDateTime - now) / (1000 * 60));
-      
-      // 判斷是否可以進入診間（預約時間前15分鐘到預約時間後30分鐘）
-      const canJoin = diffMinutes >= -30 && diffMinutes <= 15;
-
-      setUpcomingAppointment({
-        appointment_id: apt.appointment_id,
-        doctor: `${apt.doctor_last_name || ''}${apt.doctor_first_name || ''} 醫師`,
-        specialty: apt.doctor_specialty || '未指定科別',
-        time: `${apt.appointment_date} ${apt.appointment_time}`,
-        status: apt.status || '未確認',
-        date: apt.appointment_date,
-        countdown: diffMinutes >= 0 
-          ? `尚餘 ${diffMinutes} 分鐘` 
-          : `已過 ${Math.abs(diffMinutes)} 分鐘`,
-        canJoin: canJoin
-      });
-
-    } catch (err) {
-      console.error("載入預約失敗:", err);
-      setUpcomingAppointment(null);
-    }
-  };
-
-  fetchUpcoming();
-  const interval = setInterval(fetchUpcoming, 60000); // 每分鐘更新
-  return () => clearInterval(interval);
-}, []);
-
-useEffect(() => {
-  const fetchUpcomingAlternative = async () => {
-    try {
-      const res = await fetch("/api/record", { 
-        credentials: 'include' 
-      });
-
-      if (!res.ok) {
-        console.error('API 回應錯誤:', res.status);
-        return;
-      }
-
-      const allAppointments = await res.json();
-      console.log('所有預約資料:', allAppointments);
-
-      // 篩選「已確認」的預約
-      const confirmedAppointments = allAppointments.filter(
-        apt => apt.status === '已確認'
-      );
-
-      if (confirmedAppointments.length === 0) {
-        setUpcomingAppointment(null);
-        return;
-      }
-
-      // 按日期時間排序，取最近的一筆
-      const sortedAppointments = confirmedAppointments.sort((a, b) => {
-        const dateA = new Date(`${a.appointment_date}T${a.appointment_time}`);
-        const dateB = new Date(`${b.appointment_date}T${b.appointment_time}`);
-        return dateA - dateB;
-      });
-
-      const apt = sortedAppointments[0];
-      const appointmentDateTime = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
-      const now = new Date();
-      const diffMinutes = Math.floor((appointmentDateTime - now) / (1000 * 60));
-      const canJoin = diffMinutes >= -30 && diffMinutes <= 15;
-
-      setUpcomingAppointment({
-        appointment_id: apt.appointment_id,
-        doctor: `${apt.last_name || ''}${apt.first_name || ''} 醫師`,
-        specialty: apt.doctor_specialty || '未指定科別',
-        time: `${apt.appointment_date} ${apt.appointment_time}`,
-        status: apt.status,
-        date: apt.appointment_date,
-        countdown: diffMinutes >= 0 
-          ? `尚餘 ${diffMinutes} 分鐘` 
-          : `已過 ${Math.abs(diffMinutes)} 分鐘`,
-        canJoin: canJoin
-      });
-
-    } catch (err) {
-      console.error("載入預約失敗:", err);
-      setUpcomingAppointment(null);
-    }
-  };
-
-  fetchUpcomingAlternative();
-  const interval = setInterval(fetchUpcomingAlternative, 60000);
-  return () => clearInterval(interval);
-}, []);
-
-  // 載入歷史紀錄
-  useEffect(() => {
-    const fetchHistory = async () => {
+    const fetchAppointments = async () => {
       try {
         setLoading(true);
         const res = await fetch("/api/record", { credentials: 'include' });
-        if (res.ok) {
-          const data = await res.json();
-          setAppointmentHistory(data.map(item => ({
-            appointment_id: item.appointment_id,
-            doctor_name: `${item.last_name}${item.first_name}`,
-            specialty: item.doctor_specialty,
-            appointment_date: item.appointment_date,
-            appointment_time: item.appointment_time,
-            status: item.status
-          })));
+        
+        if (!res.ok) {
+          console.error('API 回應錯誤:', res.status);
+          return;
         }
+
+        const allAppointments = await res.json();
+        console.log('所有預約資料:', allAppointments);
+        
+        const now = new Date();
+
+        // === 處理未來預約 ===
+        // 修改篩選條件：保留「已確認」且「尚未過期超過10分鐘」的預約
+        const futureConfirmedAppointments = allAppointments.filter(apt => {
+          if (apt.status !== '已確認') return false;
+          const appointmentDateTime = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
+          const diffMinutes = Math.floor((appointmentDateTime - now) / (1000 * 60));
+          // 保留未來的預約，以及過期但不超過10分鐘的預約
+          return diffMinutes > -10;
+        });
+
+        if (futureConfirmedAppointments.length > 0) {
+          const sortedFuture = futureConfirmedAppointments.sort((a, b) => {
+            const dateA = new Date(`${a.appointment_date}T${a.appointment_time}`);
+            const dateB = new Date(`${b.appointment_date}T${b.appointment_time}`);
+            return dateA - dateB;
+          });
+
+          const apt = sortedFuture[0];
+          const appointmentDateTime = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
+          const diffMinutes = Math.floor((appointmentDateTime - now) / (1000 * 60));
+          // 修改為：預約時間前15分鐘到預約時間後10分鐘可以進入
+          const canJoin = diffMinutes >= -10 && diffMinutes <= 15;
+
+          // 計算倒數時間顯示
+          let countdownText = '';
+          if (diffMinutes >= 0) {
+            const days = Math.floor(diffMinutes / (60 * 24));
+            const hours = Math.floor((diffMinutes % (60 * 24)) / 60);
+            const mins = diffMinutes % 60;
+            
+            if (days > 0) {
+              countdownText = `尚餘 ${days} 天 ${hours} 小時`;
+            } else if (hours > 0) {
+              countdownText = `尚餘 ${hours} 小時 ${mins} 分鐘`;
+            } else {
+              countdownText = `尚餘 ${mins} 分鐘`;
+            }
+          } else {
+            const absDiffMinutes = Math.abs(diffMinutes);
+            const days = Math.floor(absDiffMinutes / (60 * 24));
+            const hours = Math.floor((absDiffMinutes % (60 * 24)) / 60);
+            const mins = absDiffMinutes % 60;
+            
+            if (days > 0) {
+              countdownText = `已過 ${days} 天 ${hours} 小時`;
+            } else if (hours > 0) {
+              countdownText = `已過 ${hours} 小時 ${mins} 分鐘`;
+            } else {
+              countdownText = `已過 ${mins} 分鐘`;
+            }
+          }
+
+          setUpcomingAppointment({
+            appointment_id: apt.appointment_id,
+            doctor: `${apt.last_name || ''}${apt.first_name || ''} 醫師`,
+            specialty: apt.doctor_specialty || '未指定科別',
+            time: apt.appointment_time ? apt.appointment_time.slice(0, 5) : '', // 只顯示到分鐘 HH:MM
+            status: apt.status,
+            date: apt.appointment_date,
+            countdown: countdownText,
+            canJoin: canJoin
+          });
+        } else {
+          setUpcomingAppointment(null);
+        }
+
+        // === 處理歷史紀錄 ===
+        // 只保留「已過期超過10分鐘」的預約
+        const pastAppointments = allAppointments.filter(item => {
+          const appointmentDateTime = new Date(`${item.appointment_date}T${item.appointment_time}`);
+          const diffMinutes = Math.floor((appointmentDateTime - now) / (1000 * 60));
+          // 只保留過期超過10分鐘的預約
+          return diffMinutes <= -10;
+        });
+
+        const sortedPastAppointments = pastAppointments.sort((a, b) => {
+          const dateA = new Date(`${a.appointment_date}T${a.appointment_time}`);
+          const dateB = new Date(`${b.appointment_date}T${b.appointment_time}`);
+          return dateB - dateA;
+        });
+
+        setAppointmentHistory(sortedPastAppointments.map(item => ({
+          appointment_id: item.appointment_id,
+          doctor_name: `${item.last_name}${item.first_name}`,
+          specialty: item.doctor_specialty,
+          appointment_date: item.appointment_date,
+          appointment_time: item.appointment_time,
+          status: item.status
+        })));
+
       } catch (err) {
-        console.error("載入歷史紀錄失敗:", err);
+        console.error("載入預約資料失敗:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchHistory();
+
+    fetchAppointments();
+    const interval = setInterval(fetchAppointments, 60000); // 每分鐘更新
+    return () => clearInterval(interval);
   }, []);
 
-  const MAX_FEATURED_ITEMS = 11; // 設置最大顯示數量為 8 (可依需求調整)
+  const MAX_FEATURED_ITEMS = 11;
 
   // 衛教輪播自動播放
   useEffect(() => {
     if (!autoPlay || info.length === 0) return;
-    // 調整 Math.min(info.length, 3) 為 Math.min(info.length, MAX_FEATURED_ITEMS)
     const timer = setInterval(() => setCurrentSlide((prev) => (prev + 1) % Math.min(info.length, MAX_FEATURED_ITEMS)), 5000); 
     return () => clearInterval(timer);
   }, [autoPlay, info.length]);
 
   const selectedItem = info.find(item => item.id === selectedId);
   const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % Math.min(info.length, MAX_FEATURED_ITEMS));
-  const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + Math.min(info.length, MAX_FEATURED_ITEMS)) % Math.min(info.length, MAX_FEATURED_ITEMS));  const handleAddAppointment = () => window.location.href = '/reserve';
+  const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + Math.min(info.length, MAX_FEATURED_ITEMS)) % Math.min(info.length, MAX_FEATURED_ITEMS));
+  
+  const handleAddAppointment = () => window.location.href = '/reserve';
   const handleViewAllHistory = () => window.location.href = '/record';
-  const handleJoinMeeting = (id) => window.location.href = `/videochat?appointment_id=${id}`;
+  const handleJoinMeeting = (id) => window.location.href = `/pfacetime?appointment_id=${id}`;
 
   if (loading || !user) {
     return (
@@ -394,17 +358,17 @@ useEffect(() => {
   const userName = user.first_name && user.last_name ? `${user.last_name}${user.first_name}` : user.username;
 
   const softColors = [
-    "from-blue-100 via-blue-50 to-indigo-100",      // 柔和藍色
-    "from-pink-100 via-rose-50 to-purple-100",      // 柔和粉紫
-    "from-green-100 via-emerald-50 to-teal-100",    // 柔和綠色
-    "from-amber-100 via-yellow-50 to-orange-100",   // 柔和橙黃
-    "from-purple-100 via-violet-50 to-pink-100",    // 柔和紫粉
-    "from-cyan-100 via-sky-50 to-blue-100",         // 柔和青藍
-    "from-rose-100 via-pink-50 to-red-100",         // 柔和玫瑰
-    "from-teal-100 via-cyan-50 to-emerald-100",     // 柔和青綠
-    "from-orange-100 via-amber-50 to-yellow-100",   // 柔和橘黃
-    "from-indigo-100 via-blue-50 to-cyan-100",      // 柔和靛青
-    "from-violet-100 via-purple-50 to-fuchsia-100", // 柔和紫紅
+    "from-blue-100 via-blue-50 to-indigo-100",
+    "from-pink-100 via-rose-50 to-purple-100",
+    "from-green-100 via-emerald-50 to-teal-100",
+    "from-amber-100 via-yellow-50 to-orange-100",
+    "from-purple-100 via-violet-50 to-pink-100",
+    "from-cyan-100 via-sky-50 to-blue-100",
+    "from-rose-100 via-pink-50 to-red-100",
+    "from-teal-100 via-cyan-50 to-emerald-100",
+    "from-orange-100 via-amber-50 to-yellow-100",
+    "from-indigo-100 via-blue-50 to-cyan-100",
+    "from-violet-100 via-purple-50 to-fuchsia-100",
   ];
 
   return (
@@ -599,7 +563,7 @@ useEffect(() => {
                 <div className="mt-8 pt-6 border-t border-gray-200">
                   <div className="flex items-center text-sm text-gray-500">
                     <BookOpen size={18} className="mr-2 text-blue-500" />
-                    <span className="font-semibold mr-2">資料來源：</span>
+                    <span className="font-semibold mr-2">資料來源:</span>
                     {selectedItem.source}
                   </div>
                 </div>

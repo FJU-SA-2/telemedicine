@@ -31,6 +31,10 @@ export default function DoctorSidebar({ isOpen, setIsOpen, approvalStatus }) {
     { id: "/docfeedback", label: "問題回報", icon: MessageCircleMore, href: "/docfeedback" },
     { id: "/settings", label: "設定", icon: Settings, href: "/settings" },
   ];
+  // 為了確保主色調能被正確引用 (這是從 globals.css 中取值)
+  const COLOR_AZURE = "var(--color-azure)"; 
+  const COLOR_PERIWINKLE = "var(--color-periwinkle)"; 
+  const COLOR_LIGHT_CYAN = "var(--color-light-cyan)";
 
   // 如果 approvalStatus 是 undefined，表示還在載入中，不顯示鎖定
   const isApproved = approvalStatus === "approved" || approvalStatus === "已核准";
@@ -45,7 +49,7 @@ export default function DoctorSidebar({ isOpen, setIsOpen, approvalStatus }) {
 
   return (
     <div
-      className={`fixed top-0 left-0 h-full w-64 bg-white text-gray-900 transform
+      className={`fixed top-0 left-0 h-full w-64 bg-[var(--background)]/50 text-gray-900 transform
         ${isOpen ? "translate-x-0" : "-translate-x-full"}
         transition-transform duration-300 ease-in-out z-40 shadow-lg`}
     >
@@ -83,10 +87,10 @@ export default function DoctorSidebar({ isOpen, setIsOpen, approvalStatus }) {
               onClick={(e) => handleClick(e, item)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-all relative
                 ${isLocked 
-                  ? "text-gray-400 bg-gray-50 cursor-not-allowed opacity-60" 
+                  ? `bg-[var(--color-light-cyan)]/ text-gray-400 shadow-md` 
                   : isActive
-                    ? "bg-blue-500 text-white shadow-md"
-                    : "text-gray-700 hover:bg-gray-100 cursor-pointer"
+                  ? `text-white bg-[var(--color-azure)]/80 cursor-pointer`
+                  : `text-gray-700 hover:bg-[var(--color-periwinkle)]`
                 }`}
             >
               <Icon size={20} />

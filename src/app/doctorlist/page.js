@@ -6,10 +6,15 @@ import Navbar from "../components/Navbar";
 import LockedPageOverlay from "../components/LockedPageOverlay";
 import FloatingChat from "../components/FloatingChat";
 
+const COLOR_MAHOGANY = "var(--color-mahogany)"; 
+const COLOR_LIME_CREAM = "var(--color-lime-cream)"; 
+const COLOR_AZURE = "var(--color-azure)"; 
+const COLOR_PERIWINKLE = "var(--color-periwinkle)"; 
+const COLOR_LIGHT_CYAN = "var(--color-light-cyan)"; 
 // ✅ 新增：登入提示彈窗組件
 function LoginRequiredModal({ onClose, onLogin, onRegister }) {
   return (
-    <div className="fixed inset-0 backdrop-blur-sm bg-opacity-20 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 backdrop-blur-sm bg-[var(--color-periwinkle)]/20 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative">
         <button
           onClick={onClose}
@@ -19,7 +24,7 @@ function LoginRequiredModal({ onClose, onLogin, onRegister }) {
         </button>
 
         <div className="flex flex-col items-center mb-6">
-          <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4 relative">
+          <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4 relative">
             <Heart size={48} className="text-gray-300" />
             <div className="absolute bottom-0 right-0 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
               <CircleAlert size={18} className="text-white" />
@@ -82,7 +87,7 @@ function DoctorDetailsPage({ doctor, onBack, onBookNow }) {
   const doctorFullName = `${doctor.first_name}${doctor.last_name}`;
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 min-h-screen">
       <div className="bg-white rounded-lg shadow p-8 max-w-2xl mx-auto">
         <div className="flex gap-6 mb-8">
           <div className="relative">
@@ -134,7 +139,7 @@ function DoctorDetailsPage({ doctor, onBack, onBookNow }) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div className="rounded-lg p-4">
               <p className="text-gray-600 text-sm">掛號費</p>
               <p className="text-2xl font-bold text-blue-600">
                 ${doctor.consultation_fee || "暫無"}
@@ -281,14 +286,14 @@ function DoctorListPage({ onSelectDoctor, user }) {
 
   if (loading) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
+      <div className="p-6 min-h-screen flex items-center justify-center">
         <p className="text-gray-600">載入中...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 min-h-screen">
       {showFavoriteToast && (
         <div className={`fixed top-20 right-6 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2 ${
           favoriteMessage === "已加入收藏" ? "bg-blue-500" : "bg-red-500"
@@ -306,21 +311,19 @@ function DoctorListPage({ onSelectDoctor, user }) {
         />
       )}
 
-      <div className="mb-6 bg-white rounded-lg shadow-sm p-6">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="mb-6 p-6 ">
+        <div className="flex items-center gap-2 w-full">
+        <div className="flex items-center gap-2 ">
           <Filter size={20} className="text-blue-600" />
           <h3 className="text-lg font-semibold text-gray-800">篩選條件</h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              選擇科別
-            </label>
             <select
               value={selectedSpecialty}
               onChange={(e) => setSelectedSpecialty(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-700"
+              className="w-150 px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700"
             >
               <option value="">所有科別</option>
               {specialties
@@ -331,6 +334,7 @@ function DoctorListPage({ onSelectDoctor, user }) {
                   </option>
                 ))}
             </select>
+            </div>
           </div>
         </div>
       </div>
@@ -409,7 +413,7 @@ function DoctorListPage({ onSelectDoctor, user }) {
 // 其他分页
 function HomePage() {
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 min-h-screen">
       <h2 className="text-2xl font-bold mb-4">首頁</h2>
       <div className="bg-white rounded-lg shadow p-6">
         <p className="text-gray-600">歡迎使用遠端醫療系統</p>
@@ -420,7 +424,7 @@ function HomePage() {
 
 function SettingsPage() {
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 min-h-screen">
       <h2 className="text-2xl font-bold mb-4">設定</h2>
       <p className="text-gray-600">功能開發中...</p>
     </div>
@@ -497,7 +501,7 @@ export default function App() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <p className="text-gray-600">載入中...</p>
       </div>
     );

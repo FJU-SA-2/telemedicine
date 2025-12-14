@@ -7,7 +7,7 @@ import SuccessPage from "./SuccessPage";
 import { Menu, Calendar, Search, Clock, CircleAlert, X } from "lucide-react";
 import FloatingChat from "../components/FloatingChat";
 import LockedPageOverlay from "../components/LockedPageOverlay"; // ✅ 新增
-import FloatingChat from "../components/FloatingChat";
+
 
 function BookingPage({ doctors, schedules, setSchedules }) {
   const [selectedSpecialty, setSelectedSpecialty] = useState("all");

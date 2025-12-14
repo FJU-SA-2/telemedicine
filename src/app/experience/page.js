@@ -17,7 +17,11 @@ export default function ExperienceSharing() {
   const [totalPages, setTotalPages] = useState(1);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  
+  const COLOR_MAHOGANY = "var(--color-mahogany)"; 
+const COLOR_LIME_CREAM = "var(--color-lime-cream)"; 
+const COLOR_AZURE = "var(--color-azure)"; 
+const COLOR_PERIWINKLE = "var(--color-periwinkle)"; 
+const COLOR_LIGHT_CYAN = "var(--color-light-cyan)"; 
   const [newPost, setNewPost] = useState({
     title: '',
     content: '',
@@ -130,7 +134,7 @@ export default function ExperienceSharing() {
   }, [currentPage]);
 
   return (
-    <div className="relative min-h-screen bg-gray-50 flex flex-col">
+    <div className="relative min-h-screen bg-gradient-to-br from-[var(--color-periwinkle)]/30 via-white to-[var(--color-light-cyan)]/30 flex flex-col">
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -163,7 +167,7 @@ export default function ExperienceSharing() {
                 />
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+                  className="px-6 py-2 bg-[var(--color-azure)] text-white rounded-lg hover:bg-[var(--color-periwinkle)] transition"
                 >
                   搜尋
                 </button>
@@ -181,7 +185,7 @@ export default function ExperienceSharing() {
 
             <button
               onClick={handleCreateButtonClick}
-              className="fixed bottom-10 right-20 w-16 h-16 bg-green-500 text-white rounded-full shadow-lg hover:bg-green-600 hover:shadow-xl transition-all flex items-center justify-center z-40 text-3xl"
+              className="fixed bottom-10 right-20 w-16 h-16 bg-[var(--color-lime-cream)] text-white rounded-full shadow-lg hover:bg-[var(--color-periwinkle)] hover:shadow-xl transition-all flex items-center justify-center z-40 text-3xl"
               title="發布文章"
             >
               +
