@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
- import { Menu } from "lucide-react";
+import { Menu , User, Heart, Stethoscope, Award, BookOpen, Building2, Phone, Calendar, Clock, Save, X, Edit2, Upload, CheckCircle, AlertCircle } from "lucide-react";
 import DoctorSidebar from "../components/DoctorSidebar";
 
 export default function ProfilePage() {
@@ -333,7 +333,7 @@ const handleSave = async () => {
   const doctorProfile = user.doctorProfile || {};
   
     return (
-    <div className="relative min-h-screen bg-gray-50">
+    <div className="relative min-h-screen bg-gradient-to-br from-[var(--color-periwinkle)]/30 via-white to-[var(--color-light-cyan)]/30">
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -361,7 +361,7 @@ const handleSave = async () => {
       <div className="mt-8">
       <Link 
         href={user.role === "doctor" ? "/doctorpage" : "/PatientPage"} 
-        className="inline-block px-5 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors mr-4"
+        className="inline-block px-5 py-2 rounded-lg bg-[var(--color-azure)] text-white font-medium hover:bg-[var(--color-lime-cream)] transition-colors mr-4"
       >
         返回首頁
       </Link>
@@ -403,145 +403,155 @@ const handleSave = async () => {
       
 
       {/* 基本資料 */}
-      <div className="bg-white shadow rounded-xl p-6 space-y-4 border border-gray-100 mb-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">基本資料</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-gray-500">姓名</p>
-            <p className="text-lg font-medium text-gray-800">
-              {user.first_name}{user.last_name} 
-            </p>
-          </div>
-
-          <div>
-            <p className="text-sm text-gray-500">電子郵件</p>
-            <p className="text-lg font-medium text-gray-800">{user.email}</p>
-          </div>
-
-          <div>
-            <p className="text-sm text-gray-500">身份</p>
-            <p className="text-lg font-medium text-gray-800">
-              {user.role === "patient" ? "病患" : user.role === "doctor" ? "醫生" : user.role}
-            </p>
-          </div>
-
-          <div>
-            {user.role === "patient" ? (
-              <>
-                <p className="text-sm text-gray-500">生日 /年齡</p>
-                <p className="text-lg font-medium text-gray-800">
-                  {user.patientProfile?.date_of_birth
-                    ? `${user.patientProfile.date_of_birth}（${user.age} 歲）`
-                    : "未填寫"}
-                </p>
-              </>
-            ) : user.role === "doctor" ? (
-              <>
-                <p className="text-sm text-gray-500">驗證狀態</p>
-                <p className="text-lg font-medium text-gray-800">
-                  {user.approval_status === "approved" && "已通過"}
-                  {user.approval_status === "pending" && "審核中"}
-                  {user.approval_status === "rejected" && "未通過"}
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-gray-500">使用者名稱</p>
-                <p className="text-lg font-medium text-gray-800">{user.username}</p>
-              </>
-            )}
-          </div>
-          
-
-
-
-        </div>
-      </div>
-      
-
-      {/* 病患專屬：健康資料 */}
-      {isPatient && (
-        <div className="bg-white shadow rounded-xl p-6 border border-gray-100">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">健康資料</h2>
-            {!editing && (
-              <button
-                onClick={() => setEditing(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-              >
-                編輯資料
-              </button>
-              
-            )}
-          </div>
-          
-
-          {!editing ? (
-            // 顯示模式
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-gray-500">身分證字號</p>
-                <p className="text-lg font-medium text-gray-800">
-                  {profile.id_number || "未填寫"}
+      <div className="bg-white shadow-xl rounded-2xl p-8 mb-8 border border-gray-100 hover:shadow-2xl transition-shadow">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b-2 border-gray-100">
+              <User className="text-blue-600" size={28} />
+              <h2 className="text-2xl font-bold text-gray-800">基本資料</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-4 bg-gradient-to-br rounded-xl hover:bg-gray-100 transition-colors">
+                <p className="text-sm text-[var(--color-mahogany)] font-medium mb-1">姓名</p>
+                <p className="text-lg font-semibold text-gray-800">
+                  {user.first_name}{user.last_name} 
                 </p>
               </div>
 
-              <div>
-                <p className="text-sm text-gray-500">藥物過敏</p>
-                <p className="text-lg font-medium text-gray-800 whitespace-pre-wrap">
-                  {profile.drug_allergies || "無"}
+              <div className="p-4 bg-gradient-to-br rounded-xl hover:bg-gray-100 transition-colors">
+                <p className="text-sm text-[var(--color-mahogany)] font-medium mb-1">電子郵件</p>
+                <p className="text-lg font-semibold text-gray-800 break-all">{user.email}</p>
+              </div>
+
+              <div className="p-4 bg-gradient-to-br rounded-xl hover:bg-gray-100 transition-colors">
+                <p className="text-sm text-[var(--color-mahogany)] font-medium mb-1">身份</p>
+                <p className="text-lg font-semibold text-gray-800">
+                  {user.role === "patient" ? "病患" : user.role === "doctor" ? "醫生" : user.role}
                 </p>
               </div>
 
-              <div>
-                <p className="text-sm text-gray-500">重大疾病史</p>
-                <p className="text-lg font-medium text-gray-800 whitespace-pre-wrap">
-                  {profile.medical_history || "無"}
-                </p>
+              <div className="p-4 bg-gradient-to-br rounded-xl hover:bg-gray-100 transition-colors">
+                {user.role === "patient" ? (
+                  <>
+                    <p className="text-sm text-[var(--color-mahogany)] font-medium mb-1">生日 / 年齡</p>
+                    <p className="text-lg font-semibold text-gray-800">
+                      {user.patientProfile?.date_of_birth
+                        ? `${user.patientProfile.date_of_birth}(${user.age} 歲)`
+                        : "未填寫"}
+                    </p>
+                  </>
+                ) : user.role === "doctor" ? (
+                  <>
+                    <p className="text-sm text-orange-700 font-medium mb-1">驗證狀態</p>
+                    <div className="flex items-center gap-2">
+                      {user.approval_status === "approved" && (
+                        <>
+                          <CheckCircle className="text-green-600" size={20} />
+                          <span className="text-xl font-bold text-green-700">已通過</span>
+                        </>
+                      )}
+                      {user.approval_status === "pending" && (
+                        <>
+                          <Clock className="text-yellow-600" size={20} />
+                          <span className="text-xl font-bold text-yellow-700">審核中</span>
+                        </>
+                      )}
+                      {user.approval_status === "rejected" && (
+                        <>
+                          <AlertCircle className="text-red-600" size={20} />
+                          <span className="text-xl font-bold text-red-700">未通過</span>
+                        </>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-orange-700 font-medium mb-1">使用者名稱</p>
+                    <p className="text-xl font-bold text-gray-800">{user.username}</p>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 病患健康資料 */}
+          {isPatient && (
+            <div className="bg-white shadow-xl rounded-2xl p-8 border border-gray-100 hover:shadow-2xl transition-shadow">
+              <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-100">
+                <div className="flex items-center gap-3">
+                  <Heart className="text-red-600" size={28} />
+                  <h2 className="text-2xl font-bold text-gray-800">健康資料</h2>
+                </div>
+                {!editing && (
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg font-medium transform hover:-translate-y-0.5"
+                  >
+                    <Edit2 size={18} />
+                    編輯資料
+                  </button>
+                )}
               </div>
 
-              
-                  <div>
-                    <p className="text-sm text-gray-500">吸菸狀況</p>
-                    <p className="text-lg font-medium text-gray-800">
-                      {profile.smoking_status === "yes" ? "有吸菸" : 
-                      profile.smoking_status === "quit" ? "已戒菸" : "無"}
+              {!editing ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                    <p className="text-sm text-gray-600 font-medium mb-2">身分證字號</p>
+                    <p className="text-lg font-semibold text-gray-800">
+                      {profile.id_number || "未填寫"}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-500">身高</p>
-                    <p className="text-lg font-medium text-gray-800">
+
+                  <div className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                    <p className="text-sm text-gray-600 font-medium mb-2">吸菸狀況</p>
+                    <p className="text-lg font-semibold text-gray-800">
+                      {profile.smoking_status === "yes" ? "有吸菸" : 
+                       profile.smoking_status === "quit" ? "已戒菸" : "無"}
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                    <p className="text-sm text-gray-600 font-medium mb-2">身高</p>
+                    <p className="text-lg font-semibold text-gray-800">
                       {profile.height ? profile.height + " cm" : "未填寫"}
                     </p>
                   </div>
 
-                  <div>
-                    <p className="text-sm text-gray-500">體重</p>
-                    <p className="text-lg font-medium text-gray-800">
+                  <div className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                    <p className="text-sm text-gray-600 font-medium mb-2">體重</p>
+                    <p className="text-lg font-semibold text-gray-800">
                       {profile.weight ? profile.weight + " kg" : "未填寫"}
                     </p>
                   </div>
 
-                  <div>
-                    <p className="text-sm text-gray-500">慢性疾病</p>
-                    <p className="text-lg font-medium text-gray-800 whitespace-pre-wrap">
+                  <div className="md:col-span-2 p-4 bg-red-50 rounded-xl">
+                    <p className="text-sm text-red-700 font-medium mb-2">藥物過敏</p>
+                    <p className="text-lg font-semibold text-gray-800 whitespace-pre-wrap">
+                      {profile.drug_allergies || "無"}
+                    </p>
+                  </div>
+
+                  <div className="md:col-span-2 p-4 bg-yellow-50 rounded-xl">
+                    <p className="text-sm text-yellow-700 font-medium mb-2">重大疾病史</p>
+                    <p className="text-lg font-semibold text-gray-800 whitespace-pre-wrap">
+                      {profile.medical_history || "無"}
+                    </p>
+                  </div>
+
+                  <div className="md:col-span-2 p-4 bg-blue-50 rounded-xl">
+                    <p className="text-sm text-blue-700 font-medium mb-2">慢性疾病</p>
+                    <p className="text-lg font-semibold text-gray-800 whitespace-pre-wrap">
                       {(() => {
-                        // 轉陣列（不管後端給字串或陣列都可以處理）
                         const chronicList = Array.isArray(profile.chronic_disease)
                           ? profile.chronic_disease
                           : profile.chronic_disease
                           ? profile.chronic_disease.split(",")
                           : [];
 
-                        // 如果沒有任何資料
                         if (chronicList.length === 0 && !profile.other_chronic_disease) {
                           return "無";
                         }
 
-                        // 移除選項 "其他"，並加上自填項（如果有）
-                        const displayList = chronicList
-                          .filter(item => item && item !== "其他");
+                        const displayList = chronicList.filter(item => item && item !== "其他");
 
                         if (chronicList.includes("其他") && profile.other_chronic_disease) {
                           displayList.push(profile.other_chronic_disease);
@@ -551,503 +561,535 @@ const handleSave = async () => {
                       })()}
                     </p>
                   </div>
-                  <div className="pt-4">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">緊急聯絡人</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">姓名</p>
-                    <p className="text-lg font-medium text-gray-800">
-                      {profile.emergency_contact_name || "未填寫"}
-                    </p>
+
+                  <div className="md:col-span-2 p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border-2 border-purple-200">
+                    <h3 className="text-lg font-bold text-purple-900 mb-4 flex items-center gap-2">
+                      <Phone size={22} />
+                      緊急聯絡人
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-purple-700 font-medium mb-1">姓名</p>
+                        <p className="text-lg font-semibold text-gray-800">
+                          {profile.emergency_contact_name || "未填寫"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-purple-700 font-medium mb-1">電話</p>
+                        <p className="text-lg font-semibold text-gray-800">
+                          {profile.emergency_contact_phone || "未填寫"}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-500">電話</p>
-                    <p className="text-lg font-medium text-gray-800">
-                      {profile.emergency_contact_phone || "未填寫"}
-                    </p>
-                  </div>
-
-
                 </div>
-              </div>
-            </div>
-          ) : (
-            // 編輯模式
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  身分證字號
-                </label>
-                <input
-                  type="text"
-                  name="id_number"
-                  value={formData.id_number}
-                  onChange={handleInputChange}
-                  maxLength="10"
-                  className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="請輸入身分證字號"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  藥物過敏
-                </label>
-                <textarea
-                  name="drug_allergies"
-                  value={formData.drug_allergies}
-                  onChange={handleInputChange}
-                  rows="3"
-                  className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="請輸入過敏藥物（如有多項請分行填寫）"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  重大疾病史
-                </label>
-                <textarea
-                  name="medical_history"
-                  value={formData.medical_history}
-                  onChange={handleInputChange}
-                  rows="3"
-                  className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="請輸入重大疾病史（如有多項請分行填寫）"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  吸菸狀況
-                </label>
-                <select
-                  name="smoking_status"
-                  value={formData.smoking_status}
-                  onChange={handleInputChange}
-                  className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="no">無</option>
-                  <option value="yes">有吸菸</option>
-                  <option value="quit">已戒菸</option>
-                </select>
-              </div>
-              
-              {/* 身高 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  身高（cm）
-                </label>
-                <input
-                  type="number"
-                  name="height"
-                  value={formData.height}
-                  onChange={handleInputChange}
-                  className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="請輸入身高"
-                />
-              </div>
-
-              {/* 體重 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  體重（kg）
-                </label>
-                <input
-                  type="number"
-                  name="weight"
-                  value={formData.weight}
-                  onChange={handleInputChange}
-                  className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="請輸入體重"
-                />
-              </div>
-
-              {/* ⭐ 下拉式多選：慢性疾病 */}
-              <div className="relative" ref={dropdownRef}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  慢性疾病（可複選）
-                </label>
-
-                {/* ▼ 下拉按鈕 */}
-                <div
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg bg-white cursor-pointer flex justify-between items-center"
-                >
-                  <span className="text-gray-700">
-                    {formData.chronic_disease.length === 0
-                      ? "請選擇"
-                      : formData.chronic_disease
-                          .filter(item => item !== "其他")
-                          .concat(
-                            formData.chronic_disease.includes("其他") &&
-                            formData.other_chronic_disease
-                              ? [formData.other_chronic_disease]
-                              : []
-                          )
-                          .join("、")}
-                  </span>
-                  <span>▼</span>
-                </div>
-
-                {/* ▼ 下拉內容 */}
-                {dropdownOpen && (
-                  <div className="text-gray-700 absolute mt-1 w-full border bg-white rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto p-3">
-                    {[
-                      "高血壓",
-                      "糖尿病",
-                      "高血脂",
-                      "心臟病",
-                      "氣喘",
-                      "甲狀腺疾病",
-                      "腎臟病",
-                      "肝病"
-                    ].map((disease) => (
-                      <label key={disease} className="flex items-center gap-2 mb-1">
-                        <input
-                          type="checkbox"
-                          checked={formData.chronic_disease.includes(disease)}
-                          onChange={(e) => {
-                            let updated = [...formData.chronic_disease];
-
-                            if (e.target.checked) {
-                              updated.push(disease);
-                            } else {
-                              updated = updated.filter(item => item !== disease);
-                            }
-
-                            setFormData({ ...formData, chronic_disease: updated });
-                          }}
-                        />
-                        <span>{disease}</span>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        身分證字號
                       </label>
-                    ))}
-
-                    {/* ⭐ 其他 */}
-                    <label className="flex items-center gap-2 mt-2">
-                      <input
-                        type="checkbox"
-                        checked={formData.chronic_disease.includes("其他")}
-                        onChange={(e) => {
-                          let updated = [...formData.chronic_disease];
-
-                          if (e.target.checked) {
-                            updated.push("其他");
-                          } else {
-                            updated = updated.filter(item => item !== "其他");
-                            setFormData({ ...formData, other_chronic_disease: "" });
-                          }
-
-                          setFormData({ ...formData, chronic_disease: updated });
-                        }}
-                      />
-                      <span>其他（請填寫）</span>
-                    </label>
-
-                    {/* ⭐ 自填輸入框 */}
-                    {formData.chronic_disease.includes("其他") && (
                       <input
                         type="text"
-                        className="mt-2 w-full px-3 py-2 border bg-white rounded-lg"
-                        placeholder="請輸入疾病名稱"
-                        value={formData.other_chronic_disease}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            other_chronic_disease: e.target.value
-                          })
-                        }
+                        name="id_number"
+                        value={formData.id_number}
+                        onChange={handleInputChange}
+                        maxLength="10"
+                        className="text-gray-700 w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        placeholder="請輸入身分證字號"
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        吸菸狀況
+                      </label>
+                      <select
+                        name="smoking_status"
+                        value={formData.smoking_status}
+                        onChange={handleInputChange}
+                        className="text-gray-700 w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      >
+                        <option value="no">無</option>
+                        <option value="yes">有吸菸</option>
+                        <option value="quit">已戒菸</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        身高 (cm)
+                      </label>
+                      <input
+                        type="number"
+                        name="height"
+                        value={formData.height}
+                        onChange={handleInputChange}
+                        className="text-gray-700 w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        placeholder="請輸入身高"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        體重 (kg)
+                      </label>
+                      <input
+                        type="number"
+                        name="weight"
+                        value={formData.weight}
+                        onChange={handleInputChange}
+                        className="text-gray-700 w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        placeholder="請輸入體重"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      藥物過敏
+                    </label>
+                    <textarea
+                      name="drug_allergies"
+                      value={formData.drug_allergies}
+                      onChange={handleInputChange}
+                      rows="3"
+                      className="text-gray-700 w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      placeholder="請輸入過敏藥物(如有多項請分行填寫)"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      重大疾病史
+                    </label>
+                    <textarea
+                      name="medical_history"
+                      value={formData.medical_history}
+                      onChange={handleInputChange}
+                      rows="3"
+                      className="text-gray-700 w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      placeholder="請輸入重大疾病史(如有多項請分行填寫)"
+                    />
+                  </div>
+
+                  <div className="relative" ref={dropdownRef}>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      慢性疾病 (可複選)
+                    </label>
+                    <div
+                      onClick={() => setDropdownOpen(!dropdownOpen)}
+                      className="text-gray-700 w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white cursor-pointer flex justify-between items-center hover:border-blue-400 transition-all"
+                    >
+                      <span className="text-gray-700">
+                        {formData.chronic_disease.length === 0
+                          ? "請選擇"
+                          : formData.chronic_disease
+                              .filter(item => item !== "其他")
+                              .concat(
+                                formData.chronic_disease.includes("其他") &&
+                                formData.other_chronic_disease
+                                  ? [formData.other_chronic_disease]
+                                  : []
+                              )
+                              .join("、")}
+                      </span>
+                      <span className="text-gray-400">▼</span>
+                    </div>
+
+                    {dropdownOpen && (
+                      <div className="text-gray-700 absolute mt-2 w-full border-2 border-gray-200 bg-white rounded-xl shadow-xl z-20 max-h-60 overflow-y-auto p-4">
+                        {[
+                          "高血壓",
+                          "糖尿病",
+                          "高血脂",
+                          "心臟病",
+                          "氣喘",
+                          "甲狀腺疾病",
+                          "腎臟病",
+                          "肝病"
+                        ].map((disease) => (
+                          <label key={disease} className="flex items-center gap-3 mb-3 hover:bg-gray-50 p-2 rounded-lg cursor-pointer transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={formData.chronic_disease.includes(disease)}
+                              onChange={(e) => {
+                                let updated = [...formData.chronic_disease];
+                                if (e.target.checked) {
+                                  updated.push(disease);
+                                } else {
+                                  updated = updated.filter(item => item !== disease);
+                                }
+                                setFormData({ ...formData, chronic_disease: updated });
+                              }}
+                              className="w-4 h-4 text-blue-600 rounded"
+                            />
+                            <span className="font-medium">{disease}</span>
+                          </label>
+                        ))}
+
+                        <label className="flex items-center gap-3 mt-4 pt-4 border-t-2 border-gray-100 hover:bg-gray-50 p-2 rounded-lg cursor-pointer transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={formData.chronic_disease.includes("其他")}
+                            onChange={(e) => {
+                              let updated = [...formData.chronic_disease];
+                              if (e.target.checked) {
+                                updated.push("其他");
+                              } else {
+                                updated = updated.filter(item => item !== "其他");
+                                setFormData({ ...formData, other_chronic_disease: "" });
+                              }
+                              setFormData({ ...formData, chronic_disease: updated });
+                            }}
+                            className="w-4 h-4 text-blue-600 rounded"
+                          />
+                          <span className="font-medium">其他(請填寫)</span>
+                        </label>
+
+                        {formData.chronic_disease.includes("其他") && (
+                          <input
+                            type="text"
+                            className="mt-3 w-full px-4 py-2 border-2 border-gray-200 bg-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="請輸入疾病名稱"
+                            value={formData.other_chronic_disease}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                other_chronic_disease: e.target.value
+                              })
+                            }
+                          />
+                        )}
+                      </div>
                     )}
                   </div>
+
+                  <div className="pt-4 p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border-2 border-purple-200">
+                    <h3 className="text-lg font-bold text-purple-900 mb-4 flex items-center gap-2">
+                      <Phone size={22} />
+                      緊急聯絡人
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-purple-700 mb-2">
+                          姓名
+                        </label>
+                        <input
+                          type="text"
+                          name="emergency_contact_name"
+                          value={formData.emergency_contact_name}
+                          onChange={handleInputChange}
+                          className="text-gray-700 w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                          placeholder="請輸入緊急聯絡人姓名"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-purple-700 mb-2">
+                          電話
+                        </label>
+                        <input
+                          type="tel"
+                          name="emergency_contact_phone"
+                          value={formData.emergency_contact_phone}
+                          onChange={handleInputChange}
+                          className="text-gray-700 w-full px-4 py-3 border-2 border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                          placeholder="請輸入緊急聯絡人電話"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 pt-6">
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-lg hover:shadow-xl disabled:from-gray-400 disabled:to-gray-400 transform hover:-translate-y-0.5"
+                    >
+                      <Save size={20} />
+                      {saving ? "儲存中..." : "儲存"}
+                    </button>
+                    <button
+                      onClick={handleCancel}
+                      disabled={saving}
+                      className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-gradient-to-r from-gray-500 to-gray-600 text-white font-semibold hover:from-gray-600 hover:to-gray-700 transition-all shadow-lg hover:shadow-xl disabled:from-gray-400 disabled:to-gray-400 transform hover:-translate-y-0.5"
+                    >
+                      <X size={20} />
+                      取消
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 醫師專業資料 */}
+          {isDoctor && (
+            <div className="bg-white shadow-xl rounded-2xl p-8 border border-gray-100 hover:shadow-2xl transition-shadow">
+              <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-100">
+                <div className="flex items-center gap-3">
+                  <Stethoscope className="text-blue-600" size={28} />
+                  <h2 className="text-2xl font-bold text-gray-800">專業資料</h2>
+                </div>
+                {!editing && (
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg font-medium transform hover:-translate-y-0.5"
+                  >
+                    <Edit2 size={18} />
+                    編輯資料
+                  </button>
                 )}
               </div>
 
-              <div className="pt-4">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">緊急聯絡人</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* 醫師頭像區 */}
+              <div className="mb-8 pb-6 border-b-2 border-gray-100">
+                <div className="flex items-start gap-6">
+                  <div className="flex-shrink-0">
+                    <p className="text-sm text-gray-600 font-medium mb-3">個人頭像</p>
+                    <div className="relative group">
+                      <img
+                        className="h-32 w-32 object-cover rounded-2xl border-4 border-blue-200 shadow-lg group-hover:shadow-xl transition-shadow"
+                        src={doctorForm.photo 
+                          ? `http://localhost:5000/uploads/profile_pictures/${doctorForm.photo}`
+                          : "/default-doctor-photo.png"
+                        }
+                        alt="醫師頭像"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src="/default-doctor-photo.png"
+                        }}
+                      />
+                      {editing && (
+                        <div className="absolute inset-0 bg-black bg-opacity-40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Upload className="text-white" size={32} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {editing && (
+                    <div className="flex-grow">
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        上傳新頭像
+                      </label>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <input 
+                            type="file" 
+                            accept=".png,.jpg,.jpeg" 
+                            onChange={handlePhotoFileChange}
+                            className="flex-grow text-sm file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 file:transition-all"
+                            disabled={uploadingPhoto}
+                          />
+                          <button 
+                            onClick={handlePhotoUpload}
+                            disabled={uploadingPhoto || !selectedPhotoFile}
+                            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all shadow-md hover:shadow-lg text-sm font-medium disabled:from-gray-400 disabled:to-gray-400 whitespace-nowrap"
+                          >
+                            <Upload size={18} />
+                            {uploadingPhoto ? "上傳中..." : "儲存照片"}
+                          </button>
+                        </div>
+                        {selectedPhotoFile && (
+                          <p className="text-sm text-gray-600 bg-blue-50 px-4 py-2 rounded-lg">
+                            已選擇檔案: <span className="font-semibold">{selectedPhotoFile.name}</span>
+                          </p>
+                        )}
+                        <p className="text-xs text-gray-500">
+                          請選擇檔案後點擊「儲存照片」進行上傳。支援格式: JPG, PNG
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {!editing ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Stethoscope className="text-blue-600" size={20} />
+                      <p className="text-sm text-blue-700 font-medium">主治科別</p>
+                    </div>
+                    <p className="text-lg font-semibold text-gray-800">
+                      {doctorProfile.specialty || "未填寫"}
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Building2 className="text-purple-600" size={20} />
+                      <p className="text-sm text-purple-700 font-medium">現任執醫院/診所</p>
+                    </div>
+                    <p className="text-lg font-semibold text-gray-800">
+                      {doctorProfile.practice_hospital || "未填寫"}
+                    </p>
+                  </div>
+
+                  <div className="md:col-span-2 p-5 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
+                    <div className="flex items-center gap-2 mb-3">
+                      <User className="text-green-600" size={20} />
+                      <p className="text-sm text-green-700 font-semibold">個人簡介</p>
+                    </div>
+                    <p className="text-base text-gray-800 whitespace-pre-wrap leading-relaxed">
+                      {doctorProfile.description || "未填寫"}
+                    </p>
+                  </div>
+
+                  <div className="md:col-span-2 p-5 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Award className="text-orange-600" size={20} />
+                      <p className="text-sm text-orange-700 font-semibold">專業經歷</p>
+                    </div>
+                    <p className="text-base text-gray-800 whitespace-pre-wrap leading-relaxed">
+                      {doctorProfile.experience || "未填寫"}
+                    </p>
+                  </div>
+
+                  <div className="md:col-span-2 p-5 bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Award className="text-pink-600" size={20} />
+                      <p className="text-sm text-pink-700 font-semibold">學位與認證</p>
+                    </div>
+                    <p className="text-base text-gray-800 whitespace-pre-wrap leading-relaxed">
+                      {doctorProfile.qualifications || "未填寫"}
+                    </p>
+                  </div>
+
+                  <div className="md:col-span-2 p-5 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl">
+                    <div className="flex items-center gap-2 mb-3">
+                      <BookOpen className="text-indigo-600" size={20} />
+                      <p className="text-sm text-indigo-700 font-semibold">學歷</p>
+                    </div>
+                    <p className="text-base text-gray-800 whitespace-pre-wrap leading-relaxed">
+                      {doctorProfile.education || "未填寫"}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        主治科別
+                      </label>
+                      <input
+                        type="text"
+                        name="specialty"
+                        value={doctorForm.specialty}
+                        onChange={(e) =>
+                          setDoctorForm({ ...doctorForm, specialty: e.target.value })
+                        }
+                        className="text-gray-700 w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        placeholder="例如: 內科、外科、小兒科"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        醫院/診所名稱
+                      </label>
+                      <input
+                        type="text"
+                        name="practice_hospital"
+                        value={doctorForm.practice_hospital}
+                        onChange={(e) =>
+                          setDoctorForm({ ...doctorForm, practice_hospital: e.target.value })
+                        }
+                        className="text-gray-700 w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        placeholder="請輸入執業醫院或診所"
+                      />
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      姓名
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      個人簡介
                     </label>
-                    <input
-                      type="text"
-                      name="emergency_contact_name"
-                      value={formData.emergency_contact_name}
-                      onChange={handleInputChange}
-                      className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="請輸入緊急聯絡人姓名"
+                    <textarea
+                      name="description"
+                      value={doctorForm.description}
+                      onChange={(e) =>
+                        setDoctorForm({ ...doctorForm, description: e.target.value })
+                      }
+                      rows="4"
+                      className="text-gray-700 w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      placeholder="請簡短介紹您的專長與服務理念"
                     />
                   </div>
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      電話
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      專業經歷
                     </label>
-                    <input
-                      type="tel"
-                      name="emergency_contact_phone"
-                      value={formData.emergency_contact_phone}
-                      onChange={handleInputChange}
-                      className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="請輸入緊急聯絡人電話"
+                    <textarea
+                      name="experience"
+                      value={doctorForm.experience}
+                      onChange={(e) =>
+                        setDoctorForm({ ...doctorForm, experience: e.target.value })
+                      }
+                      rows="4"
+                      className="text-gray-700 w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      placeholder="請列出您的工作經歷與專業成就"
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      學位與認證
+                    </label>
+                    <textarea
+                      name="qualifications"
+                      value={doctorForm.qualifications}
+                      onChange={(e) =>
+                        setDoctorForm({ ...doctorForm, qualifications: e.target.value })
+                      }
+                      rows="3"
+                      className="text-gray-700 w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      placeholder="請列出您的專業認證與執照"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      學歷
+                    </label>
+                    <textarea
+                      name="education"
+                      value={doctorForm.education}
+                      onChange={(e) =>
+                        setDoctorForm({ ...doctorForm, education: e.target.value })
+                      }
+                      rows="3"
+                      className="text-gray-700 w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      placeholder="請填寫您的教育背景"
+                    />
+                  </div>
+
+                  <div className="flex gap-4 pt-6">
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold hover:from-green-700 hover:to-green-800 transition-all shadow-lg hover:shadow-xl disabled:from-gray-400 disabled:to-gray-400 transform hover:-translate-y-0.5"
+                    >
+                      <Save size={20} />
+                      {saving ? "儲存中..." : "儲存"}
+                    </button>
+                    <button
+                      onClick={handleCancel}
+                      disabled={saving}
+                      className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-xl bg-gradient-to-r from-gray-500 to-gray-600 text-white font-semibold hover:from-gray-600 hover:to-gray-700 transition-all shadow-lg hover:shadow-xl disabled:from-gray-400 disabled:to-gray-400 transform hover:-translate-y-0.5"
+                    >
+                      <X size={20} />
+                      取消
+                    </button>
+                  </div>
                 </div>
-              </div>
-
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex-1 px-5 py-2 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition-colors disabled:bg-gray-400"
-                >
-                  {saving ? "儲存中..." : "儲存"}
-                </button>
-                <button
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className="flex-1 px-5 py-2 rounded-lg bg-gray-500 text-white font-medium hover:bg-gray-600 transition-colors disabled:bg-gray-400"
-                >
-                  取消
-                </button>
-              </div>
+              )}
             </div>
           )}
-        </div>
-      )}
-
-      {/* 醫師專業資料 */}
-      {isDoctor && (
-        
-        <div className="bg-white shadow rounded-xl p-6 border border-gray-100 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">專業資料</h2>
-            
-            {!editing && (
-              <button
-                onClick={() => setEditing(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-              >
-                編輯資料
-              </button>
-            )}
-          </div>
-
-          <div className="mb-6 pb-6 border-b border-gray-100 flex items-start gap-6">
-      {/* 1. 照片顯示 */}
-      <div className="flex-shrink-0">
-        <p className="text-sm text-gray-500 mb-1">個人頭像</p>
-        <img
-          className="h-24 w-24 object-cover rounded-full border-2 border-gray-200"
-          // 使用 doctorForm.photo 讀取當前狀態
-          src={doctorForm.photo 
-            ? `http://localhost:5000/uploads/profile_pictures/${doctorForm.photo}` // ⚠️ 確保後端 app.py 的路徑正確
-            : "/default-doctor-photo.png" // 預設圖
-          }
-          alt="醫師頭像"
-          onError={(e) => {
-              e.target.onerror = null; // 避免無限循環
-              e.target.src="/default-doctor-photo.png"
-          }}
-        />
-      </div>
-      {editing && (
-        // 2. 編輯模式下的上傳控制項
-        <div className="flex-grow">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            上傳新頭像
-          </label>
-          <div className="flex items-center gap-3">
-            <input 
-              type="file" 
-              accept=".png,.jpg,.jpeg" 
-              onChange={handlePhotoFileChange} // 綁定到我們之前定義的檔案選擇函式
-              className="flex-grow text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              disabled={uploadingPhoto}
-            />
-            
-            <button 
-              onClick={handlePhotoUpload} // 綁定到我們之前定義的上傳函式
-              disabled={uploadingPhoto || !selectedPhotoFile}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:bg-gray-400 whitespace-nowrap"
-            >
-              {uploadingPhoto ? "上傳中..." : "儲存照片"}
-            </button>
-          </div>
-          {selectedPhotoFile && (
-              <p className="text-sm text-gray-600 mt-2">
-                  已選擇檔案: {selectedPhotoFile.name}
-              </p>
-          )}
-          <p className="text-xs text-gray-500 mt-1">請選擇檔案後點擊「儲存照片」進行上傳。</p>
-        </div>
-      )}
-    </div>
-    
-
-          {!editing ? (
-             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">主治科別</p>
-                  <p className="text-lg font-medium text-gray-800">
-                    {doctorProfile.specialty || "未填寫"}
-                  </p>
-                </div>
-              <div>
-                  <p className="text-sm text-gray-500">現任執醫院/診所</p>
-                  <p className="text-lg font-medium text-gray-800">
-                    {doctorProfile.practice_hospital || "未填寫"}
-                  </p>
-                </div>
-                <div>
-                <p className="text-sm text-gray-500">個人簡介</p>
-                <p className="text-lg font-medium text-gray-800 whitespace-pre-wrap">
-                  {doctorProfile.description || "未填寫"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">專業經歷</p>
-                <p className="text-lg font-medium text-gray-800 whitespace-pre-wrap">
-                  {doctorProfile.experience || "未填寫"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">學位與認證</p>
-                <p className="text-lg font-medium text-gray-800 whitespace-pre-wrap">
-                  {doctorProfile.qualifications || "未填寫"}
-                </p>
-              </div> 
-        
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">學歷</p>
-                <p className="text-lg font-medium text-gray-800 whitespace-pre-wrap">
-                  {doctorProfile.education || "未填寫"}
-                </p>
-              </div>
-
-              
-
-              
-            </div>
-          ) : (
-            // ✅ 醫師編輯模式
-  <div className="space-y-4">
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        主治科別
-      </label>
-      <input
-        type="text"
-        name="specialty"
-        value={doctorForm.specialty}
-        onChange={(e) =>
-          setDoctorForm({ ...doctorForm, specialty: e.target.value })
-        }
-        className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-      />
-    </div>
-
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        醫院／診所名稱
-      </label>
-      <input
-        type="text"
-        name="practice_hospital"
-        value={doctorForm.practice_hospital}
-        onChange={(e) =>
-          setDoctorForm({ ...doctorForm, practice_hospital: e.target.value })
-        }
-        className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-      />
-    </div>
-        {/* 個人簡介 */}
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        個人簡介
-      </label>
-      <textarea
-        name="description"
-        value={doctorForm.description}
-        onChange={(e) =>
-          setDoctorForm({ ...doctorForm, description: e.target.value })
-        }
-        rows="3"
-        className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-      />
-    </div>
-
-    {/* 專業經歷 */}
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        專業經歷
-      </label>
-      <textarea
-        name="experience"
-        value={doctorForm.experience}
-        onChange={(e) =>
-          setDoctorForm({ ...doctorForm, experience: e.target.value })
-        }
-        rows="3"
-        className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-      />
-    </div>
-
-    {/* 學位與認證 */}
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        學位與認證
-      </label>
-      <textarea
-        name="qualifications"
-        value={doctorForm.qualifications}
-        onChange={(e) =>
-          setDoctorForm({ ...doctorForm, qualifications: e.target.value })
-        }
-        rows="3"
-        className="text-gray-700 s-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-      />
-    </div>
-
-    {/* 學歷 */}
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        學歷
-      </label>
-      <textarea
-        name="education"
-        value={doctorForm.education}
-        onChange={(e) =>
-          setDoctorForm({ ...doctorForm, education: e.target.value })
-        }
-        rows="2"
-        className="text-gray-700 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-      />
-    </div>
-
-    <div className="flex gap-3 pt-4">
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="flex-1 px-5 py-2 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition-colors disabled:bg-gray-400"
-      >
-        {saving ? "儲存中..." : "儲存"}
-      </button>
-      <button
-        onClick={handleCancel}
-        disabled={saving}
-        className="flex-1 px-5 py-2 rounded-lg bg-gray-500 text-white font-medium hover:bg-gray-600 transition-colors disabled:bg-gray-400"
-      >
-        取消
-      </button>
-    </div>
-  </div>
-  )}
-</div>
-)}
-      
         </main>
       </div>
     </div>
