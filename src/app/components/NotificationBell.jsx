@@ -1,132 +1,159 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Bell, X, CheckCircle, Calendar, XCircle, MessageSquare, Clock } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Bell, CheckCircle, Calendar, XCircle, MessageSquare, Clock, FileText } from "lucide-react";
 
 export default function NotificationBell({ user }) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [newNotifications, setNewNotifications] = useState([]);
+  const [mounted, setMounted] = useState(false);
   const dropdownRef = useRef(null);
+  const buttonRef = useRef(null);
+  const authWarned = useRef(false); // 避免未登入重複噴錯
 
   const isPatient = user && user.role === "patient";
+  const isDoctor = user && user.role === "doctor";
+  const shouldShowBell = isPatient || isDoctor;
+
+  // ✅ 確保只在客戶端渲染
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   /* ==================== 初始載入通知 + 輪詢 ==================== */
   useEffect(() => {
-    if (!isPatient) return;
+    if (!shouldShowBell) return;
 
-    // 初始載入
+    console.log("🔔 初始化通知系統", { isPatient, isDoctor });
     fetchNotifications();
     
-    // 使用輪詢方式，每 5 秒檢查一次新通知
     const pollInterval = setInterval(() => {
       checkForNewNotifications();
-    }, 5000); // 5秒一次
+    }, 5000); // 每5秒檢查一次
 
     return () => {
       clearInterval(pollInterval);
     };
-  }, [isPatient]);
+  }, [shouldShowBell, isPatient, isDoctor]);
 
   /* ==================== 檢查新通知 (輪詢) ==================== */
-  /* ==================== 檢查新通知 (輪詢) ==================== */
-const checkForNewNotifications = async () => {
-  try {
-    const res = await fetch("/api/notifications", { 
-      credentials: "include",
-      cache: 'no-cache'
-    });
-    
-    if (!res.ok) return;
-    
-    const data = await res.json();
-    const newNotificationsList = data.notifications || [];
-    
-    // 找出新的通知
-    setNotifications(prev => {
-      const existingIds = new Set(prev.map(n => n.notification_id));
-      const brandNewNotifications = newNotificationsList.filter(
-        n => !existingIds.has(n.notification_id)
-      );
-      
-      if (brandNewNotifications.length > 0) {
-        console.log('📬 發現新通知:', brandNewNotifications.length);
-        
-        // 標記為新通知
-        setNewNotifications(brandNewNotifications.map(n => n.notification_id));
-        
-        // 🔇 已移除音效播放
-        
-        // 3秒後移除新通知標記
-        setTimeout(() => {
-          setNewNotifications([]);
-        }, 3000);
-        
-        // 合併通知列表
-        return [...brandNewNotifications, ...prev];
-      }
-      
-      return prev;
-    });
-    
-    // 更新未讀數量
-    setUnreadCount(data.unread_count || 0);
-    
-  } catch (err) {
-    console.error("檢查新通知失敗:", err);
-  }
-};
-
-  /* ==================== 播放通知音效 ==================== */
-  // const playNotificationSound = () => {
-  //   try {
-  //     const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYHGGS57OmmVRALUKrk7LaUJwc0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgcYZLnn6KVXEQpMpOHutJ4kBSl+y/DajDgHGWe76OmmVRALUKvk7LaQJgY0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgcYZLnn6KVXEQpMpOHutJ4kBSl+y/DajDgHGWe76OmmVRALUKvk7LaQJgY0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgcYZLnn6KVXEQpMpOHutJ4kBSl+y/DajDgHGWe76OmmVRALUKvk7LaQJgY0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgcYZLnn6KVXEQpMpOHutJ4kBSl+y/DajDgHGWe76OmmVRALUKvk7LaQJgY0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgcYZLnn6KVXEQpMpOHutJ4kBSl+y/DajDgHGWe76OmmVRALUKvk7LaQJgY0j9Xx0YQ5BxhluevnoFYTCkyl4e20miMGLIHO8tmJNgc=');
-  //     audio.volume = 0.3;
-  //     audio.play().catch(e => console.log('無法播放音效'));
-  //   } catch (e) {
-  //     // 靜默失敗
-  //   }
-  // };
-
-  /* ==================== 獲取通知列表 ==================== */
-  const fetchNotifications = async () => {
+  const checkForNewNotifications = async () => {
     try {
-      const res = await fetch("/api/notifications", { 
+      // ✅ 根據角色選擇正確的 API 端點
+      const endpoint = isDoctor ? "/api/doctor/notifications" : "/api/notifications";
+      
+      console.log("🔍 檢查新通知", { endpoint, isDoctor, isPatient });
+      
+      const res = await fetch(endpoint, { 
         credentials: "include",
         cache: 'no-cache'
       });
       
-      if (!res.ok) return;
+      if (res.status === 401) {
+        if (!authWarned.current) {
+          console.warn("ℹ️ 尚未登入，跳過通知輪詢");
+          authWarned.current = true;
+        }
+        setNotifications([]);
+        setUnreadCount(0);
+        return;
+      }
+
+      if (!res.ok) {
+        console.error("❌ 通知 API 錯誤:", res.status);
+        return;
+      }
       
       const data = await res.json();
+      const newNotificationsList = data.notifications || [];
+      
+      console.log("📬 收到通知數量:", newNotificationsList.length);
+      
+      setNotifications(prev => {
+        const existingIds = new Set(prev.map(n => n.notification_id));
+        const brandNewNotifications = newNotificationsList.filter(
+          n => !existingIds.has(n.notification_id)
+        );
+        
+        if (brandNewNotifications.length > 0) {
+          console.log('📬 發現新通知:', brandNewNotifications.length);
+          return [...brandNewNotifications, ...prev];
+        }
+        
+        return prev;
+      });
+      
+      setUnreadCount(data.unread_count || 0);
+      
+    } catch (err) {
+      console.error("❌ 檢查新通知失敗:", err);
+    }
+  };
 
+  /* ==================== 獲取通知列表 ==================== */
+  const fetchNotifications = async () => {
+    try {
+      // ✅ 根據角色選擇正確的 API 端點
+      const endpoint = isDoctor ? "/api/doctor/notifications" : "/api/notifications";
+      
+      console.log("📥 獲取通知列表", { endpoint });
+      
+      const res = await fetch(endpoint, { 
+        credentials: "include",
+        cache: 'no-cache'
+      });
+      
+      if (res.status === 401) {
+        if (!authWarned.current) {
+          console.warn("ℹ️ 尚未登入，跳過通知載入");
+          authWarned.current = true;
+        }
+        setNotifications([]);
+        setUnreadCount(0);
+        return;
+      }
+
+      if (!res.ok) {
+        console.error("❌ 獲取通知失敗:", res.status);
+        return;
+      }
+      
+      const data = await res.json();
+      console.log("✅ 通知列表:", data);
+      
       setNotifications(data.notifications || []);
       setUnreadCount(data.unread_count || 0);
       
     } catch (err) {
-      console.error("載入通知失敗:", err);
+      console.error("❌ 載入通知失敗:", err);
     }
   };
 
   /* ==================== 點擊外部關閉 ==================== */
   useEffect(() => {
-    if (!isPatient) return;
+    if (!shouldShowBell) return;
 
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
+          buttonRef.current && !buttonRef.current.contains(event.target)) {
         setIsOpen(false);
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isPatient]);
+  }, [shouldShowBell]);
 
   /* ==================== 標記單筆已讀 ==================== */
   const markAsRead = async (notificationId) => {
     try {
-      const res = await fetch(`/api/notifications/${notificationId}/read`, {
+      // ✅ 根據角色選擇正確的 API 端點
+      const endpoint = isDoctor 
+        ? `/api/doctor/notifications/${notificationId}/read`
+        : `/api/notifications/${notificationId}/read`;
+        
+      const res = await fetch(endpoint, {
         method: "PATCH",
         credentials: "include",
       });
@@ -144,14 +171,19 @@ const checkForNewNotifications = async () => {
       setUnreadCount((prev) => Math.max(0, prev - 1));
       
     } catch (err) {
-      console.error("標記已讀失敗:", err);
+      console.error("❌ 標記已讀失敗:", err);
     }
   };
 
   /* ==================== 全部標記已讀 ==================== */
   const markAllAsRead = async () => {
     try {
-      const res = await fetch("/api/notifications/read-all", {
+      // ✅ 根據角色選擇正確的 API 端點
+      const endpoint = isDoctor 
+        ? "/api/doctor/notifications/read-all"
+        : "/api/notifications/read-all";
+        
+      const res = await fetch(endpoint, {
         method: "PATCH",
         credentials: "include",
       });
@@ -162,7 +194,7 @@ const checkForNewNotifications = async () => {
       setUnreadCount(0);
       
     } catch (err) {
-      console.error("全部標記已讀失敗:", err);
+      console.error("❌ 全部標記已讀失敗:", err);
     }
   };
 
@@ -170,13 +202,17 @@ const checkForNewNotifications = async () => {
   const getIcon = (type) => {
     switch (type) {
       case "appointment_confirmed":
+      case "new_appointment":
         return <CheckCircle size={18} className="text-green-500" />;
       case "appointment_cancelled":
         return <XCircle size={18} className="text-red-500" />;
       case "appointment_reminder":
         return <Clock size={18} className="text-orange-500" />;
       case "feedback_resolved":
+      case "feedback_received":
         return <MessageSquare size={18} className="text-purple-500" />;
+      case "consultation_reminder":
+        return <FileText size={18} className="text-blue-500" />;
       default:
         return <Bell size={18} className="text-gray-500" />;
     }
@@ -186,14 +222,39 @@ const checkForNewNotifications = async () => {
     switch (type) {
       case "appointment_confirmed":
         return "預約成功";
+      case "new_appointment":
+        return "新預約";
       case "appointment_cancelled":
         return "預約取消";
       case "appointment_reminder":
-        return "看診提醒";
+        return isDoctor ? "看診提醒" : "看診提醒";
       case "feedback_resolved":
         return "回報已處理";
+      case "feedback_received":
+        return "問題回報";
+      case "consultation_reminder":
+        return "請填寫醫囑";
       default:
         return "通知";
+    }
+  };
+
+  const getTypeColor = (type) => {
+    switch (type) {
+      case "appointment_confirmed":
+      case "new_appointment":
+        return "bg-green-100 text-green-700";
+      case "appointment_cancelled":
+        return "bg-red-100 text-red-700";
+      case "appointment_reminder":
+        return "bg-orange-100 text-orange-700";
+      case "feedback_resolved":
+      case "feedback_received":
+        return "bg-purple-100 text-purple-700";
+      case "consultation_reminder":
+        return "bg-blue-100 text-blue-700";
+      default:
+        return "bg-gray-100 text-gray-700";
     }
   };
 
@@ -213,20 +274,155 @@ const checkForNewNotifications = async () => {
     return date.toLocaleDateString("zh-TW");
   };
 
+  /* ==================== 計算面板位置 ==================== */
+  const getDropdownPosition = () => {
+    if (!buttonRef.current) return { top: '64px', right: '16px' };
+    
+    const rect = buttonRef.current.getBoundingClientRect();
+    return {
+      top: `${rect.bottom + 8}px`,
+      right: `${window.innerWidth - rect.right}px`
+    };
+  };
+
   /* ==================== 渲染 ==================== */
-  if (!isPatient) return null;
+  if (!shouldShowBell) return null;
+
+  // ✅ 通知面板組件
+  const NotificationPanel = () => {
+    if (!isOpen || !mounted) return null;
+
+    const position = getDropdownPosition();
+
+    return createPortal(
+      <div 
+        ref={dropdownRef}
+        className="fixed w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-[9999] overflow-hidden animate-slideDown"
+        style={{
+          top: position.top,
+          right: position.right,
+          maxHeight: 'calc(100vh - 80px)'
+        }}
+      >
+        {/* 標題列 */}
+        <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+          <h3 className="font-bold text-gray-800 flex items-center gap-2">
+            <Bell size={18} />
+            通知中心 {isDoctor && "(醫師)"}
+          </h3>
+
+          {unreadCount > 0 && (
+            <button
+              onClick={markAllAsRead}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              全部標為已讀
+            </button>
+          )}
+        </div>
+
+        {/* 通知列表 */}
+        <div className="max-h-96 overflow-y-auto">
+          {notifications.length === 0 ? (
+            <div className="py-12 text-center text-gray-500">
+              <Bell size={40} className="mx-auto mb-3 text-gray-300" />
+              <p>目前沒有通知</p>
+            </div>
+          ) : (
+            notifications.map((notification) => (
+              <div
+                key={notification.notification_id}
+                onClick={() => {
+                  if (!notification.is_read) {
+                    markAsRead(notification.notification_id);
+                  }
+                }}
+                className={`px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-all ${
+                  !notification.is_read ? "bg-blue-50" : ""
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 mt-1">
+                    {getIcon(notification.type)}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span
+                        className={`text-xs font-medium px-2 py-0.5 rounded-full ${getTypeColor(notification.type)}`}
+                      >
+                        {getTypeLabel(notification.type)}
+                      </span>
+
+                      {!notification.is_read && (
+                        <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                      )}
+                    </div>
+
+                    <p className="text-sm text-gray-800 font-medium">
+                      {notification.title}
+                    </p>
+
+                    <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap line-clamp-3">
+                      {notification.message}
+                    </p>
+
+                    <p className="text-xs text-gray-400 mt-1">
+                      {formatTime(notification.created_at)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* 底部 */}
+        {notifications.length > 0 && (
+          <div className="px-4 py-3 bg-gray-50 border-t text-center">
+            <button
+              onClick={() => setIsOpen(false)}
+              className="text-sm text-gray-600 hover:text-gray-800"
+            >
+              關閉
+            </button>
+          </div>
+        )}
+
+        {/* 動畫樣式 */}
+        <style jsx>{`
+          @keyframes slideDown {
+            from {
+              opacity: 0;
+              transform: translateY(-10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+
+          .animate-slideDown {
+            animation: slideDown 0.2s ease-out;
+          }
+        `}</style>
+      </div>,
+      document.body
+    );
+  };
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <>
       {/* 鈴鐺按鈕 */}
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
         aria-label="通知"
       >
         <Bell 
           size={22} 
-          className={'text-gray-600 transition-all'} 
+          className="text-gray-600 transition-all" 
         />
 
         {unreadCount > 0 && (
@@ -236,148 +432,8 @@ const checkForNewNotifications = async () => {
         )}
       </button>
 
-      {/* 下拉通知面板 */}
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 overflow-hidden animate-slideDown">
-          {/* 標題列 */}
-          <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
-            <h3 className="font-bold text-gray-800 flex items-center gap-2">
-              <Bell size={18} />
-              通知中心
-            </h3>
-
-            {unreadCount > 0 && (
-              <button
-                onClick={markAllAsRead}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                全部標為已讀
-              </button>
-            )}
-          </div>
-
-          {/* 通知列表 */}
-          <div className="max-h-96 overflow-y-auto">
-            {notifications.length === 0 ? (
-              <div className="py-12 text-center text-gray-500">
-                <Bell size={40} className="mx-auto mb-3 text-gray-300" />
-                <p>目前沒有通知</p>
-              </div>
-            ) : (
-              notifications.map((notification) => {
-                const isNew = newNotifications.includes(notification.notification_id);
-                
-                return (
-                  <div
-                    key={notification.notification_id}
-                    onClick={() => {
-                      if (!notification.is_read) {
-                        markAsRead(notification.notification_id);
-                      }
-                    }}
-                    className={`px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-all ${
-                      !notification.is_read ? "bg-blue-50" : ""
-                    } ${
-                      isNew ? "animate-slideIn bg-yellow-50" : ""
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-1">
-                        {getIcon(notification.type)}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span
-                            className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                              notification.type === "appointment_confirmed"
-                                ? "bg-green-100 text-green-700"
-                                : notification.type === "appointment_cancelled"
-                                ? "bg-red-100 text-red-700"
-                                : notification.type === "appointment_reminder"
-                                ? "bg-orange-100 text-orange-700"
-                                : "bg-purple-100 text-purple-700"
-                            }`}
-                          >
-                            {getTypeLabel(notification.type)}
-                          </span>
-
-                          {!notification.is_read && (
-                            <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
-                          )}
-                          
-                          {isNew && (
-                            <span className="text-xs font-bold text-orange-600 animate-pulse">
-                              NEW
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="text-sm text-gray-800 font-medium">
-                          {notification.title}
-                        </p>
-
-                        <p className="text-xs text-gray-600 mt-1 whitespace-pre-wrap line-clamp-3">
-                          {notification.message}
-                        </p>
-
-                        <p className="text-xs text-gray-400 mt-1">
-                          {formatTime(notification.created_at)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {/* 底部 */}
-          {notifications.length > 0 && (
-            <div className="px-4 py-3 bg-gray-50 border-t text-center">
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-sm text-gray-600 hover:text-gray-800"
-              >
-                關閉
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* 動畫樣式 */}
-      <style jsx>{`
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateX(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-
-        .animate-slideDown {
-          animation: slideDown 0.2s ease-out;
-        }
-
-        .animate-slideIn {
-          animation: slideIn 0.3s ease-out;
-        }
-      `}</style>
-    </div>
+      {/* ✅ 使用 Portal 渲染通知面板到 body */}
+      <NotificationPanel />
+    </>
   );
 }

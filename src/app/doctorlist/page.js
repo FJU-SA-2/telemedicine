@@ -4,6 +4,7 @@ import { Menu, Filter, CheckCircle, ArrowLeft, Calendar, Clock, X, ArrowRight, C
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import LockedPageOverlay from "../components/LockedPageOverlay";
+import FloatingChat from "../components/FloatingChat";
 
 // ✅ 新增：登入提示彈窗組件
 function LoginRequiredModal({ onClose, onLogin, onRegister }) {
@@ -563,6 +564,7 @@ export default function App() {
         </div>
         {activeTab === "settings" && <SettingsPage />}
       </div>
+      <FloatingChat />
     </div>
   );
 }

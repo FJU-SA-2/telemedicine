@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import RatingModal from '../components/RatingModal';
 import LockedPageOverlay from '../components/LockedPageOverlay'; // ✅ 新增
+import FloatingChat from "../components/FloatingChat";
 
 export default function PatientVideoConsultation() {
   const [appointments, setAppointments] = useState([]);
@@ -88,26 +89,13 @@ export default function PatientVideoConsultation() {
 
   const fetchUpcomingAppointments = async () => {
     try {
-      const response = await fetch('/api/appointments', {
+      const response = await fetch('http://localhost:5000/api/appointments/upcoming', {
         credentials: 'include'
       });
 
       if (response.ok) {
         const data = await response.json();
-        
-        // 過濾出未過期的預約
-        const now = new Date();
-        const upcoming = data.filter(apt => {
-          if (apt.status !== '待確認' && apt.status !== '已確認') {
-            return false;
-          }
-          
-          // 檢查預約時間是否已過期
-          const appointmentDateTime = new Date(`${apt.appointment_date} ${apt.appointment_time}`);
-          return appointmentDateTime > now;
-        });
-        
-        setAppointments(upcoming);
+        setAppointments(data);
       } else {
         setError('無法獲取預約資訊');
       }
@@ -121,18 +109,13 @@ export default function PatientVideoConsultation() {
 
   const fetchConsultationHistory = async () => {
     try {
-      const response = await fetch('/api/appointments', {
+      const response = await fetch('http://localhost:5000/api/appointments/history', {
         credentials: 'include'
       });
 
       if (response.ok) {
         const data = await response.json();
-        
-        const completed = data.filter(apt => 
-          apt.status === 'completed'
-        );
-        
-        setConsultationHistory(completed);
+        setConsultationHistory(data);
       }
     } catch (err) {
       console.error('獲取看診記錄失敗:', err);
@@ -144,7 +127,7 @@ export default function PatientVideoConsultation() {
       const response = await fetch(`/api/ratings/check/${appointmentId}`, {
         credentials: 'include'
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         return data.hasRated;
@@ -299,9 +282,9 @@ export default function PatientVideoConsultation() {
 
     try {
       await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
       const hasRated = await checkIfRated(appointmentToRate.appointment_id);
-    
+
       if (!hasRated) {
         setTimeout(() => {
           setCompletedAppointment(appointmentToRate);
@@ -498,7 +481,7 @@ export default function PatientVideoConsultation() {
 
           {/* ✅ 主內容區域 */}
           <div className="pt-5 relative min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-            {/* <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
               <div className="flex items-center justify-between">
                 <button
                   onClick={() => setShowHistory(!showHistory)}
@@ -508,7 +491,7 @@ export default function PatientVideoConsultation() {
                   <span>{showHistory ? "返回預約" : "看診記錄"}</span>
                 </button>
               </div>
-            </div> */}
+            </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1">
               {error && (
@@ -852,7 +835,7 @@ export default function PatientVideoConsultation() {
                                       <span>評分</span>
                                     </button>
                                   )}
-                                  
+
                                   {record.recording_url && (
                                     <button
                                       onClick={() =>
@@ -875,20 +858,13 @@ export default function PatientVideoConsultation() {
                 </>
               )}
             </div>
-            
+
             {/* ✅ 未登入時顯示鎖定覆蓋層 */}
             {!user && <LockedPageOverlay pageName="視訊看診" icon={Video} />}
           </div>
         </div>
       </div>
-      {/* Footer */}
-        <div className="bg-gray-800 text-white py-8">
-          <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400">
-              © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
-            </p>
-          </div>
-        </div>
+
       {/* 評分彈窗 - 背景為原始頁面 */}
       {showRatingModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -903,6 +879,7 @@ export default function PatientVideoConsultation() {
           />
         </div>
       )}
+      <FloatingChat />
     </>
   );
-}
+};

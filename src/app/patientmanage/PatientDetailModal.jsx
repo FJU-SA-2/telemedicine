@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { X, User, AlertTriangle, Shield, Phone, MapPin, Calendar, FileText, Activity, Pill, Cigarette } from "lucide-react";
 import * as utils from "./Utils";
+import MedicalHistory from "./MedicalHistory";
 
 export default function PatientDetailModal({ patient, onClose }) {
   const [loading, setLoading] = useState(true);
@@ -171,82 +172,14 @@ export default function PatientDetailModal({ patient, onClose }) {
                 </div>
               </div>
 
-              {/* ===== 就診紀錄區塊 ===== */}
+              {/* ===== 就診紀錄區塊 - 使用新的 MedicalHistory 組件 ===== */}
               <div className="bg-white border-2 border-gray-200 rounded-xl p-5">
                 <h4 className="font-bold text-lg text-gray-800 mb-4 flex items-center gap-2">
-                  <FileText size={20} className="text-green-600" /> 就診紀錄
+                  <FileText size={20} className="text-green-600" /> 完整病歷紀錄
                 </h4>
-
-                {history.length === 0 ? (
-                  <div className="text-center py-8">
-                    <FileText size={48} className="mx-auto mb-4 text-gray-300" />
-                    <p className="text-gray-500">暫無就診紀錄</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
-                    {history.map((record, idx) => (
-                      <div key={idx} className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 hover:shadow-md transition-all">
-                        {/* 標題列 */}
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold shadow">
-                              {record.doctor_name?.charAt(0)}
-                            </div>
-                            <div>
-                              <p className="font-bold text-gray-800">{record.doctor_name} 醫師</p>
-                              <p className="text-sm text-gray-600">{record.specialty}</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-semibold text-blue-600">
-                              {utils.formatDate(record.appointment_date)}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {record.appointment_time?.substring(0, 5)}
-                            </p>
-                            <span className={`inline-block mt-1 text-xs px-2 py-1 rounded-full ${
-                              record.status === '已完成' ? 'bg-green-100 text-green-700' :
-                              record.status === '已確認' ? 'bg-blue-100 text-blue-700' :
-                              record.status === '已取消' ? 'bg-red-100 text-red-700' :
-                              'bg-gray-100 text-gray-700'
-                            }`}>
-                              {record.status}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* 主訴症狀（預約時填寫） */}
-                        {record.symptoms && (
-                          <div className="bg-white rounded-lg p-3 mb-2 border border-blue-100">
-                            <p className="text-xs text-gray-600 mb-1 flex items-center gap-1 font-semibold">
-                              <Activity size={14} className="text-blue-600" /> 主訴症狀
-                            </p>
-                            <p className="text-sm text-gray-700">{record.symptoms}</p>
-                          </div>
-                        )}
-
-                        {/* 診斷（醫師看診後填寫） */}
-                        {record.diagnoses && (
-                          <div className="bg-white rounded-lg p-3 border border-green-100">
-                            <p className="text-xs text-gray-600 mb-1 flex items-center gap-1 font-semibold">
-                              <Pill size={14} className="text-green-600" /> 醫師診斷/處方
-                            </p>
-                            <p className="text-sm text-gray-700">{record.diagnoses}</p>
-                          </div>
-                        )}
-
-                        {/* 如果還沒看診完成，顯示提示 */}
-                        {!record.diagnoses && record.status !== '已取消' && (
-                          <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
-                            <p className="text-xs text-yellow-700">
-                              {record.status === '已完成' ? '醫師尚未填寫診斷紀錄' : '尚未完成看診'}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                
+                {/* 使用新的 MedicalHistory 組件 */}
+                <MedicalHistory patientId={patient.patient_id} />
               </div>
             </div>
           )}
