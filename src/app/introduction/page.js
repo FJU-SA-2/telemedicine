@@ -218,7 +218,7 @@ const steps = [
   const features = [
     {
       icon: Clock,
-      title: "24/7 線上服務",
+      title: "線上服務",
       description: "隨時隨地都能預約看診"
     },
     {
