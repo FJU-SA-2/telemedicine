@@ -420,14 +420,14 @@ const TelemedicineDashboard = () => {
                 <p className="text-base font-semibold text-center">新增排班</p>
               </a>
               <a 
-                href={isNotApproved ? "#" : "/patientmanage"}
+                href={isNotApproved ? "#" : "/recordoc"}
                 className={`bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-6 transition-all flex flex-col items-center justify-center ${
                   isNotApproved ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
                 }`}
                 onClick={(e) => isNotApproved && e.preventDefault()}
               >
                 <FileText size={32} className="mb-3" />
-                <p className="text-base font-semibold text-center">寫病歷</p>
+                <p className="text-base font-semibold text-center">查看預約紀錄</p>
               </a>
               <a 
                 href={isNotApproved ? "#" : "/patientmanage"}
@@ -437,7 +437,7 @@ const TelemedicineDashboard = () => {
                 onClick={(e) => isNotApproved && e.preventDefault()}
               >
                 <Users size={32} className="mb-3" />
-                <p className="text-base font-semibold text-center">查看患者</p>
+                <p className="text-base font-semibold text-center">查看患者/寫病歷</p>
               </a>
               
             </div>
