@@ -28,9 +28,9 @@ export default function PricingPage() {
       // buttonColor: "bg-[var(--color-mahogany)] hover:bg-[var(--color-mahogany)]/80"
     },
     {
-      name: "升級版",
+      name: "會員版",
       price: "NT$260",
-      period: "每月",
+      period: "半年",
       description: "最受歡迎的選擇，適合頻繁就診用戶",
       features: [
         "無限制預約次數",
