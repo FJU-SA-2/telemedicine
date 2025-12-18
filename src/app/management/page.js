@@ -316,14 +316,14 @@ export default function DoctorAppointmentManagement() {
                                             </div>
                                         )}
 
-                                        {/* ✅ 簡化操作按鈕:只保留查看詳情和取消 */}
-                                        <div className="flex gap-2">
+                                        {/* 操作按鈕：靠右放在卡片底部 */}
+                                        <div className="mt-3 flex justify-end gap-3">
                                             <button
                                                 onClick={() => {
                                                     setSelectedAppointment(apt);
                                                     setShowDetailModal(true);
                                                 }}
-                                                className="flex-1 px-4 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all text-sm font-semibold shadow-md hover:shadow-lg"
+                                                className="px-5 py-2.5 text-base bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all"
                                             >
                                                 查看詳情
                                             </button>
@@ -334,7 +334,7 @@ export default function DoctorAppointmentManagement() {
                                                         setShowCancelModal(true);
                                                     }}
                                                     disabled={processing}
-                                                    className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all text-sm font-semibold disabled:opacity-50 shadow-md hover:shadow-lg"
+                                                    className="px-5 py-2.5 text-base bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all disabled:opacity-50"
                                                 >
                                                     取消預約
                                                 </button>
