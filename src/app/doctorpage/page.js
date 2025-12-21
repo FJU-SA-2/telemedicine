@@ -210,7 +210,7 @@ const TelemedicineDashboard = () => {
 
   return (
     
-    <div className="relative min-h-screen bg-[var(--color-azure)]/5">
+    <div className="relative min-h-screen bg-gray-50">
       {/* Sidebar 開關按鈕（只在 Sidebar 關閉時顯示） */}
       {!isOpen && (
         <button
@@ -261,7 +261,7 @@ const TelemedicineDashboard = () => {
                 return (
                   <div
                     key={idx}
-                    className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow"
+                    className="bg-[var(--color-lime-cream)]/20 rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow"
                   >
                     <div className="flex items-center justify-between mb-4">
                       <div className={`${metric.color} p-3 rounded-lg`}>

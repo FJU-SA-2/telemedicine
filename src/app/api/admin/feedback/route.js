@@ -1,51 +1,76 @@
-import { NextResponse } from "next/server";
-import mysql from "mysql2/promise";
+import { NextResponse } from 'next/server';
+import mysql from 'mysql2/promise';
 
-async function getDbConnection() {
-  return await mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "",
-    database: "telemedicine",
-  });
+const dbConfig = {
+  host: 'localhost',
+  user: 'root',
+  password: '',
+  database: 'telemedicine',
+};
+
+async function getConnection() {
+  return await mysql.createConnection(dbConfig);
 }
 
-export async function GET() {
+export async function GET(request) {
   let connection;
-  try {
-    connection = await getDbConnection();
 
-    const [rows] = await connection.execute(`
+  try {
+    connection = await getConnection();
+
+    const [feedbacks] = await connection.execute(`
       SELECT 
         f.feedback_id,
-        f.patient_id,
-        f.doctor_id,
-        COALESCE(p.first_name, d.first_name) AS first_name,
-        COALESCE(p.last_name, d.last_name) AS last_name,
-        CASE 
-          WHEN f.patient_id IS NOT NULL THEN 'patient'
-          WHEN f.doctor_id IS NOT NULL THEN 'doctor'
-          ELSE 'unknown'
-        END AS user_role,
+        f.user_role,
         f.categories,
         f.feedback_text,
         f.status,
-        f.created_at
+        f.created_at,
+        CASE 
+          WHEN f.user_role = 'doctor' THEN d.first_name
+          WHEN f.user_role = 'patient' THEN p.first_name
+          ELSE '未知'
+        END as first_name,
+        CASE 
+          WHEN f.user_role = 'doctor' THEN d.last_name
+          WHEN f.user_role = 'patient' THEN p.last_name
+          ELSE ''
+        END as last_name
       FROM feedback f
-      LEFT JOIN patient p ON f.patient_id = p.patient_id
-      LEFT JOIN doctor d ON f.doctor_id = d.doctor_id
-      ORDER BY f.created_at DESC
+      LEFT JOIN doctor d ON f.doctor_id = d.doctor_id AND f.user_role = 'doctor'
+      LEFT JOIN patient p ON f.patient_id = p.patient_id AND f.user_role = 'patient'
+      ORDER BY 
+        CASE WHEN f.status = 'unread' THEN 0 ELSE 1 END,
+        f.created_at DESC
     `);
 
-    const feedbacks = rows.map(f => ({
-      ...f,
-      categories: JSON.parse(f.categories || "[]"),
-    }));
+    // 處理 categories JSON 字串
+    const processedFeedbacks = feedbacks.map((f) => {
+      let categories = [];
+      if (f.categories) {
+        try {
+          categories = JSON.parse(f.categories);
+        } catch (e) {
+          categories = [];
+        }
+      }
 
-    return NextResponse.json(feedbacks);
+      return {
+        ...f,
+        categories,
+        created_at: f.created_at ? new Date(f.created_at).toISOString() : null,
+      };
+    });
+
+    console.log(`✅ 獲取到 ${processedFeedbacks.length} 筆回報`);
+
+    return NextResponse.json(processedFeedbacks);
   } catch (error) {
-    console.error("取得回報失敗:", error);
-    return NextResponse.json({ message: "無法載入回報資料" }, { status: 500 });
+    console.error('❌ 獲取回報失敗:', error);
+    return NextResponse.json(
+      { message: `獲取失敗: ${error.message}` },
+      { status: 500 }
+    );
   } finally {
     if (connection) await connection.end();
   }

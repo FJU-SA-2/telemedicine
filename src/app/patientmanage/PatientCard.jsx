@@ -14,7 +14,7 @@ export default function PatientCard({ patient, onPatientClick }) {
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-bold text-lg text-gray-800 truncate">
-              {patient.last_name}{patient.first_name}
+              {patient.first_name}{patient.last_name}
             </h3>
             <p className="text-sm text-gray-500">病歷號：#{patient.patient_id}</p>
             <div className="flex items-center gap-2 mt-1 flex-wrap">

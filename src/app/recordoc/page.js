@@ -381,7 +381,7 @@ export default function AppointmentRecords() {
                         {(appointment.isEditing || !appointment.doctor_advice) && (
                           <div>
                             <textarea
-                              className="w-full p-3 border rounded-lg"
+                              className="text-gray-700 w-full p-3 border rounded-lg"
                               rows="4"
                               placeholder="請輸入給予患者的建議與處方..."
                               value={appointment.tempAdvice} 
@@ -665,7 +665,7 @@ export default function AppointmentRecords() {
                       {(appointment.isEditing || !appointment.doctor_advice) && (
                         <div>
                           <textarea
-                            className="w-full p-3 border rounded-lg"
+                            className="text-gray-700 w-full p-3 border rounded-lg"
                             rows="4"
                             placeholder="請輸入給予患者的建議與處方..."
                             // 綁定到 tempAdvice

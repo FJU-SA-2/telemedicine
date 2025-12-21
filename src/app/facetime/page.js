@@ -666,7 +666,7 @@ export default function DoctorVideoConsultation() {
                   value={consultationNotes}
                   onChange={(e) => setConsultationNotes(e.target.value)}
                   placeholder="請輸入診斷、處方建議等資訊...&#10;&#10;例如:&#10;- 診斷:上呼吸道感染&#10;- 處方:止咳糖漿、退燒藥&#10;- 建議:多休息、多喝水"
-                  className="w-full h-64 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none text-sm"
+                  className="text-gray-700 w-full h-64 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none text-sm"
                 />
                 <p className="text-xs text-gray-500 mt-2">
                   💡 結束看診時將自動保存記錄和錄影
