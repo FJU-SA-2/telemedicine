@@ -358,7 +358,7 @@ const handleSave = async () => {
         <Navbar />
       <main className="max-w-4xl mx-auto px-6 py-10">
       <h1 className="text-3xl font-semibold text-gray-800 mb-6">個人檔案</h1>
-      <div className="mt-8">
+      {/* <div className="mt-8">
       <Link 
         href={user.role === "doctor" ? "/doctorpage" : "/PatientPage"} 
         className="inline-block px-5 py-2 rounded-lg bg-[var(--color-azure)] text-white font-medium hover:bg-[var(--color-lime-cream)] transition-colors mr-4"
@@ -372,7 +372,7 @@ const handleSave = async () => {
         >
           登出
         </button>
-          </div><br></br>
+          </div><br></br> */}
       <div className="p-5 rounded-xl border border-indigo-300 bg-indigo-50 mb-6">
   <h2 className="font-bold text-indigo-700 text-lg flex items-center gap-2">
     🚀 免費試用期

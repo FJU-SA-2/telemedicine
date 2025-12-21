@@ -1,136 +1,81 @@
 import { NextResponse } from 'next/server';
 import mysql from 'mysql2/promise';
 
-async function getDbConnection() {
-  return await mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "",
-    database: "telemedicine",
-  });
+const dbConfig = {
+  host: 'localhost',
+  user: 'root',
+  password: '',
+  database: 'telemedicine',
+};
+
+async function getConnection() {
+  return await mysql.createConnection(dbConfig);
 }
 
-export async function POST(req) {
+export async function POST(request) {
   let connection;
+  
   try {
-    const body = await req.json();
+    const body = await request.json();
     const { user_id, user_type, categories, feedback_text } = body;
 
-    console.log('接收到的 user_id:', user_id, 'type:', typeof user_id);
-    console.log('接收到的 user_type (前端傳入):', user_type);
+    console.log('📝 收到回報提交請求:', { user_id, user_type });
 
-    if (!user_id) {
-      return NextResponse.json({ message: '請先登入' }, { status: 401 });
-    }
-
-    connection = await getDbConnection();
-
-    // ✅ 優先使用前端傳來的 user_type
-    let userRole = user_type;
-
-    // 若前端沒傳，就去資料庫查
-    if (!userRole) {
-      console.log('前端未提供 user_type，改從 users 表查角色...');
-      const [users] = await connection.execute(
-        'SELECT user_id, role FROM users WHERE user_id = ?',
-        [user_id]
+    if (!feedback_text || feedback_text.trim() === '') {
+      return NextResponse.json(
+        { success: false, message: '請填寫問題描述' },
+        { status: 400 }
       );
-
-      if (users.length === 0) {
-        return NextResponse.json(
-          { message: `使用者不存在 (user_id: ${user_id})` },
-          { status: 404 }
-        );
-      }
-
-      userRole = users[0].role;
     }
 
-    console.log('最終使用的 userRole:', userRole);
+    connection = await getConnection();
 
-    let relatedId = null;
-    let relatedType = null;
+    // 根據 user_type 獲取對應的 ID
+    let patient_id = null;
+    let doctor_id = null;
+    let user_role = null;
 
-    // ✅ 根據角色查詢對應 ID
-    if (userRole === 'patient') {
-      const [patients] = await connection.execute(
+    if (user_type === 'patient') {
+      const [patientRows] = await connection.execute(
         'SELECT patient_id FROM patient WHERE user_id = ?',
         [user_id]
       );
-
-      if (patients.length === 0) {
-        return NextResponse.json(
-          { message: `找不到病患資料 (user_id: ${user_id})` },
-          { status: 400 }
-        );
+      if (patientRows.length > 0) {
+        patient_id = patientRows[0].patient_id;
       }
-
-      relatedId = patients[0].patient_id;
-      relatedType = 'patient';
-      console.log('找到的 patient_id:', relatedId);
-
-    } else if (userRole === 'doctor') {
-      const [doctors] = await connection.execute(
+      user_role = 'patient';
+    } else if (user_type === 'doctor') {
+      const [doctorRows] = await connection.execute(
         'SELECT doctor_id FROM doctor WHERE user_id = ?',
         [user_id]
       );
-
-      if (doctors.length === 0) {
-        return NextResponse.json(
-          { message: `找不到醫生資料 (user_id: ${user_id})` },
-          { status: 400 }
-        );
+      if (doctorRows.length > 0) {
+        doctor_id = doctorRows[0].doctor_id;
       }
-
-      relatedId = doctors[0].doctor_id;
-      relatedType = 'doctor';
-      console.log('找到的 doctor_id:', relatedId);
-
-    } else {
-      return NextResponse.json(
-        { message: `不支援的使用者角色: ${userRole}` },
-        { status: 400 }
-      );
+      user_role = 'doctor';
     }
 
-    // ✅ 驗證回饋內容
-    if (!feedback_text || feedback_text.trim() === '') {
-      return NextResponse.json(
-        { message: '問題描述不能為空' },
-        { status: 400 }
-      );
-    }
-
+    // 將 categories 轉為 JSON 字串
     const categoriesJson = JSON.stringify(categories);
 
-    // ✅ 插入回饋記錄
+    // 插入回報
     const [result] = await connection.execute(
-      `INSERT INTO feedback (patient_id, doctor_id, user_role, categories, feedback_text, status, created_at, updated_at) 
-       VALUES (?, ?, ?, ?, ?, 'unread', NOW(), NOW())`,
-      [
-        relatedType === 'patient' ? relatedId : null,
-        relatedType === 'doctor' ? relatedId : null,
-        userRole,
-        categoriesJson,
-        feedback_text
-      ]
+      `INSERT INTO feedback (patient_id, doctor_id, user_role, categories, feedback_text, status)
+       VALUES (?, ?, ?, ?, ?, 'unread')`,
+      [patient_id, doctor_id, user_role, categoriesJson, feedback_text]
     );
 
-    console.log('回饋提交成功, feedback_id:', result.insertId);
+    console.log(`✅ 回報已提交 - ID: ${result.insertId}`);
 
-    return NextResponse.json(
-      { 
-        message: '回報已提交',
-        feedback_id: result.insertId,
-        user_role: userRole
-      },
-      { status: 201 }
-    );
-
+    return NextResponse.json({
+      success: true,
+      message: '回報提交成功',
+      feedback_id: result.insertId,
+    });
   } catch (error) {
-    console.error('提交回報失敗:', error);
+    console.error('❌ 提交回報失敗:', error);
     return NextResponse.json(
-      { message: '提交失敗,請稍後重試', error: error.message },
+      { success: false, message: `提交失敗: ${error.message}` },
       { status: 500 }
     );
   } finally {

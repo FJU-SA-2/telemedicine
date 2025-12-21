@@ -308,7 +308,7 @@ export default function NotificationBell({ user }) {
         <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
           <h3 className="font-bold text-gray-800 flex items-center gap-2">
             <Bell size={18} />
-            通知中心 {isDoctor && "(醫師)"}
+            通知中心 
           </h3>
 
           {unreadCount > 0 && (

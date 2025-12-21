@@ -48,7 +48,7 @@ export default function PatientDetailModal({ patient, onClose }) {
                 {p.first_name?.charAt(0)}
               </div>
               <div>
-                <h3 className="text-2xl font-bold">{p.last_name}{p.first_name}</h3>
+                <h3 className="text-2xl font-bold">{p.first_name}{p.last_name}</h3>
                 <p className="text-white/80 text-sm mt-1">
                   病歷號：#{p.patient_id} | {utils.getGenderDisplay(p.gender)} | {utils.calculateAge(p.date_of_birth)}
                 </p>

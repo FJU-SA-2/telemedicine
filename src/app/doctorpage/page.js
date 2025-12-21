@@ -210,7 +210,7 @@ const TelemedicineDashboard = () => {
 
   return (
     
-    <div className="relative min-h-screen bg-[var(--color-azure)]/5">
+    <div className="relative min-h-screen bg-gray-50">
       {/* Sidebar 開關按鈕（只在 Sidebar 關閉時顯示） */}
       {!isOpen && (
         <button
@@ -254,8 +254,8 @@ const TelemedicineDashboard = () => {
           )}
 
           {/* 統計卡片 */}
-          <div className="flex justify-center mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full">
+    
+            <div className="mb-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
               {healthMetrics.map((metric, idx) => {
                 const Icon = metric.icon;
                 return (
@@ -279,7 +279,7 @@ const TelemedicineDashboard = () => {
                 );
               })}
             </div>
-          </div>
+          
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* 今日預約 - 使用真實數據 `todayAppointments` */}
@@ -343,7 +343,7 @@ const TelemedicineDashboard = () => {
             </div>
 
             {/* 本週日曆 - 使用真實數據 `weeklyCalendar` */}
-            <div className="bg-[var(--color-periwinkle)]/30 rounded-xl shadow-md p-6">
+            <div className="bg-white rounded-xl shadow-md p-6">
               <h3 className="text-xl font-bold text-gray-800 mb-4">本週日曆</h3>
               <div className="space-y-3">
                 {isNotApproved || isLoadingData ? (
@@ -369,7 +369,7 @@ const TelemedicineDashboard = () => {
                           key={item.date_day}
                           className={`p-3 rounded-lg ${
                             // 更改今日強調色為 COLOR_MAHOGANY，非今日背景色為 COLOR_LIGHT_CYAN
-                            isToday ? "bg-[var(--color-mahogany)]/20 text-gray-800" : "bg-[var(--color-light-cyan)]/30"
+                            isToday ? "bg-blue-200 text-gray-800" : "bg-blue-100"
                           }`}
                         >
                           <div className="flex justify-between items-center">
@@ -396,50 +396,49 @@ const TelemedicineDashboard = () => {
           </div>
 
          {/* 快速操作 */}
-          <div className="mt-8 bg-[var(--color-mahogany)]/10 rounded-xl shadow-lg p-6 ">
-            <h3 className="text-xl font-bold mb-4">快速操作</h3>
+          <div className="mt-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-lg p-6 border border-blue-100">
+            <h3 className="text-xl font-bold mb-4 text-gray-800">快速操作</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <a 
                 href={isNotApproved ? "#" : "/facetime"}
-                className={`bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-6 transition-all flex flex-col items-center justify-center ${
+                className={`bg-white hover:bg-blue-50 rounded-lg p-6 transition-all flex flex-col items-center justify-center shadow-sm border border-gray-200 ${
                   isNotApproved ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
                 }`}
                 onClick={(e) => isNotApproved && e.preventDefault()}
               >
-                <Video size={32} className="mb-3" />
-                <p className="text-base font-semibold text-center">開始視訊</p>
+                <Video size={32} className="mb-3 text-blue-600" />
+                <p className="text-base font-semibold text-center text-gray-800">開始視訊</p>
               </a>
               <a 
                 href={isNotApproved ? "#" : "/schedules"}
-                className={`bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-6 transition-all flex flex-col items-center justify-center ${
+                className={`bg-white hover:bg-blue-50 rounded-lg p-6 transition-all flex flex-col items-center justify-center shadow-sm border border-gray-200 ${
                   isNotApproved ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
                 }`}
                 onClick={(e) => isNotApproved && e.preventDefault()}
               >
-                <Calendar size={32} className="mb-3" />
-                <p className="text-base font-semibold text-center">新增排班</p>
+                <Calendar size={32} className="mb-3 text-green-600" />
+                <p className="text-base font-semibold text-center text-gray-800">新增排程</p>
               </a>
               <a 
                 href={isNotApproved ? "#" : "/recordoc"}
-                className={`bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-6 transition-all flex flex-col items-center justify-center ${
+                className={`bg-white hover:bg-blue-50 rounded-lg p-6 transition-all flex flex-col items-center justify-center shadow-sm border border-gray-200 ${
                   isNotApproved ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
                 }`}
                 onClick={(e) => isNotApproved && e.preventDefault()}
               >
-                <FileText size={32} className="mb-3" />
-                <p className="text-base font-semibold text-center">查看預約紀錄</p>
+                <FileText size={32} className="mb-3 text-orange-600" />
+                <p className="text-base font-semibold text-center text-gray-800">查看預約紀錄</p>
               </a>
               <a 
                 href={isNotApproved ? "#" : "/patientmanage"}
-                className={`bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg p-6 transition-all flex flex-col items-center justify-center ${
+                className={`bg-white hover:bg-blue-50 rounded-lg p-6 transition-all flex flex-col items-center justify-center shadow-sm border border-gray-200 ${
                   isNotApproved ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
                 }`}
                 onClick={(e) => isNotApproved && e.preventDefault()}
               >
-                <Users size={32} className="mb-3" />
-                <p className="text-base font-semibold text-center">查看患者/寫病歷</p>
+                <Users size={32} className="mb-3 text-purple-600" />
+                <p className="text-base font-semibold text-center text-gray-800">查看患者/寫病歷</p>
               </a>
-              
             </div>
           </div>
         </div>
