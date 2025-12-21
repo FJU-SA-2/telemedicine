@@ -12,63 +12,52 @@ export default function PricingPage() {
     {
       name: "Free",
       price: "$0",
-      period: "永久免費",
-      description: "適合個人用戶體驗基本功能",
+      period: "無限期",
+      description: "僅能瀏覽經驗分享區及醫師介紹表",
       features: [
-        "基本預約功能",
-        "每月 3 次視訊看診",
-        "查看就診紀錄",
-        "基本健康衛教資訊",
-        "標準客服支援"
+        "瀏覽經驗分享區",
+        "查看醫師列表",
       ],
       icon: Star,
-      color: "from-gray-100 to-gray-200",
-      // textColor: "text-[var(--color-mahogany)]",
-      // buttonText: "開始使用",
-      // buttonColor: "bg-[var(--color-mahogany)] hover:bg-[var(--color-mahogany)]/80"
+      color: "from-gray-100 to-gray-200"
     },
     {
       name: "會員版",
       price: "NT$260",
-      period: "半年",
-      description: "最受歡迎的選擇，適合頻繁就診用戶",
+      period: "6個月",
+      description: "提供所有功能給有訂閱的顧客",
       features: [
         "無限制預約次數",
         "無限制視訊看診",
         "完整就診紀錄與報告",
-        "個人化健康追蹤",
-        "優先預約時段",
-        "24/7 優先客服支援",
-        "健康數據分析報告",
-        "專屬健康顧問諮詢"
+        "AI健康顧問諮詢",
+        "經驗分享區互動",
+        "收藏喜愛的醫師"
       ],
       icon: Zap,
       color: "from-[var(--color-azure)] to-[var(--color-periwinkle)]",
       textColor: "text-white",
-      buttonText: "立即升級",
+      buttonText: "馬上訂閱",
       buttonColor: "bg-[var(--color-azure)] hover:bg-[var(--color-azure)]/90",
       popular: true
     },
     {
-      name: "企業版",
-      price: "客製化",
-      period: "依需求報價",
-      description: "為企業和機構提供專業解決方案",
+      name: "長期訂閱會員",
+      price: "NT$1300",
+      period: "3年",
+      description: "等於免費送半年，超值優惠給長期使用者",
       features: [
-        "所有升級版功能",
-        "多人帳號管理",
-        "企業健康管理儀表板",
-        "客製化功能開發",
-        "專屬帳戶經理",
-        "專屬技術支援團隊",
-        "API 整合服務",
-        "數據安全保障",
-        "員工健康管理方案"
+        "無限制預約次數",
+        "無限制視訊看診",
+        "完整就診紀錄與報告",
+        "AI健康顧問諮詢",
+        "經驗分享區互動",
+        "收藏喜愛的醫師"
       ],
       icon: Crown,
       color: "from-[var(--color-lime-cream)] to-[var(--color-lime-cream)]/70",
       textColor: "text-white",
-      buttonText: "聯繫我們",
+      buttonText: "立即升級",
       buttonColor: "bg-[var(--color-lime-cream)] hover:bg-[var(--color-lime-cream)]/90"
     }
   ];
@@ -93,11 +82,11 @@ export default function PricingPage() {
           {/* 頁面標題 */}
           <div className="text-center mb-16">
             <h1 className="text-5xl font-extrabold text-gray-900 mb-4">
-              選擇最適合您的
+              訂閱我們的
               <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"> 方案</span>
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              無論是個人用戶還是企業機構，我們都有最適合您的醫療服務方案
+              訂閱後即能享受透過平台看診的所有便利功能，讓您的醫療體驗更順暢。
             </p>
           </div>
 
