@@ -307,7 +307,7 @@ export default function Page() {
 
         setAppointmentHistory(sortedPastAppointments.map(item => ({
           appointment_id: item.appointment_id,
-          doctor_name: `${item.last_name}${item.first_name}`,
+          doctor_name: `${item.first_name}${item.last_name}`,
           specialty: item.doctor_specialty,
           appointment_date: item.appointment_date,
           appointment_time: item.appointment_time,
@@ -355,7 +355,7 @@ export default function Page() {
   }
 
   const featuredItems = info.slice(0, MAX_FEATURED_ITEMS);
-  const userName = user.first_name && user.last_name ? `${user.last_name}${user.first_name}` : user.username;
+  const userName = user.first_name && user.last_name ? `${user.first_name}${user.last_name}` : user.username;
 
   const softColors = [
     "from-blue-100 via-blue-50 to-indigo-100",
