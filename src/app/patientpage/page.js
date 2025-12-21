@@ -22,7 +22,7 @@ const DashboardHeader = ({ userName, onAddAppointment }) => (
     <div className="flex items-center space-x-4">
       <button 
         onClick={onAddAppointment}
-        className="flex items-center bg-[var(--color-lime-cream)] hover:bg-[var(--color-mahogany)] text-white font-semibold px-6 py-3 rounded-xl shadow-md hover:shadow-lg"
+        className="flex items-center bg-[var(--color-lime-cream)] hover:bg-[var(--color-azure)] text-white font-semibold px-6 py-3 rounded-xl shadow-md hover:shadow-lg"
       >
         <Calendar size={20} className="mr-2" />
         新增預約

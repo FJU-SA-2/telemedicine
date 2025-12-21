@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { User as UserIcon, ChevronDown, LogOut, UserCircle } from "lucide-react";
 import NotificationBell from "./NotificationBell";
+import { Gift } from "lucide-react";
 
 export default function Navbar() {
   const router = useRouter();
@@ -114,10 +115,27 @@ export default function Navbar() {
               className="h-16 w-auto"
             />
           </div>
+          <div className="flex items-center gap-3 pr-6 lg:pr-8">
+            
+                    {/* 查看方案 */}
+                    <Link
+                      href="/plan"
+                      className="group inline-flex items-center gap-2 px-5 py-3 text-base
+                                 text-[var(--color-azure)] bg-[var(--color-periwinkle)]
+                                 rounded-full hover:bg-[var(--color-azure)]/30
+                                 transition-all shadow-md hover:shadow-lg"
+                    >
+                      <Gift
+                        size={18}
+                        className="transition-transform group-hover:translate-x-1"
+                      />
+                      查看方案
+                    </Link>
 
           {/* 右側:通知 + 使用者下拉選單 */}
-          <div className="flex items-center gap-2">
-            <NotificationBell user={user} />
+          <div className="flex items-center gap-2 ">
+            <NotificationBell className=' hover:bg-[var(--color-periwinkle)] '
+              user={user} />
             
             {/* 下拉選單容器 */}
             <div className="relative" ref={dropdownRef}>
@@ -166,6 +184,8 @@ export default function Navbar() {
 
         </div>
       </div>
+      </div>
+      
     </header>
   );
 }
