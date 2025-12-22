@@ -723,14 +723,12 @@ def login_user():
     cursor = db.cursor(dictionary=True)
 
     try:
-        # 查 users
         cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
         user = cursor.fetchone()
 
         if not user:
             return jsonify({"message": "帳號不存在"}), 401
 
-        # 密碼比對（建議後續改成 hash）
         if user["password_hash"] != password:
             return jsonify({"message": "密碼錯誤"}), 401
 
@@ -750,21 +748,25 @@ def login_user():
                 first_name = profile.get("first_name", "")
                 last_name = profile.get("last_name", "")
         
-        elif role == "doctor":  # ⭐ 修改這裡
+        elif role == "doctor":
             cursor.execute("SELECT * FROM doctor WHERE user_id = %s", (user_id,))
             profile = cursor.fetchone()
             if profile:
-                doctor_id = profile.get("doctor_id")  # ⭐ 取得 doctor_id
+                doctor_id = profile.get("doctor_id")
                 first_name = profile.get("first_name", "")
                 last_name = profile.get("last_name", "")
 
+        # ✅ 新增這兩行
+        session.permanent = True  # 設定為永久 session
+        app.permanent_session_lifetime = timedelta(days=7)  # 設定 7 天有效期
+        
         # 儲存到 session
         session['user_id'] = user_id
         session['email'] = email
         session['role'] = role
         session['username'] = user["username"]
         session['patient_id'] = patient_id
-        session['doctor_id'] = doctor_id  # ⭐ 新增
+        session['doctor_id'] = doctor_id
         session['first_name'] = first_name
         session['last_name'] = last_name
 
@@ -779,7 +781,7 @@ def login_user():
                 "role": role,
                 "email": email,
                 "patient_id": patient_id,
-                "doctor_id": doctor_id,  # ⭐ 新增
+                "doctor_id": doctor_id,
                 "firstName": first_name,
                 "lastName": last_name
             }
@@ -1393,6 +1395,10 @@ def admin_login():
         if not admin or admin["password_hash"] != password:
             return jsonify({"message": "帳號或密碼錯誤"}), 401
 
+        # ✅ 新增這兩行
+        session.permanent = True
+        app.permanent_session_lifetime = timedelta(days=7)
+        
         session['user_id'] = admin["admin_id"]
         session['admin_id'] = admin["admin_id"]
         session['admin_email'] = email
