@@ -56,7 +56,7 @@ const AppointmentCard = ({ appointment, onJoinMeeting }) => {
           <div className="flex flex-wrap items-center gap-4 mb-4">
             <div className="flex items-center">
               <User size={20} className="text-[var(--color-mahogany)] mr-2" />
-              <span className="text-lg font-medium">{appointment.doctor} 醫師</span>
+              <span className="text-lg font-medium">{appointment.doctor} </span>
             </div>
             <div className="flex items-center">
               <Clock size={20} className="text-[var(--color-mahogany)] mr-2" />
@@ -278,7 +278,7 @@ export default function Page() {
 
           setUpcomingAppointment({
             appointment_id: apt.appointment_id,
-            doctor: `${apt.last_name || ''}${apt.first_name || ''} 醫師`,
+            doctor: `${apt.first_name || ''}${apt.last_name || ''} 醫師`,
             specialty: apt.doctor_specialty || '未指定科別',
             time: apt.appointment_time ? apt.appointment_time.slice(0, 5) : '', // 只顯示到分鐘 HH:MM
             status: apt.status,

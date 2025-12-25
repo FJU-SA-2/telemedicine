@@ -47,7 +47,7 @@ export async function POST(request) {
     }
 
     const doctor = doctorInfo[0];
-    const doctorName = `${doctor.last_name}${doctor.first_name}`;
+    const doctorName = `${doctor.first_name}${doctor.last_name}`;
 
     // 獲取患者資訊
     const [patientInfo] = await connection.execute(
@@ -292,7 +292,7 @@ export async function PATCH(request) {
     );
 
     // 創建取消通知
-    const doctorName = `${appointment.doctor_last_name}${appointment.doctor_first_name}`;
+    const doctorName = `${appointment.doctor_first_name}${appointment.doctor_last_name}`;
     const patientName = appointment.patient_last_name && appointment.patient_first_name
       ? `${appointment.patient_last_name}${appointment.patient_first_name}`
       : '患者';
