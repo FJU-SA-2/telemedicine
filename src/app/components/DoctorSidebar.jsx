@@ -29,8 +29,7 @@ export default function DoctorSidebar({ isOpen, setIsOpen, approvalStatus }) {
     { id: "/patientmanage", label: "患者病歷", icon: FolderOpen, href: "/patientmanage", needsApproval: true },
     { id: "/facetime", label: "視訊看診", icon: Video, href: "/facetime", needsApproval: true },
     { id: "/docfeedback", label: "問題回報", icon: MessageCircleMore, href: "/docfeedback" },
-    { id: "/settings", label: "設定", icon: Settings, href: "/settings" },
-  ];
+      ];
   // 為了確保主色調能被正確引用 (這是從 globals.css 中取值)
   const COLOR_AZURE = "var(--color-azure)"; 
   const COLOR_PERIWINKLE = "var(--color-periwinkle)"; 

@@ -1,12 +1,48 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Sidebar from "../components/Sidebar";
+import DoctorSidebar from "../components/DoctorSidebar";
 import Navbar from "../components/Navbar";
 import { Menu, Check, Star, Zap, Crown, Mail } from "lucide-react";
 import FloatingChat from "../components/FloatingChat";
 
 export default function PricingPage() {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // ✅ 獲取用戶資料
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch("/api/me", {
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          router.push("/auth");
+          return;
+        }
+
+        const data = await res.json();
+        
+        if (data.authenticated && data.user) {
+          setUser(data.user);
+        } else {
+          router.push("/auth");
+        }
+      } catch (error) {
+        console.error("獲取使用者資料失敗:", error);
+        router.push("/auth");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, [router]);
 
   const plans = [
     {
@@ -45,7 +81,7 @@ export default function PricingPage() {
       name: "長期訂閱會員",
       price: "NT$1300",
       period: "3年",
-      description: "等於免費送半年，超值優惠給長期使用者",
+      description: "等於免費送半年,超值優惠給長期使用者",
       features: [
         "無限制預約次數",
         "無限制視訊看診",
@@ -62,6 +98,15 @@ export default function PricingPage() {
     }
   ];
 
+  // ✅ 載入中顯示
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center text-gray-500">載入中...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen bg-gray-50">
       {!isOpen && (
@@ -73,7 +118,18 @@ export default function PricingPage() {
         </button>
       )}
 
-      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+      {/* ✅ 根據用戶身份顯示對應的 Sidebar */}
+      {user?.role === "patient" && (
+        <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+      )}
+
+      {user?.role === "doctor" && (
+        <DoctorSidebar  
+          isOpen={isOpen} 
+          setIsOpen={setIsOpen}
+          approvalStatus={user.approval_status}
+        />
+      )}
 
       <div className={`min-h-screen bg-gradient-to-br from-[var(--color-light-cyan)] via-white to-[var(--color-periwinkle)]/30 transition-all duration-300 ${isOpen ? 'lg:ml-64' : 'ml-0'}`}>
         <Navbar />
@@ -86,7 +142,7 @@ export default function PricingPage() {
               <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"> 方案</span>
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              訂閱後即能享受透過平台看診的所有便利功能，讓您的醫療體驗更順暢。
+              訂閱後即能享受透過平台看診的所有便利功能,讓您的醫療體驗更順暢。
             </p>
           </div>
 
@@ -151,20 +207,20 @@ export default function PricingPage() {
             <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">常見問題</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">可以隨時取消訂閱嗎？</h3>
-                <p className="text-gray-600">可以的！您可以隨時在帳戶設定中取消訂閱，不會收取任何額外費用。</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">可以隨時取消訂閱嗎?</h3>
+                <p className="text-gray-600">可以的!您可以隨時在帳戶設定中取消訂閱,不會收取任何額外費用。</p>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">升級後會立即生效嗎？</h3>
-                <p className="text-gray-600">是的，升級後所有功能會立即解鎖，您可以馬上開始使用。</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">升級後會立即生效嗎?</h3>
+                <p className="text-gray-600">是的,升級後所有功能會立即解鎖,您可以馬上開始使用。</p>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">支援哪些付款方式？</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">支援哪些付款方式?</h3>
                 <p className="text-gray-600">我們支援信用卡、LINE Pay、Apple Pay 等多種付款方式。</p>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">企業版有最低人數限制嗎？</h3>
-                <p className="text-gray-600">沒有限制！無論企業規模大小，我們都能提供客製化方案。</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">企業版有最低人數限制嗎?</h3>
+                <p className="text-gray-600">沒有限制!無論企業規模大小,我們都能提供客製化方案。</p>
               </div>
             </div>
           </div>
@@ -172,7 +228,7 @@ export default function PricingPage() {
           {/* CTA 區塊 */}
           <div className="bg-gradient-to-r from-[var(--color-azure)] to-[var(--color-periwinkle)] rounded-3xl shadow-2xl p-12 text-center text-white">
             <Mail size={48} className="mx-auto mb-4" />
-            <h2 className="text-3xl font-bold mb-4">還有其他問題？</h2>
+            <h2 className="text-3xl font-bold mb-4">還有其他問題?</h2>
             <p className="text-lg mb-8 text-white/90">我們的團隊隨時為您提供協助</p>
             <button className="bg-white text-[var(--color-azure)] font-semibold px-8 py-4 rounded-xl hover:bg-[var(--color-light-cyan)] transition-all shadow-lg">
               聯繫客服團隊

@@ -175,7 +175,7 @@ export default function RatingModal({ isOpen, onClose, appointment, onSubmit }) 
             rows={4}
             maxLength={500}
             disabled={isSubmitting}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm"
+            className="text-gray-700 w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm"
           />
           <p className="text-xs text-gray-500 text-right">
             {comment.length}/500 字
