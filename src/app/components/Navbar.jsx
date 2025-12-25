@@ -121,7 +121,7 @@ export default function Navbar({ sidebarOpen = false }) {
           <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             {/* 查看方案按鈕 */}
             <Link
-              href="/plan"
+              href={user?.role === "doctor" ? "/docplan" : "/plan"}
               className="group inline-flex items-center gap-2 px-3 py-2
                          text-[var(--color-azure)] bg-[var(--color-periwinkle)]
                          rounded-full hover:bg-[var(--color-azure)]/30 transition-all shadow-md hover:shadow-lg
