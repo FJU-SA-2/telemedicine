@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
 import Sidebar from "./components/Sidebar"; // 請確保路徑正確
-import { Menu, User, MessageSquare, Star, ChevronRight, ChevronLeft } from "lucide-react";
+import { Menu, User, MessageSquare, Star, ChevronRight, ChevronLeft ,Zap, Crown} from "lucide-react";
 import FloatingChat from "./components/FloatingChat";
 
 export default function HomePage() {
@@ -12,7 +12,7 @@ export default function HomePage() {
 
   const COLOR_MAHOGANY = "var(--color-mahogany)"; 
   const COLOR_LIME_CREAM = "var(--color-lime-cream)"; 
-  const COLOR_AZURE = "var(--color-azure)"; 
+  const COLOR_AZURE = "var(--color-sazure)"; 
   const COLOR_PERIWINKLE = "var(--color-periwinkle)"; 
   const COLOR_LIGHT_CYAN = "var(--color-light-cyan)"; 
   // ============================================
@@ -183,6 +183,74 @@ export default function HomePage() {
               </div>
             </div>
           </section>
+          <section className="py-20">
+  <div className="max-w-7xl mx-auto px-6 lg:px-8">
+
+    {/* 標題 */}
+    <div className="text-center mb-12">
+      <h2 className="text-4xl font-extrabold text-gray-900">
+        方案功能比較
+      </h2>
+      <p className="mt-4 text-xl text-gray-500">
+        清楚了解各方案差異，選擇最適合你的方案
+      </p>
+    </div>
+
+    {/* 表格 */}
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse bg-[var(--color-mahogany)]/2 rounded-2xl">
+
+        {/* 表頭 */}
+        <thead>
+          <tr className="border-b border-gray-20">
+            <th className="text-left p-5 text-gray-600 font-medium">
+              功能
+            </th>
+            <th className="py-3 px-4 text-sm text-gray-900 font-semibold">
+              Free
+            </th>
+            <th className="py-3 px-4 text-sm text-gray-900 font-semibold bg-gray-300/50">
+              會員版
+              <div className="text-xs text-gray-500 mt-1">推薦</div>
+            </th>
+            <th className="py-3 px-4 text-sm text-gray-900 font-semibold ">
+              年費
+            </th>
+          </tr>
+        </thead>
+
+        <tbody className="divide-y divide-gray-200">
+          {[
+            ["價格", "$0", "NT$260 / 月", "NT$1600 / 年"],
+            ["預約次數", "—", "無限制", "無限制"],
+            ["視訊看診", "—", "✔", "✔"],
+            ["完整就診紀錄", "—", "✔", "✔"],
+            ["AI 健康顧問", "—", "✔", "✔"],
+            ["經驗分享互動", "僅瀏覽", "✔", "✔"],
+            ["收藏喜愛醫師", "—", "✔", "✔"],
+          ].map(([feature, free, pro, year]) => (
+            <tr key={feature}>
+              <td className="p-5 text-gray-600">
+                {feature}
+              </td>
+              <td className="p-5 text-center text-gray-500 bg-gray-100/30">
+                {free}
+              </td>
+              <td className="py-3 px-4 text-center font-medium bg-gray-100/50">
+                {pro}
+              </td>
+              <td className="p-5 text-center text-gray-700 bg-gray-100/40">
+                {year}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+
+      </table>
+    </div>
+  </div>
+</section>
+
 
           
           <section className="py-12">

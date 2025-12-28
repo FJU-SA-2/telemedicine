@@ -48,7 +48,7 @@ export default function PricingPage() {
     {
       name: "Free",
       price: "$0",
-      period: "無限期",
+      period: "半年",
       description: "僅能瀏覽經驗分享區及醫師介紹表",
       features: [
         "瀏覽經驗分享區",
@@ -60,7 +60,7 @@ export default function PricingPage() {
     {
       name: "會員版",
       price: "NT$260",
-      period: "6個月",
+      period: "1個月",
       description: "提供所有功能給有訂閱的顧客",
       features: [
         "無限制預約次數",
@@ -79,8 +79,8 @@ export default function PricingPage() {
     },
     {
       name: "長期訂閱會員",
-      price: "NT$1300",
-      period: "3年",
+      price: "NT$1600",
+      period: "1年",
       description: "等於免費送半年,超值優惠給長期使用者",
       features: [
         "無限制預約次數",
@@ -218,21 +218,7 @@ export default function PricingPage() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">支援哪些付款方式?</h3>
                 <p className="text-gray-600">我們支援信用卡、LINE Pay、Apple Pay 等多種付款方式。</p>
               </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">企業版有最低人數限制嗎?</h3>
-                <p className="text-gray-600">沒有限制!無論企業規模大小,我們都能提供客製化方案。</p>
-              </div>
             </div>
-          </div>
-
-          {/* CTA 區塊 */}
-          <div className="bg-gradient-to-r from-[var(--color-azure)] to-[var(--color-periwinkle)] rounded-3xl shadow-2xl p-12 text-center text-white">
-            <Mail size={48} className="mx-auto mb-4" />
-            <h2 className="text-3xl font-bold mb-4">還有其他問題?</h2>
-            <p className="text-lg mb-8 text-white/90">我們的團隊隨時為您提供協助</p>
-            <button className="bg-white text-[var(--color-azure)] font-semibold px-8 py-4 rounded-xl hover:bg-[var(--color-light-cyan)] transition-all shadow-lg">
-              聯繫客服團隊
-            </button>
           </div>
         </div>
 
