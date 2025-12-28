@@ -4,6 +4,7 @@ import { Calendar, Video, Star, FileText, CreditCard, User, Clock, CheckCircle, 
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import FloatingChat from "../components/FloatingChat";
+import { MessageCircle } from "lucide-react";
 
 export default function IntroductionPage() {
   const [activeStep, setActiveStep] = useState(null);
@@ -167,6 +168,26 @@ const steps = [
       "持續改進平台,提供更優質的服務體驗"
     ]
   },
+  {
+  id: 8,
+  icon: MessageCircle,
+  title: "AI聊天室",
+  color: "from-indigo-500 to-indigo-600",
+  description: "系統在每個頁面的右下角皆設有 AI 聊天室，方便使用者隨時進行線上視訊看診相關的諮詢與協助。",
+  images: [
+    "/images/37.png",
+    "/images/38.png",
+  ],
+  details: [
+    "每個頁面右下角皆可快速開啟 AI 聊天室",
+    "看診前協助進行症狀初步詢問與整理",
+    "輔助說明線上視訊看診流程",
+    "提供基本健康與就醫相關資訊",
+    "提升線上醫療服務的整體互動體驗"
+  ]
+}
+
+
 ];
 
   // 處理圖片切換

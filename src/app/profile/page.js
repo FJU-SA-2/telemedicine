@@ -393,7 +393,10 @@ const handleSave = async () => {
   )}
 
   <button
-    onClick={() => router.push("/plan")}
+    onClick={() => {
+    if (!user) return; // 避免 user 還沒拿到資料
+    router.push(user.role === "doctor" ? "/docplan" : "/plan");
+  }}
     className="mt-4 w-full py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition"
   >
     查看方案 & 升級
