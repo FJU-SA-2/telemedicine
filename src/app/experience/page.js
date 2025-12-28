@@ -265,7 +265,7 @@ const COLOR_LIGHT_CYAN = "var(--color-light-cyan)";
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
-            <h2 className="text-2xl font-bold mb-4">發布新文章</h2>
+            <h2 className="text-gray-800 text-2xl font-bold mb-4">發布新文章</h2>
             <form onSubmit={handleCreatePost}>
               <div className="mb-4">
                 <label className="block text-gray-700 mb-2">標題</label>
@@ -273,7 +273,7 @@ const COLOR_LIGHT_CYAN = "var(--color-light-cyan)";
                   type="text"
                   value={newPost.title}
                   onChange={(e) => setNewPost({...newPost, title: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="text-gray-800 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="請輸入文章標題"
                 />
               </div>
@@ -283,7 +283,7 @@ const COLOR_LIGHT_CYAN = "var(--color-light-cyan)";
                   value={newPost.content}
                   onChange={(e) => setNewPost({...newPost, content: e.target.value})}
                   rows="10"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="text-gray-800 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="分享您的經驗..."
                 />
               </div>

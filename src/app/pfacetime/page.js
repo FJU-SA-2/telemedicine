@@ -488,7 +488,7 @@ export default function PatientVideoConsultation() {
                   className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
                 >
                   <FileText className="w-5 h-5" />
-                  <span>{showHistory ? "返回預約" : "看診記錄"}</span>
+                  <span>{showHistory ? "返回預約" : "看診紀錄"}</span>
                 </button>
               </div>
             </div>
@@ -540,7 +540,7 @@ export default function PatientVideoConsultation() {
                     <div className="bg-white rounded-xl shadow-md p-6">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-gray-500 text-sm">看診記錄</p>
+                          <p className="text-gray-500 text-sm">看診紀錄</p>
                           <p className="text-3xl font-bold text-gray-900 mt-1">
                             {consultationHistory.length}
                           </p>
@@ -684,7 +684,7 @@ export default function PatientVideoConsultation() {
                         },
                         {
                           icon: <FileText className="w-3 h-3 text-blue-600" />,
-                          title: "看診記錄",
+                          title: "看診紀錄",
                           desc: "所有診療記錄將自動保存供您查閱",
                         },
                         {
@@ -809,17 +809,9 @@ export default function PatientVideoConsultation() {
                                 </div>
                               )}
 
-                              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                              <div className="flex items-center justify-between pt-4 border-t border-gray-200 ">
                                 <div className="flex items-center space-x-4 text-sm text-gray-600">
-                                  {record.recording_duration && (
-                                    <div className="flex items-center space-x-1">
-                                      <Clock className="w-4 h-4" />
-                                      <span>
-                                        看診時長:{" "}
-                                        {formatDuration(record.recording_duration)}
-                                      </span>
-                                    </div>
-                                  )}
+                                  
                                 </div>
 
                                 <div className="flex items-center space-x-2">
