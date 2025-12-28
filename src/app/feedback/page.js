@@ -30,59 +30,71 @@ function FeedbackFormContent() {
   };
 
   const handleSubmit = async () => {
-    setLoading(true);
-    setError('');
+  setLoading(true);
+  setError('');
 
-    try {
-      const user_id = localStorage.getItem('user_id');
+  try {
+    const user_id = localStorage.getItem('user_id');
+    const user_type = localStorage.getItem('user_type'); // ✅ 新增：取得用戶類型
 
-      if (!user_id) {
-        setError('請先登入後再提交回報');
-        setLoading(false);
-        return;
-      }
-      const userIdNumber = parseInt(user_id, 10);
-      
-      console.log('user_id from localStorage:', user_id);
-      console.log('user_id as number:', userIdNumber);
-      console.log('發送請求到:', '/api/feedback');
-      console.log('提交數據:', {
-          user_id: userIdNumber,
-          categories: selectedCategories,
-          feedback_text: feedback,
-      });
-
-      const response = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: userIdNumber,
-          categories: selectedCategories,
-          feedback_text: feedback,
-        }),
-      });
-
-      const data = await response.json();
-      console.log('API 回應:', data);
-      if (!response.ok) {
-        setError(data.message || '提交失敗');
-        return;
-      }
-
-      setSubmitted(true);
-      setSelectedCategories([]);
-      setFeedback('');
-
-      setTimeout(() => setSubmitted(false), 3000);
-    } catch (err) {
-      console.error('提交錯誤:', err);
-      setError('提交失敗,請稍後重試');
-    } finally {
+    if (!user_id) {
+      setError('請先登入後再提交回報');
       setLoading(false);
+      return;
     }
-  };
+
+    if (!user_type) {
+      setError('無法確認用戶類型，請重新登入');
+      setLoading(false);
+      return;
+    }
+
+    const userIdNumber = parseInt(user_id, 10);
+    
+    console.log('user_id from localStorage:', user_id);
+    console.log('user_type from localStorage:', user_type); // ✅ 新增日誌
+    console.log('user_id as number:', userIdNumber);
+    console.log('發送請求到:', '/api/feedback');
+    console.log('提交數據:', {
+      user_id: userIdNumber,
+      user_type: user_type, // ✅ 新增
+      categories: selectedCategories,
+      feedback_text: feedback,
+    });
+
+    const response = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: userIdNumber,
+        user_type: user_type, // ✅ 新增：傳送用戶類型
+        categories: selectedCategories,
+        feedback_text: feedback,
+      }),
+    });
+
+    const data = await response.json();
+    console.log('API 回應:', data);
+    
+    if (!response.ok) {
+      setError(data.message || '提交失敗');
+      return;
+    }
+
+    setSubmitted(true);
+    setSelectedCategories([]);
+    setFeedback('');
+
+    setTimeout(() => setSubmitted(false), 3000);
+  } catch (err) {
+    console.error('提交錯誤:', err);
+    setError('提交失敗,請稍後重試');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
