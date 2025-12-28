@@ -45,58 +45,68 @@ export default function PricingPage() {
   }, [router]);
 
   const plans = [
-    {
-      name: "Free",
-      price: "$0",
-      period: "半年",
-      description: "僅能瀏覽經驗分享區及醫師介紹表",
-      features: [
-        "瀏覽經驗分享區",
-        "查看醫師列表",
-      ],
-      icon: Star,
-      color: "from-gray-100 to-gray-200"
-    },
-    {
-      name: "會員版",
-      price: "NT$260",
-      period: "1個月",
-      description: "提供所有功能給有訂閱的顧客",
-      features: [
-        "無限制預約次數",
-        "無限制視訊看診",
-        "完整就診紀錄與報告",
-        "AI健康顧問諮詢",
-        "經驗分享區互動",
-        "收藏喜愛的醫師"
-      ],
-      icon: Zap,
-      color: "from-[var(--color-azure)] to-[var(--color-periwinkle)]",
-      textColor: "text-white",
-      buttonText: "馬上訂閱",
-      buttonColor: "bg-[var(--color-azure)] hover:bg-[var(--color-azure)]/90",
-      popular: true
-    },
-    {
-      name: "長期訂閱會員",
-      price: "NT$1600",
-      period: "1年",
-      description: "等於免費送半年,超值優惠給長期使用者",
-      features: [
-        "無限制預約次數",
-        "無限制視訊看診",
-        "完整就診紀錄與報告",
-        "AI健康顧問諮詢",
-        "經驗分享區互動",
-        "收藏喜愛的醫師"
-      ],
-      icon: Crown,
-      color: "from-[var(--color-lime-cream)] to-[var(--color-lime-cream)]/70",
-      textColor: "text-white",
-      buttonText: "立即升級",
-      buttonColor: "bg-[var(--color-lime-cream)] hover:bg-[var(--color-lime-cream)]/90"
-    }
-  ];
+  {
+    name: "會員版（試用中）",
+    price: "$0",
+    period: "前 6 個月",
+    description: "新會員註冊即啟用會員版完整功能試用",
+    features: [
+      "無限制預約次數",
+      "無限制視訊看診",
+      "完整就診紀錄與報告",
+      "AI 健康顧問諮詢",
+      "經驗分享區互動",
+      "收藏喜愛的醫師"
+    ],
+    icon: Star,
+    color: "from-gray-100 to-gray-200",
+    textColor: "text-gray-700",
+    buttonText: "試用中",
+    buttonColor: "bg-gray-300 cursor-default",
+    disabled: true,
+    badge: "試用中"
+  },
+  {
+    name: "會員版（月訂）",
+    price: "NT$260",
+    period: "每月",
+    description: "適合彈性使用的會員方案",
+    features: [
+      "無限制預約次數",
+      "無限制視訊看診",
+      "完整就診紀錄與報告",
+      "AI 健康顧問諮詢",
+      "經驗分享區互動",
+      "收藏喜愛的醫師"
+    ],
+    icon: Check,
+    color: "from-[var(--color-azure)] to-[var(--color-periwinkle)]",
+    textColor: "text-white",
+    buttonText: "開始訂閱",
+    buttonColor: "bg-[var(--color-azure)] hover:bg-[var(--color-azure)]/90",
+    popular: true
+  },
+  {
+    name: "年費會員",
+    price: "NT$1600",
+    period: "每年",
+    description: "長期使用最划算，相當於贈送半年服務",
+    features: [
+      "無限制預約次數",
+      "無限制視訊看診",
+      "完整就診紀錄與報告",
+      "AI 健康顧問諮詢",
+      "經驗分享區互動",
+      "收藏喜愛的醫師"
+    ],
+    icon: Crown,
+    color: "from-[var(--color-lime-cream)] to-[var(--color-lime-cream)]/70",
+    textColor: "text-white",
+    buttonText: "升級年費",
+    buttonColor: "bg-[var(--color-lime-cream)] hover:bg-[var(--color-lime-cream)]/90"
+  }
+];
+
 
   // ✅ 載入中顯示
   if (loading) {
@@ -138,9 +148,11 @@ export default function PricingPage() {
           {/* 頁面標題 */}
           <div className="text-center mb-16">
             <h1 className="text-5xl font-extrabold text-gray-900 mb-4">
-              訂閱我們的
-              <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent"> 方案</span>
+              會員方案說明
             </h1>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+              本平台為付費制服務，新會員註冊即啟用會員版完整功能試用 6 個月。
+            </p>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               訂閱後即能享受透過平台看診的所有便利功能,讓您的醫療體驗更順暢。
             </p>
@@ -157,12 +169,11 @@ export default function PricingPage() {
                     plan.popular ? 'ring-4 ring-[var(--color-azure)] transform md:scale-105' : ''
                   }`}
                 >
-                  {/* 熱門標籤 */}
-                  {plan.popular && (
-                    <div className="absolute top-0 right-0 bg-[var(--color-azure)] text-white px-6 py-2 rounded-bl-2xl font-semibold text-sm">
-                      🔥 免費試用中
-                    </div>
-                  )}
+                  {plan.badge && (
+                  <div className="absolute top-0 right-0 bg-gray-500 text-white px-6 py-2 rounded-bl-2xl font-semibold text-sm">
+                    {plan.badge}
+                  </div>
+                )}
 
                   {/* 方案圖示 */}
                   <div className={`h-32 bg-gradient-to-br ${plan.color} flex items-center justify-center`}>
@@ -190,36 +201,55 @@ export default function PricingPage() {
                       ))}
                     </ul>
 
-                    {/* 行動按鈕 */}
-                    <button 
-                      className={`w-full ${plan.buttonColor} text-white font-semibold py-4 rounded-xl transition-all shadow-lg hover:shadow-xl`}
+                    <button
+                      disabled={plan.disabled}
+                      className={`w-full ${plan.buttonColor} text-white font-semibold py-4 rounded-xl transition-all shadow-lg ${
+                        plan.disabled ? "opacity-70 cursor-not-allowed" : "hover:shadow-xl"
+                      }`}
                     >
                       {plan.buttonText}
                     </button>
+
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* FAQ 區塊 */}
-          <div className="bg-white rounded-3xl shadow-xl p-8 md:p-12 mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">常見問題</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">可以隨時取消訂閱嗎?</h3>
-                <p className="text-gray-600">可以的!您可以隨時在帳戶設定中取消訂閱,不會收取任何額外費用。</p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">升級後會立即生效嗎?</h3>
-                <p className="text-gray-600">是的,升級後所有功能會立即解鎖,您可以馬上開始使用。</p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">支援哪些付款方式?</h3>
-                <p className="text-gray-600">我們支援信用卡、LINE Pay、Apple Pay 等多種付款方式。</p>
-              </div>
-            </div>
-          </div>
+         {/* FAQ 區塊 */}
+<div className="bg-white rounded-3xl shadow-xl p-8 md:p-12 mb-16">
+  <h2 className="text-3xl font-bold text-gray-900 mb-10 text-center">
+    常見問題
+  </h2>
+
+  <div className="max-w-3xl mx-auto divide-y divide-gray-200">
+    {[
+      {
+        q: "平台是免費使用的嗎？",
+        a: "本平台為付費制遠距醫療服務。新會員註冊後可啟用會員版完整功能試用 6 個月，試用期結束後需選擇訂閱方案方可繼續使用。"
+      },
+      {
+        q: "試用期間可以使用所有功能嗎？",
+        a: "可以。試用期間即為會員版完整功能體驗，包含預約看診、視訊看診、AI 健康顧問與就診紀錄等服務。"
+      },
+      {
+        q: "試用結束後會自動扣款嗎？",
+        a: "不會。試用期結束後，系統不會自動扣款，需由您自行選擇並啟用月訂或年費方案。"
+      },
+      {
+        q: "可以隨時取消或更換訂閱方案嗎？",
+        a: "可以。您可隨時於帳戶設定中取消或調整訂閱方案，已啟用的方案將持續至當期結束。"
+      },
+      {
+        q: "支援哪些付款方式？",
+        a: "目前支援信用卡、LINE Pay、Apple Pay 等多種付款方式，實際可用方式依結帳頁面顯示為準。"
+      }
+    ].map((item, index) => (
+      <FaqItem key={index} question={item.q} answer={item.a} />
+    ))}
+  </div>
+</div>
+
         </div>
 
         {/* Footer */}
@@ -233,6 +263,32 @@ export default function PricingPage() {
 
         <FloatingChat />
       </div>
+    </div>
+  );
+}
+function FaqItem({ question, answer }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="py-6">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between text-left"
+      >
+        <span className="text-lg font-semibold text-gray-900">
+          {question}
+        </span>
+
+        <span className="ml-4 text-2xl text-gray-400 font-light">
+          {open ? "−" : "+"}
+        </span>
+      </button>
+
+      {open && (
+        <p className="mt-4 text-gray-600 leading-relaxed">
+          {answer}
+        </p>
+      )}
     </div>
   );
 }
