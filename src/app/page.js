@@ -148,7 +148,7 @@ export default function HomePage() {
               <div className="flex items-center justify-between gap-12 flex-col md:flex-row">
                 <div className="flex-1 text-center md:text-left"><br></br>
                   <h2 className="text-5xl font-bold text-gray-900 mb-3">
-                    醫隨行 <span className={`text-[var(--color-azure)]`}>MedonGO</span> {/* 替換主色 */}
+                    醫隨行 <span className={`text-[var(--color-azure)]`}>MedOnGo</span> {/* 替換主色 */}
                   </h2>
                   {/* 描述文字調大為 text-xl */}
                   <p className="text-gray-500 text-xl mb-8 max-w-md mx-auto md:mx-0">
