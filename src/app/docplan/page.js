@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import Sidebar from "../components/Sidebar";
+import DoctorSidebar from "../components/DoctorSidebar";
 import Navbar from "../components/Navbar";
 import FloatingChat from "../components/FloatingChat";
 import {
@@ -94,13 +94,13 @@ export default function PricingPage() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed top-3 left-4 z-30 p-3 rounded-xl hover:bg-white transition"
+          className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
         >
           <Menu />
         </button>
       )}
 
-      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+      <DoctorSidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
       <div
         className={`transition-all duration-300 ${
@@ -145,14 +145,14 @@ export default function PricingPage() {
 
                   <div className="flex items-center gap-3 mb-6">
                     <Icon className="text-[var(--color-azure)]" />
-                    <h2 className="text-2xl font-bold">{plan.name}</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">{plan.name}</h2>
                   </div>
 
-                  <p className="text-gray-600 mb-4">{plan.description}</p>
+                  <p className="text-gray-600 mb-4 ">{plan.description}</p>
 
                   {/* Price */}
                   <div className="mb-6">
-                    <div className="text-4xl font-extrabold">
+                    <div className="text-4xl font-extrabold text-gray-800">
                       {plan.price}
                     </div>
                     <div className="text-gray-500">
@@ -167,7 +167,7 @@ export default function PricingPage() {
 
                   {/* Audience */}
                   <div className="mb-6">
-                    <p className="font-semibold mb-2">適合對象</p>
+                    <p className="font-semibold mb-2 text-gray-700">適合對象</p>
                     <ul className="text-sm text-gray-700 space-y-1">
                       {plan.audience.map((a, idx) => (
                         <li key={idx}>✔ {a}</li>
@@ -176,7 +176,7 @@ export default function PricingPage() {
                   </div>
 
                   {/* Features */}
-                  <ul className="space-y-3 mb-8">
+                  <ul className="space-y-3 mb-8 text-gray-600">
                     {plan.features.map((f, idx) => (
                       <li key={idx} className="flex gap-3">
                         <Check className="text-green-500 mt-0.5" />
@@ -218,7 +218,7 @@ export default function PricingPage() {
               return (
                 <div
                   key={i}
-                  className="bg-white rounded-3xl p-8 shadow-lg text-center"
+                  className="bg-white rounded-3xl p-8 shadow-lg text-center text-gray-800"
                 >
                   <Icon className="mx-auto mb-4 text-[var(--color-azure)]" />
                   <h3 className="text-xl font-bold mb-2">{item.title}</h3>
