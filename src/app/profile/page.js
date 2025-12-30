@@ -343,14 +343,14 @@ const handleSave = async () => {
         </button>
       )}
 
-      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
-
-      {isDoctor && (
+      {isDoctor ? (
         <DoctorSidebar  
           isOpen={isOpen} 
           setIsOpen={setIsOpen}
           approvalStatus={user.approval_status}
         />
+      ) : (
+        <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
       )}
       {/* 主內容 */}
       <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
