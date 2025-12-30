@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import NextImage from "next/image";
 import Sidebar from "./components/Sidebar"; // 請確保路徑正確
-import { Menu, User, MessageSquare, Star, ChevronRight, ChevronLeft } from "lucide-react";
+import { Menu, User, MessageSquare, Star, ChevronRight, ChevronLeft ,Zap, Crown} from "lucide-react";
 import FloatingChat from "./components/FloatingChat";
 
 export default function HomePage() {
@@ -12,7 +12,7 @@ export default function HomePage() {
 
   const COLOR_MAHOGANY = "var(--color-mahogany)"; 
   const COLOR_LIME_CREAM = "var(--color-lime-cream)"; 
-  const COLOR_AZURE = "var(--color-azure)"; 
+  const COLOR_AZURE = "var(--color-sazure)"; 
   const COLOR_PERIWINKLE = "var(--color-periwinkle)"; 
   const COLOR_LIGHT_CYAN = "var(--color-light-cyan)"; 
   // ============================================
@@ -183,6 +183,88 @@ export default function HomePage() {
               </div>
             </div>
           </section>
+          <section className="py-20">
+  <div className="max-w-7xl mx-auto px-6 lg:px-8">
+  {/* 標題 */}
+  <div className="text-center mb-12">
+    <h2 className="text-4xl font-extrabold text-gray-900">
+      會員方案說明
+    </h2>
+    <p className="mt-4 text-lg text-gray-500">
+      本平台為付費制服務，新會員註冊即啟用會員版完整功能試用 6 個月
+    </p>
+  </div>
+
+  {/* 表格 */}
+  <div className="overflow-x-auto">
+    <table className="w-full border-collapse rounded-2xl overflow-hidden">
+      {/* 表頭 */}
+      <thead>
+        <tr className="border-b border-gray-200 bg-gray-50">
+          <th className="text-left p-5 text-gray-600 font-medium">
+            功能
+          </th>
+
+          <th className="py-4 px-4 text-sm text-gray-700 font-semibold">
+            會員版（試用中）
+            <div className="text-xs text-gray-400 mt-1">
+              前 6 個月
+            </div>
+          </th>
+
+          <th className="py-4 px-4 text-sm text-gray-900 font-semibold bg-gray-100">
+            會員版（月訂）
+            <div className="text-xs text-gray-500 mt-1">
+              推薦
+            </div>
+          </th>
+
+          <th className="py-4 px-4 text-sm text-gray-700 font-semibold">
+            年費會員
+          </th>
+        </tr>
+      </thead>
+
+      {/* 表身 */}
+      <tbody className="divide-y divide-gray-200 text-sm">
+        {[
+          ["費用", "$0（試用期間）", "NT$260 / 月", "NT$1600 / 年"],
+          ["預約次數", "無限制", "無限制", "無限制"],
+          ["視訊看診", "✔", "✔", "✔"],
+          ["完整就診紀錄", "✔", "✔", "✔"],
+          ["AI 健康顧問", "✔", "✔", "✔"],
+          ["經驗分享互動", "✔", "✔", "✔"],
+          ["收藏喜愛醫師", "✔", "✔", "✔"],
+        ].map(([feature, trial, monthly, yearly]) => (
+          <tr key={feature} className="hover:bg-gray-50">
+            <td className="p-5 text-gray-600">
+              {feature}
+            </td>
+
+            <td className="py-3 px-4 text-center text-gray-500 bg-gray-50">
+              {trial}
+            </td>
+
+            <td className="py-3 px-4 text-center font-medium text-gray-900 bg-gray-100">
+              {monthly}
+            </td>
+
+            <td className="py-3 px-4 text-center text-gray-700">
+              {yearly}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  {/* 補充說明 */}
+  <p className="mt-6 text-sm text-gray-400 text-center">
+    試用期結束後，需選擇月訂或年費方案以繼續使用會員服務。
+  </p>
+</div>
+</section>
+
 
           
           <section className="py-12">
