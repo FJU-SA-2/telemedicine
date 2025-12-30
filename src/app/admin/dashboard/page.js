@@ -659,7 +659,7 @@ export default function AdminDashboard() {
             <div className="mb-6">
               <input
                 type="text"
-                placeholder={`搜尋 ${userType === 'doctor' ? '醫師姓名或醫院' : '患者姓名'}...`}
+                placeholder={`搜尋 ${userType === 'doctor' ? '醫師姓名' : '患者姓名'}...`}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-purple-500 focus:border-purple-500 transition-shadow"
