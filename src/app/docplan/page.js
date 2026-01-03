@@ -57,7 +57,7 @@ export default function PricingPage() {
       popular: true,
       buttonText: "開始接診",
       buttonColor: "bg-[var(--color-azure)] hover:bg-[var(--color-azure)]/90",
-      textColor: "text-white"
+      textColor: "text-gray-700"
     },
     {
       name: "醫師抽成方案",
@@ -76,7 +76,7 @@ export default function PricingPage() {
       icon: Crown,
       buttonText: "開始接診",
       buttonColor: "bg-[var(--color-lime-cream)] hover:bg-[var(--color-lime-cream)]/90",
-      textColor: "text-white"
+      textColor: "text-gray-700"
     }
   ];
 

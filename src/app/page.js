@@ -302,16 +302,16 @@ export default function HomePage() {
                             {/* 視覺卡片：替換為引用 CSS 變數 */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                 <div className={`p-4 bg-gradient-to-br from-[var(--color-periwinkle)]/10 to-[var(--color-light-cyan)]/15 rounded-xl border border-[var(--color-azure)]/30 shadow-lg flex flex-col items-start justify-center`}>
-                                    <span className={`text-2xl font-bold drop-shadow`}>4K 畫質</span> {/* 替換主色 */}
-                                    <p className={`text-sm text-[var(--color-azure)]/80`}>影像細節清晰</p>
+                                    <span className={`text-2xl font-bold drop-shadow text-[var(--color-mahogany)]`}>4K 畫質</span> {/* 替換主色 */}
+                                    <p className={`text-sm text-[var(--color-mahogany)]/80`}>影像細節清晰</p>
                                 </div>
                                 <div className={`p-4 bg-gradient-to-br from-[var(--color-lime-cream)]/10 to-[var(--color-lime-cream)]/15 rounded-xl border border-[var(--color-lime-cream)]/50 shadow-lg flex flex-col items-start justify-center`}>
                                     <span className={`text-2xl font-bold text-[var(--color-mahogany)]`}>就醫紀錄儲存</span> {/* 紅木色作為深色點綴 */}
                                     <p className={`text-sm text-[var(--color-mahogany)]/80`}>不怕忘記看診細節</p>
                                 </div>
                                 <div className={`p-4 bg-gradient-to-br from-[var(--color-azure)]/10 to-[var(--color-azure)]/15 rounded-xl border border-[var(--color-azure)]/50 shadow-lg flex flex-col items-start justify-center`}>
-                                    <span className={`text-2xl font-bold drop-shadow`}>經驗分享區</span> 
-                                    <p className={`text-sm drop-shadow`}>交流看診心得</p>
+                                    <span className={`text-2xl font-bold drop-shadow text-[var(--color-mahogany)]`}>經驗分享區</span> 
+                                    <p className={`text-sm drop-shadow text-[var(--color-mahogany)]/80`}>交流看診心得</p>
                                 </div>
                             </div></div>
                         </div>
@@ -353,7 +353,7 @@ export default function HomePage() {
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                 {/* 替換為引用 CSS 變數 */}
                                 <div className={`p-4 bg-gradient-to-br from-[var(--color-azure)]/5 to-[var(--color-azure)]/10 rounded-xl border border-[var(--color-azure)]/30 shadow-lg flex flex-col items-start justify-center`}>
-                                    <span className="text-2xl font-bold drop-shadow">多達 15+ 專科醫師</span>
+                                    <span className="text-2xl font-bold drop-shadow text-[var(--color-mahogany)]">多達 15+ 專科醫師</span>
                                     <p className={`text-sm text-[var(--color-mahogany)]/80`}>在家輕鬆診</p>
                                 </div>
                                 <div className={`p-4 bg-gradient-to-br from-[var(--color-lime-cream)]/5 to-[var(--color-lime-cream)]/10 rounded-xl border border-[var(--color-lime-cream)]/30 shadow-lg flex flex-col items-start justify-center`}>
