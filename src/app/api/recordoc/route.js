@@ -42,7 +42,7 @@ export async function GET(request) {
     const query = `
       SELECT 
         a.appointment_id,
-        a.appointment_date,
+        DATE_FORMAT(a.appointment_date, '%Y-%m-%d') as appointment_date,
         a.appointment_time,
         a.cancellation_reason,
         a.status,
@@ -60,7 +60,7 @@ export async function GET(request) {
     // 格式化資料，確保所有欄位都有值
     const formattedAppointments = appointments.map((a) => ({
       appointment_id: a.appointment_id,
-      appointment_date: a.appointment_date ? new Date(a.appointment_date).toISOString().split('T')[0] : "",
+      appointment_date: a.appointment_date || "",
       appointment_time: a.appointment_time ? 
         (typeof a.appointment_time === 'string' ? a.appointment_time : 
          a.appointment_time.toString().match(/^\d{2}:\d{2}:\d{2}/)?.[0] || '') : "",
@@ -81,4 +81,3 @@ export async function GET(request) {
     if (connection) await connection.end();
   }
 }
-

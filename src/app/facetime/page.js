@@ -20,6 +20,7 @@ export default function DoctorVideoConsultation() {
   const [activeTab, setActiveTab] = useState("home");
   const [isOpen, setIsOpen] = useState(false);
   const [approvalStatus, setApprovalStatus] = useState(null);
+  const [doctorInfo, setDoctorInfo] = useState(null);
 
   const jitsiContainerRef = useRef(null);
   const jitsiApiRef = useRef(null);
@@ -42,7 +43,9 @@ export default function DoctorVideoConsultation() {
                 if (data.authenticated && data.user && data.user.role === 'doctor') {
                     const status = data.user.approval_status;
                     setApprovalStatus(status);
+                    setDoctorInfo(data.user);
                     console.log("✅ 已設定 approvalStatus 為:", status);
+                    console.log("✅ 已設定 doctorInfo:", data.user);
                 }
             } catch (error) {
                 console.error("❌ Failed to fetch approval status:", error);
@@ -213,7 +216,9 @@ export default function DoctorVideoConsultation() {
           MOBILE_APP_PROMO: false
         },
         userInfo: {
-          displayName: `醫師`
+          displayName: doctorInfo 
+            ? `${doctorInfo.first_name} ${doctorInfo.last_name}`
+            : '醫師'
         }
       };
 
@@ -740,8 +745,6 @@ export default function DoctorVideoConsultation() {
                   </div>
                 </div>
               </div>
-
-              
 
               <div className="bg-white rounded-xl shadow-md p-6">
                 <div className="flex items-center justify-between">

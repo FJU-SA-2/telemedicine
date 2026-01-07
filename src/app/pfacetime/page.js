@@ -4,7 +4,7 @@ import { Menu, Video, PhoneOff, Monitor, Clock, FileText, AlertCircle, User, Cal
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import RatingModal from '../components/RatingModal';
-import LockedPageOverlay from '../components/LockedPageOverlay'; // ✅ 新增
+import LockedPageOverlay from '../components/LockedPageOverlay';
 import FloatingChat from "../components/FloatingChat";
 
 export default function PatientVideoConsultation() {
@@ -24,11 +24,11 @@ export default function PatientVideoConsultation() {
   const jitsiContainerRef = useRef(null);
   const jitsiApiRef = useRef(null);
 
-  // ✅ 新增：登入狀態管理
+  // ✅ 登入狀態管理
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // ✅ 新增：檢查登入狀態 (放在最前面)
+  // ✅ 檢查登入狀態
   useEffect(() => {
     async function checkAuth() {
       try {
@@ -64,7 +64,7 @@ export default function PatientVideoConsultation() {
     };
     script.onerror = () => {
       console.error('❌ Jitsi API 載入失敗');
-      setError('無法載入視訊服務，請重新整理頁面');
+      setError('無法載入視訊服務,請重新整理頁面');
     };
     document.body.appendChild(script);
 
@@ -141,12 +141,12 @@ export default function PatientVideoConsultation() {
 
   const joinMeeting = async (appointment) => {
     if (!jitsiLoaded || !window.JitsiMeetExternalAPI) {
-      setError('視訊服務尚未準備好，請稍後再試');
+      setError('視訊服務尚未準備好,請稍後再試');
       return;
     }
 
     if (!appointment.meeting_room_id) {
-      setError('醫師尚未開啟會議室，請稍後再試');
+      setError('醫師尚未開啟會議室,請稍後再試');
       return;
     }
 
@@ -162,7 +162,7 @@ export default function PatientVideoConsultation() {
 
     } catch (err) {
       console.error('加入會議失敗:', err);
-      setError('無法加入會議，請稍後再試');
+      setError('無法加入會議,請稍後再試');
       setIsMeetingActive(false);
     } finally {
       setIsLoading(false);
@@ -216,7 +216,9 @@ export default function PatientVideoConsultation() {
           MOBILE_APP_PROMO: false
         },
         userInfo: {
-          displayName: `患者`
+          displayName: user 
+            ? `${user.first_name} ${user.last_name}`
+            : '患者'
         }
       };
 
@@ -244,7 +246,7 @@ export default function PatientVideoConsultation() {
 
     } catch (err) {
       console.error('❌ Jitsi 初始化失敗:', err);
-      setError('視訊初始化失敗，請重新開始');
+      setError('視訊初始化失敗,請重新開始');
       setIsMeetingActive(false);
     }
   };
@@ -347,7 +349,7 @@ export default function PatientVideoConsultation() {
     return `${mins}分${secs}秒`;
   };
 
-  // ✅ 修改：只在認證檢查時顯示載入
+  // ✅ 只在認證檢查時顯示載入
   if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
