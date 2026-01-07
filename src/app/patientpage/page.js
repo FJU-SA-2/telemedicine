@@ -56,11 +56,11 @@ const AppointmentCard = ({ appointment, onJoinMeeting }) => {
           <div className="flex flex-wrap items-center gap-4 mb-4">
             <div className="flex items-center">
               <User size={20} className="text-[var(--color-mahogany)] mr-2" />
-              <span className="text-lg font-medium">{appointment.doctor} </span>
+              <span className="text-lg font-medium text-[var(--color-mahogany)]">{appointment.doctor} </span>
             </div>
             <div className="flex items-center">
               <Clock size={20} className="text-[var(--color-mahogany)] mr-2" />
-              <span className="text-lg font-medium">{appointment.time}</span>
+              <span className="text-lg font-medium text-[var(--color-mahogany)]">{appointment.time}</span>
             </div>
           </div>
 
