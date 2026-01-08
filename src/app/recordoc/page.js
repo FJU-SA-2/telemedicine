@@ -242,7 +242,7 @@ export default function AppointmentRecords() {
 
   return (
     <>
-    <div className="relative min-h-screen bg-gray-50">
+    <div className="relative min-h-screen flex flex-col bg-gray-50">
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -260,10 +260,10 @@ export default function AppointmentRecords() {
         approvalStatus={approvalStatus}  
       />
       
-      <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
         <Navbar />
 
-        <div className="p-6">
+        <div className="flex-1 p-6">
           {/* 篩選器與視圖切換 */}
           <div className="bg-white rounded-lg shadow-md p-4 mb-6">
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -580,15 +580,15 @@ export default function AppointmentRecords() {
             </div>
           )}
         </div>
-      </div>
 
-      {/* Footer */}
-      <div className="bg-gray-800 text-white py-8">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-gray-400">
-            © 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。
-          </p>
-        </div>
+        {/* Footer - 移到這裡並加上 mt-auto */}
+        <footer className="bg-gray-800 text-white py-8 mt-auto">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <p className="text-gray-400">
+              © 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。
+            </p>
+          </div>
+        </footer>
       </div>
     </div>
 
