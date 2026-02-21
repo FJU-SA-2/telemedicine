@@ -144,9 +144,12 @@ export default function TelemedicineAuth() {
       router.push('/doctorpage');
     } else if (role === 'patient') {
       router.push('/PatientPage');
+    } else if (role === 'mech') {
+      router.push('/mechpage');
     } else {
       router.push('/admin'); // fallback
     }
+    
 
   } catch (err) {
     console.error(err);

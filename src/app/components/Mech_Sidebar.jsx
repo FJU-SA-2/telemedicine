@@ -23,11 +23,11 @@ export default function DoctorSidebar({ isOpen, setIsOpen, approvalStatus }) {
   const menuItems = [
     { id: "/doctorpage", label: "首頁", icon: House, href: "/doctorpage" },
     { id: "/dintroduction", label: "使用流程介紹", icon: FileText, href: "/dintroduction", requiresAuth: false },
-    { id: "/schedules", label: "排班管理", icon: CalendarClock, href: "/schedules", needsApproval: true },
-    { id: "/management", label: "預約管理", icon: UserRoundCheck, href: "/management", needsApproval: true },
-    { id: "/record", label: "預約紀錄", icon: ClipboardList, href: "/recordoc", needsApproval: true },
-    { id: "/patientmanage", label: "患者病歷", icon: FolderOpen, href: "/patientmanage", needsApproval: true },
-    { id: "/facetime", label: "視訊看診", icon: Video, href: "/facetime", needsApproval: true },
+    { id: "/schedules", label: "排班管理", icon: CalendarClock, href: "/schedules", },
+    { id: "/management", label: "預約管理", icon: UserRoundCheck, href: "/management",},
+    { id: "/record", label: "預約紀錄", icon: ClipboardList, href: "/recordoc",},
+    { id: "/patientmanage", label: "患者病歷", icon: FolderOpen, href: "/patientmanage",  },
+    { id: "/facetime", label: "視訊看診", icon: Video, href: "/facetime",  },
     { id: "/docfeedback", label: "問題回報", icon: MessageCircleMore, href: "/docfeedback" },
       ];
   // 為了確保主色調能被正確引用 (這是從 globals.css 中取值)
