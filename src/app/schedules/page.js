@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import DoctorSidebar from "../components/DoctorSidebar";
-import { Clock, Save, ChevronLeft, ChevronRight, Menu } from "lucide-react";
+import { Clock, Save, ChevronLeft, ChevronRight, Menu, Sunrise, Sun, Moon } from "lucide-react";
 
 export default function DoctorSchedulePage() {
     const [doctor_id, setDoctorId] = useState(null);
@@ -13,17 +13,26 @@ export default function DoctorSchedulePage() {
         return sunday;
     });
     const [schedules, setSchedules] = useState({});
+    const [appointments, setAppointments] = useState({});
     const [loading, setLoading] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [activeTab, setActiveTab] = useState("home");
     const [isOpen, setIsOpen] = useState(false);
     const [approvalStatus, setApprovalStatus] = useState(null);
+    const [hoveredSlot, setHoveredSlot] = useState(null);
 
     const timeSlots = [
         "09:00", "09:30", "10:00", "10:30",
         "11:00", "11:30", "14:00", "14:30",
-        "15:00", "15:30", "16:00", "16:30", "17:00"
+        "15:00", "15:30", "16:00", "16:30", "17:00",
+        "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00"
     ];
+
+    const timeSlotGroups = {
+        morning: ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30"],
+        afternoon: ["14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"],
+        evening: ["18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00"]
+    };
 
     useEffect(() => {
         async function fetchApprovalStatus() {
@@ -113,23 +122,16 @@ export default function DoctorSchedulePage() {
         return `${start.fullDate.substring(5).replace('-', '月')}日 - ${end.fullDate.substring(5).replace('-', '月')}日`;
     };
 
-    // ⭐ 改進的過期判斷函數 - 精確到小時和分鐘
     const isTimeSlotPast = (dateString, timeString) => {
         const now = new Date();
-        
-        // 解析日期和時間
         const [year, month, day] = dateString.split('-').map(Number);
         const [hour, minute] = timeString.split(':').map(Number);
-        
-        // 創建時段的完整時間
         const slotDateTime = new Date(year, month - 1, day, hour, minute);
-        
-        // 比較:如果時段時間小於當前時間,則已過期
         return slotDateTime < now;
     };
 
     useEffect(() => {
-        async function loadSchedules() {
+        async function loadSchedulesAndAppointments() {
             if (!doctor_id || !weekDates || weekDates.length === 0) {
                 return;
             }
@@ -138,26 +140,35 @@ export default function DoctorSchedulePage() {
             const endDate = weekDates[6].fullDate;
 
             try {
-                const res = await fetch(
-                    `http://127.0.0.1:5000/api/schedules/${doctor_id}?start_date=${startDate}&end_date=${endDate}`,
+                const scheduleRes = await fetch(
+                    `/api/schedules/${doctor_id}?start_date=${startDate}&end_date=${endDate}`,
                     { credentials: 'include' }
                 );
 
-                if (!res.ok) throw new Error("抓取失敗");
+                if (!scheduleRes.ok) throw new Error("抓取排班失敗");
+                const scheduleData = await scheduleRes.json();
 
-                const data = await res.json();
+                const appointmentRes = await fetch(
+                    `/api/doctor/appointments/${doctor_id}?start_date=${startDate}&end_date=${endDate}`,
+                    { credentials: 'include' }
+                );
 
-                // 初始化所有時段為 false
+                const appointmentData = appointmentRes.ok ? await appointmentRes.json() : [];
+
                 const newSchedules = {};
+                const newAppointments = {};
+                
                 weekDates.forEach(day => {
                     newSchedules[day.fullDate] = {};
+                    newAppointments[day.fullDate] = {};
                     timeSlots.forEach(time => {
                         newSchedules[day.fullDate][time] = false;
+                        newAppointments[day.fullDate][time] = null;
                     });
                 });
                 
-                if (Array.isArray(data)) {
-                    data.forEach(item => {
+                if (Array.isArray(scheduleData)) {
+                    scheduleData.forEach(item => {
                         if (!item.schedule_date || !item.time_slot) return;
 
                         const date = item.schedule_date.slice(0, 10);
@@ -171,64 +182,91 @@ export default function DoctorSchedulePage() {
                     });
                 }
 
+                if (Array.isArray(appointmentData)) {
+                    appointmentData.forEach(apt => {
+                        const date = apt.appointment_date.slice(0, 10);
+                        const time = apt.appointment_time.slice(0, 5);
+                        
+                        if (newAppointments[date] && newAppointments[date].hasOwnProperty(time)) {
+                            newAppointments[date][time] = {
+                                patient_name: `${apt.patient_last_name}${apt.patient_first_name}`,
+                                symptoms: apt.symptoms || '無',
+                                status: apt.status,
+                                appointment_id: apt.appointment_id
+                            };
+                        }
+                    });
+                }
+
                 setSchedules(newSchedules);
+                setAppointments(newAppointments);
 
             } catch (err) {
-                console.error('❌ 載入排班失敗:', err);
-                alert("載入排班資料失敗");
+                console.error('❌ 載入資料失敗:', err);
+                alert("載入資料失敗");
             }
         }
 
-        loadSchedules();
+        loadSchedulesAndAppointments();
     }, [currentWeekStart, doctor_id]);
 
     const toggleSlot = (date, time) => {
-        // ⭐ 使用新的判斷函數
+        console.log('toggleSlot called:', date, time); // 除錯用
+        
         if (isTimeSlotPast(date, time)) {
             alert('無法設定已過期的排班時段');
             return;
         }
 
-        setSchedules(prev => {
-            const newSchedules = { ...prev };
-
-            if (!newSchedules[date]) {
-                newSchedules[date] = {};
-            }
-
-            newSchedules[date] = { ...newSchedules[date] };
-            const currentValue = newSchedules[date][time] || false;
-            newSchedules[date][time] = !currentValue;
-
-            return newSchedules;
-        });
-    };
-
-    const setWholeDay = (date, available) => {
-        // ⭐ 檢查是否整天都已過期
-        const now = new Date();
-        const [year, month, day] = date.split('-').map(Number);
-        const dateObj = new Date(year, month - 1, day);
+        const isBooked = !!appointments[date]?.[time];
+        const currentStatus = schedules[date]?.[time] ?? false;
         
-        // 如果日期小於今天,則整天過期
-        if (dateObj.setHours(0,0,0,0) < now.setHours(0,0,0,0)) {
-            alert('無法設定過去的排班日期');
+        if (isBooked && currentStatus === true) {
+            alert('此時段已有預約，無法設為休診');
             return;
         }
 
         setSchedules(prev => {
             const newSchedules = { ...prev };
+            if (!newSchedules[date]) {
+                newSchedules[date] = {};
+            }
+            newSchedules[date][time] = !currentStatus;
+            console.log('Updated schedule:', date, time, 'from', currentStatus, 'to', !currentStatus); // 除錯用
+            return newSchedules;
+        });
+    };
 
+    const setQuickSchedule = (date, period, value) => {
+        const slots = timeSlotGroups[period];
+        if (!slots) return;
+
+        setSchedules(prev => {
+            const newSchedules = { ...prev };
             if (!newSchedules[date]) {
                 newSchedules[date] = {};
             }
 
+            slots.forEach(time => {
+                if (timeSlots.includes(time) && !appointments[date]?.[time]) {
+                    if (!isTimeSlotPast(date, time)) {
+                        newSchedules[date][time] = value;
+                    }
+                }
+            });
+
+            return newSchedules;
+        });
+    };
+
+    const setWholeDay = (date, value) => {
+        setSchedules(prev => {
+            const newSchedules = { ...prev };
             const updatedDate = { ...newSchedules[date] };
 
             timeSlots.forEach(time => {
-                // ⭐ 只設定未過期的時段
-                if (!isTimeSlotPast(date, time)) {
-                    updatedDate[time] = available;
+                if (!appointments[date]?.[time] && !isTimeSlotPast(date, time)) {
+                    updatedDate[time] = value;
                 }
             });
 
@@ -245,30 +283,52 @@ export default function DoctorSchedulePage() {
 
         setLoading(true);
         try {
+            // ✅ 只儲存「開診」(is_available = true) 的時段
             const scheduleList = [];
             Object.keys(schedules).forEach(date => {
                 Object.keys(schedules[date]).forEach(time => {
-                    scheduleList.push({
-                        date,
-                        time_slot: time + ":00",
-                        is_available: schedules[date][time]
-                    });
+                    // 只有開診的時段才加入
+                    if (schedules[date][time] === true) {
+                        scheduleList.push({
+                            date,
+                            time_slot: time + ":00",
+                            is_available: 1
+                        });
+                    }
                 });
             });
 
-            const res = await fetch('http://127.0.0.1:5000/api/schedules', {
+            console.log('準備儲存的排班數量:', scheduleList.length);
+
+            const res = await fetch('/api/schedules', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ doctor_id, schedules: scheduleList })
+                body: JSON.stringify({
+                    doctor_id,
+                    schedules: scheduleList,
+                    week_start: weekDates[0].fullDate,
+                    week_end: weekDates[6].fullDate
+                })
             });
 
+            console.log('儲存回應狀態:', res.status);
             if (res.ok) {
                 const result = await res.json();
                 setSaveSuccess(true);
                 setTimeout(() => setSaveSuccess(false), 3000);
+                
+                if (result.warning) {
+                    alert(`${result.message}\n\n${result.warning}`);
+                }
             } else {
-                const error = await res.json();
-                alert(`儲存失敗: ${error.error || error.message}`);
+                const text = await res.text();
+                console.log('儲存失敗回應內容:', text);
+                let errMsg = `HTTP ${res.status}`;
+                try {
+                    const error = JSON.parse(text);
+                    errMsg = error.error || error.message || errMsg;
+                } catch (_) {}
+                alert(`儲存失敗: ${errMsg}`);
             }
 
         } catch (error) {
@@ -280,6 +340,7 @@ export default function DoctorSchedulePage() {
     };
 
     const isSlotAvailable = (date, time) => schedules[date]?.[time] ?? false;
+    const isSlotBooked = (date, time) => !!appointments[date]?.[time];
 
     const previousWeek = () => {
         const newDate = new Date(currentWeekStart);
@@ -298,6 +359,34 @@ export default function DoctorSchedulePage() {
         const sunday = new Date(today);
         sunday.setDate(today.getDate() - today.getDay());
         setCurrentWeekStart(sunday);
+    };
+
+    const getSlotStyle = (date, time) => {
+        const isPast = isTimeSlotPast(date, time);
+        const isBooked = isSlotBooked(date, time);
+        const isAvailable = isSlotAvailable(date, time);
+
+        if (isPast) {
+            return "bg-gray-100 text-gray-400 cursor-not-allowed opacity-50";
+        }
+        if (isBooked) {
+            return "bg-red-500 text-white cursor-pointer hover:bg-red-600";
+        }
+        if (isAvailable) {
+            return "bg-green-500 text-white hover:bg-green-600 cursor-pointer";
+        }
+        return "bg-gray-200 text-gray-600 hover:bg-gray-300 cursor-pointer";
+    };
+
+    const getSlotText = (date, time) => {
+        const isPast = isTimeSlotPast(date, time);
+        const isBooked = isSlotBooked(date, time);
+        const isAvailable = isSlotAvailable(date, time);
+
+        if (isPast) return "已過期";
+        if (isBooked) return "已預約";
+        if (isAvailable) return "開診";
+        return "休診";
     };
 
     return (
@@ -339,6 +428,27 @@ export default function DoctorSchedulePage() {
                         </button>
                     </div>
 
+                    <div className="bg-white rounded-lg shadow-lg p-4 mb-4">
+                        <div className="flex items-center justify-center gap-6 text-sm">
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 bg-green-500 rounded"></div>
+                                <span className="text-gray-500">開診</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 bg-gray-200 rounded"></div>
+                                <span className="text-gray-500">休診</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 bg-red-500 rounded"></div>
+                                <span className="text-gray-500">已預約</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 bg-gray-100 rounded"></div>
+                                <span className="text-gray-500">已過期</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-lg font-semibold text-gray-800">週排班表</h2>
@@ -355,18 +465,45 @@ export default function DoctorSchedulePage() {
                                     <div key={item.fullDate} className="text-center">
                                         <div className="font-medium text-gray-700">{item.day}</div>
                                         <div className="text-sm text-gray-500">{item.date}日</div>
+                                        
                                         <div className="mt-2 flex gap-1 justify-center">
                                             <button
                                                 onClick={() => setWholeDay(item.fullDate, true)}
                                                 className="text-xs px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200"
+                                                title="全天開診"
                                             >
                                                 全開
                                             </button>
                                             <button
                                                 onClick={() => setWholeDay(item.fullDate, false)}
                                                 className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                                title="全天休診"
                                             >
                                                 全關
+                                            </button>
+                                        </div>
+
+                                        <div className="mt-2 space-y-1">
+                                            <button
+                                                onClick={() => setQuickSchedule(item.fullDate, 'morning', true)}
+                                                className="w-full text-xs px-2 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 flex items-center justify-center gap-1"
+                                                title="早上 9:00-12:00"
+                                            >
+                                                <Sunrise size={12} /> 早
+                                            </button>
+                                            <button
+                                                onClick={() => setQuickSchedule(item.fullDate, 'afternoon', true)}
+                                                className="w-full text-xs px-2 py-1 rounded bg-orange-100 text-orange-700 hover:bg-orange-200 flex items-center justify-center gap-1"
+                                                title="下午 14:00-17:00"
+                                            >
+                                                <Sun size={12} /> 午
+                                            </button>
+                                            <button
+                                                onClick={() => setQuickSchedule(item.fullDate, 'evening', true)}
+                                                className="w-full text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700 hover:bg-indigo-200 flex items-center justify-center gap-1"
+                                                title="晚上 18:00-21:00"
+                                            >
+                                                <Moon size={12} /> 晚
                                             </button>
                                         </div>
                                     </div>
@@ -375,33 +512,93 @@ export default function DoctorSchedulePage() {
                         </div>
 
                         <div className="space-y-2">
-                            {timeSlots.map(time => (
-                                <div key={time} className="grid grid-cols-8 gap-3 items-center">
+                            {timeSlots.map((time) => {
+                                const isFirstMorning = time === timeSlotGroups.morning[0];
+                                const isFirstAfternoon = time === timeSlotGroups.afternoon[0];
+                                const isFirstEvening = time === timeSlotGroups.evening[0];
+                                return (
+                                <div key={time}>
+                                    {isFirstMorning && (
+                                        <div className="flex items-center gap-2 border-t-2 border-amber-200 pt-1 pb-1 mb-1">
+                                            <Sunrise size={14} className="text-amber-500" />
+                                            <span className="text-xs font-medium text-amber-500">早上診</span>
+                                        </div>
+                                    )}
+                                    {isFirstAfternoon && (
+                                        <div className="flex items-center gap-2 border-t-2 border-orange-200 pt-1 pb-1 mb-1">
+                                            <Sun size={14} className="text-orange-500" />
+                                            <span className="text-xs font-medium text-orange-500">下午診</span>
+                                        </div>
+                                    )}
+                                    {isFirstEvening && (
+                                        <div className="flex items-center gap-2 border-t-2 border-indigo-200 pt-1 pb-1 mb-1">
+                                            <Moon size={14} className="text-indigo-500" />
+                                            <span className="text-xs font-medium text-indigo-500">晚間診</span>
+                                        </div>
+                                    )}
+                                <div className="grid grid-cols-8 gap-3 items-center">
                                     <div className="font-medium text-gray-600 text-sm">{time}</div>
                                     {weekDates.map(item => {
-                                        // ⭐ 使用新的判斷函數
+                                        const isBooked = isSlotBooked(item.fullDate, time);
+                                        const appointmentInfo = appointments[item.fullDate]?.[time];
+                                        const slotKey = `${item.fullDate}-${time}`;
                                         const isPast = isTimeSlotPast(item.fullDate, time);
-                                        const isAvailable = isSlotAvailable(item.fullDate, time);
 
                                         return (
-                                            <button
-                                                key={`${item.fullDate}-${time}`}
-                                                onClick={() => toggleSlot(item.fullDate, time)}
-                                                disabled={isPast}
-                                                className={`py-3 rounded-lg text-sm font-medium transition-all ${
-                                                    isPast
-                                                        ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-50"
-                                                        : isAvailable
-                                                            ? "bg-green-500 text-white hover:bg-green-600"
-                                                            : "bg-gray-200 text-gray-500 hover:bg-gray-300"
-                                                }`}
+                                            <div 
+                                                key={slotKey}
+                                                className="relative"
+                                                onMouseEnter={() => isBooked && setHoveredSlot(slotKey)}
+                                                onMouseLeave={() => setHoveredSlot(null)}
                                             >
-                                                {isPast ? "已過期" : isAvailable ? "可預約" : "不可預約"}
-                                            </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        e.stopPropagation();
+                                                        if (!isPast) {
+                                                            toggleSlot(item.fullDate, time);
+                                                        }
+                                                    }}
+                                                    disabled={isPast}
+                                                    className={`w-full py-3 rounded-lg text-sm font-medium transition-all ${getSlotStyle(item.fullDate, time)}`}
+                                                >
+                                                    {getSlotText(item.fullDate, time)}
+                                                </button>
+
+                                                {isBooked && hoveredSlot === slotKey && appointmentInfo && (
+                                                    <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-xl pointer-events-none">
+                                                        <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full">
+                                                            <div className="border-8 border-transparent border-t-gray-900"></div>
+                                                        </div>
+                                                        <div className="font-semibold mb-2 text-sm">預約資訊</div>
+                                                        <div className="space-y-1">
+                                                            <div className="flex justify-between">
+                                                                <span className="text-gray-400">患者:</span>
+                                                                <span className="font-medium">{appointmentInfo.patient_name}</span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-gray-400">狀態:</span>
+                                                                <span className={`font-medium ${
+                                                                    appointmentInfo.status === '已確認' ? 'text-green-400' :
+                                                                    appointmentInfo.status === '已完成' ? 'text-blue-400' :
+                                                                    appointmentInfo.status === '已取消' ? 'text-red-400' :
+                                                                    'text-yellow-400'
+                                                                }`}>{appointmentInfo.status}</span>
+                                                            </div>
+                                                            <div className="border-t border-gray-700 pt-1 mt-1">
+                                                                <span className="text-gray-400">症狀:</span>
+                                                                <div className="mt-1 text-gray-300">{appointmentInfo.symptoms}</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         );
                                     })}
                                 </div>
-                            ))}
+                                </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
