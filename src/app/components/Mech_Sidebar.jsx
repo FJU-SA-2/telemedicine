@@ -25,7 +25,7 @@ export default function DoctorSidebar({ isOpen, setIsOpen, approvalStatus }) {
     { id: "/dintroduction", label: "使用流程介紹", icon: FileText, href: "/dintroduction", requiresAuth: false },
     { id: "/schedules", label: "排班管理", icon: CalendarClock, href: "/schedules", },
     { id: "/management", label: "預約管理", icon: UserRoundCheck, href: "/management",},
-    { id: "/record", label: "預約紀錄", icon: ClipboardList, href: "/recordoc",},
+    { id: "/record", label: "預約紀錄", icon: ClipboardList, href: "/recordmech",},
     { id: "/patientmanage", label: "患者病歷", icon: FolderOpen, href: "/patientmanage",  },
     { id: "/facetime", label: "視訊看診", icon: Video, href: "/facetime",  },
     { id: "/docfeedback", label: "問題回報", icon: MessageCircleMore, href: "/docfeedback" },
@@ -60,17 +60,8 @@ export default function DoctorSidebar({ isOpen, setIsOpen, approvalStatus }) {
         </button>
       </div>
 
-      {/* 核准狀態提示 */}
-      {!isApproved && !isLoading && (
-        <div className="mx-4 mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800 flex items-center gap-2">
-            <Lock size={16} />
-            {approvalStatus === "pending" && "帳號審核中，部分功能暫時無法使用"}
-            {approvalStatus === "rejected" && "帳號未通過審核，請聯繫管理員"}
-            {!approvalStatus && "帳號尚未審核"}
-          </p>
-        </div>
-      )}
+    
+      
 
       {/* 選單 */}
       <nav className="p-4 flex-1">

@@ -1304,7 +1304,86 @@ def get_recordoc():
     finally:
         cursor.close()
         db.close()
+@app.route("/api/recordmech", methods=["GET"])
+def get_recordmech():
+    """機構管理者的預約記錄（顯示該機構旗下所有醫師的預約）"""
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
 
+    user_id = session['user_id']
+    role = session.get('role')
+
+    # 驗證是否為機構管理者
+    if role != 'mech':
+        return jsonify({"message": "此功能僅供機構管理者使用"}), 403
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    try:
+        # 取得機構 ID
+        cursor.execute(
+            "SELECT mechanism_id FROM mechanism WHERE user_id = %s",
+            (user_id,)
+        )
+        mechanism = cursor.fetchone()
+
+        if not mechanism:
+            return jsonify({"message": "找不到機構資料"}), 404
+
+        mechanism_id = mechanism['mechanism_id']
+
+        query = """
+            SELECT
+                a.appointment_id,
+                a.appointment_date,
+                a.appointment_time,
+                a.cancellation_reason,
+                a.status,
+                a.doctor_advice,
+                p.first_name  AS patient_first_name,
+                p.last_name   AS patient_last_name,
+                d.first_name  AS doctor_first_name,
+                d.last_name   AS doctor_last_name,
+                d.specialty
+            FROM appointments a
+            INNER JOIN patient p ON a.patient_id = p.patient_id
+            INNER JOIN doctor d  ON a.doctor_id  = d.doctor_id
+            WHERE d.mechanism_id = %s
+            ORDER BY a.appointment_date DESC, a.appointment_time DESC
+        """
+
+        cursor.execute(query, (mechanism_id,))
+        appointments = cursor.fetchall()
+
+        # 格式化資料
+        formatted_appointments = []
+        for a in appointments:
+            formatted_appointments.append({
+                "appointment_id":     a["appointment_id"],
+                "appointment_date":   serialize_datetime(a["appointment_date"]),
+                "appointment_time":   serialize_datetime(a["appointment_time"]),
+                "status":             a["status"] or "",
+                "cancellation_reason": a["cancellation_reason"] or "",
+                "doctor_advice":      a["doctor_advice"] or "",
+                "patient_first_name": a["patient_first_name"] or "",
+                "patient_last_name":  a["patient_last_name"] or "",
+                "doctor_first_name":  a["doctor_first_name"] or "",
+                "doctor_last_name":   a["doctor_last_name"] or "",
+                "specialty":          a["specialty"] or "",
+            })
+
+        print(f"✅ 成功取得機構 {mechanism_id} 共 {len(formatted_appointments)} 筆預約記錄")
+        return jsonify(formatted_appointments), 200
+
+    except Exception as e:
+        print(f"❌ 取得機構預約記錄失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"message": f"取得預約記錄失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
 @app.route('/api/appointments/<int:appointment_id>/advice', methods=['PUT'])
 
 def update_doctor_advice(appointment_id):
