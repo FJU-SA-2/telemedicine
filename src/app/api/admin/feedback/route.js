@@ -35,7 +35,7 @@ export async function GET(request) {
         CASE 
           WHEN f.user_role = 'doctor' THEN d.last_name
           WHEN f.user_role = 'patient' THEN p.last_name
-          WHEN f.user_role = 'mech' THEN m.mechanism_name
+          WHEN f.user_role = 'mech' THEN ''
           ELSE ''
         END as last_name
       FROM feedback f
