@@ -12,11 +12,10 @@ function MechanismFeedbackFormContent() {
   const [error, setError] = useState('');
 
   const categories = [
-    { id: '登入註冊', label: '登入註冊' },
-    { id: '排班管理', label: '排班管理' },
-    { id: '預約管理', label: '預約管理' },
-    { id: '視訊品質', label: '視訊品質' },
-    { id: '患者資料', label: '患者資料' },
+    { id: '帳號與權限管理', label: '帳號與權限管理' },
+    { id: '排班與診間管理', label: '排班與診間管理' },
+    { id: '數據與報表', label: '數據與報表' },
+    { id: '金流與行政整合', label: '金流與行政整合' },
     { id: '其他', label: '其他' }
   ];
 
