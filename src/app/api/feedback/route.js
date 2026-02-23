@@ -54,7 +54,7 @@ export async function POST(request) {
         doctor_id = doctorRows[0].doctor_id;
       }
       user_role = 'doctor';
-    }else if (user_type === 'mechanism') {
+    }else if (user_type === 'mech') {
       const [mechanismRows] = await connection.execute(
         'SELECT mechanism_id FROM mechanism WHERE user_id = ?',
         [user_id]
@@ -64,7 +64,7 @@ export async function POST(request) {
       }
       user_role = 'mech';
     }
-    
+
     // 將 categories 轉為 JSON 字串
     const categoriesJson = JSON.stringify(categories);
 
