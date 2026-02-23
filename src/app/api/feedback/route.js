@@ -33,6 +33,7 @@ export async function POST(request) {
     // 根據 user_type 獲取對應的 ID
     let patient_id = null;
     let doctor_id = null;
+    let mechanism_id = null;
     let user_role = null;
 
     if (user_type === 'patient') {
@@ -53,6 +54,15 @@ export async function POST(request) {
         doctor_id = doctorRows[0].doctor_id;
       }
       user_role = 'doctor';
+    }else if (user_type === 'mech') {
+      const [mechanismRows] = await connection.execute(
+        'SELECT mechanism_id FROM mechanism WHERE user_id = ?',
+        [user_id]
+      );
+      if (mechanismRows.length > 0) {
+        mechanism_id = mechanismRows[0].mechanism_id;
+      }
+      user_role = 'mech';
     }
 
     // 將 categories 轉為 JSON 字串
@@ -60,9 +70,9 @@ export async function POST(request) {
 
     // 插入回報
     const [result] = await connection.execute(
-      `INSERT INTO feedback (patient_id, doctor_id, user_role, categories, feedback_text, status)
-       VALUES (?, ?, ?, ?, ?, 'unread')`,
-      [patient_id, doctor_id, user_role, categoriesJson, feedback_text]
+      `INSERT INTO feedback (patient_id, doctor_id, mechanism_id, user_role, categories, feedback_text, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'unread')`,
+      [patient_id, doctor_id, mechanism_id, user_role, categoriesJson, feedback_text]
     );
 
     console.log(`✅ 回報已提交 - ID: ${result.insertId}`);
