@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';  // 🔥 需要添加 useEffect
-import DoctorSidebar from "../components/Mech_Sidebar";
+import Mech_Sidebar from "../components/Mech_Sidebar";
 import Navbar from "../components/Navbar";
 import { Menu, AlertCircle, Send } from 'lucide-react';
 
