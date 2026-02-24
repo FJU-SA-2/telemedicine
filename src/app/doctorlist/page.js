@@ -394,88 +394,94 @@ function DoctorListPage({ onSelectDoctor, user }) {
           return (
             <div
               key={doctor.doctor_id}
-              className="bg-white rounded-lg shadow p-6 relative hover:shadow-lg transition"
+              className=""
             >
               {/* 收藏按鈕 - 改為愛心 */}
-              <div
-                onClick={() => toggleFavorite(doctor.doctor_id)}
-                className="absolute top-3 right-3 cursor-pointer select-none transition-all"
-                title={user ? (isFavorited ? "取消收藏" : "加入收藏") : "需要登入才能收藏"}
-              >
-                <Heart 
-                  size={24}
-                  className={`${
-                    isFavorited 
-                      ? 'text-red-500 fill-red-500' 
-                      : user 
-                        ? 'text-gray-300 hover:text-red-400' 
-                        : 'text-gray-200'
-                  } transition-colors`}
-                  fill={isFavorited ? 'currentColor' : 'none'}
-                />
-              </div>
+<div
+  key={doctor.doctor_id}
+  className="bg-white rounded-2xl shadow-md transition p-6 flex flex-col items-center text-center relative"
+>
+  {/* 收藏愛心 */}
+  <div
+    onClick={() => toggleFavorite(doctor.doctor_id)}
+    className="absolute top-4 right-4 cursor-pointer"
+  >
+    <Heart
+      size={24}
+      className={isFavorited ? "text-red-500 fill-red-500" : "text-gray-300 hover:text-red-400"}
+      fill={isFavorited ? "currentColor" : "none"}
+    />
+  </div>
 
-              <div className="flex items-start gap-4 mb-4">
-                {doctor.photo ? (
-                  <img
-                    src={doctor.photo}
-                    alt={`${doctor.first_name}${doctor.last_name} 頭像`}
-                    className="w-16 h-16 rounded-full object-cover border"
-                  />
-                ) : (
-                  <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                    {doctor.first_name?.charAt(0) || "醫"}
-                  </div>
-                )}
+  {/* 大頭像 */}
+  <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-blue-100 shadow mb-4">
+    <img
+      src={doctor.photo || "/default-doctor.png"}
+      onError={(e) => e.target.src = "/default-doctor.png"}
+      className="w-full h-full object-cover"
+    />
+  </div>
 
-                <div className="flex-1">
-                  <h3 className="font-bold text-lg">{fullName}</h3>
-                  <p className="text-blue-600 text-sm">{doctor.specialty}</p>
-                  <p className="text-gray-500 text-xs mt-1">
-                    {doctor.practice_hospital}
-                  </p>
-                  <div className="mt-3 space-y-1 text-sm text-gray-600">
-                    <p>
-                      🏥 院所：
-                      <span className="text-gray-800 font-medium">
-                        {doctor.practice_hospital || "暫無資料"}
-                      </span>
-                    </p>
+  {/* 姓名 */}
+  <h3 className="text-xl font-bold text-gray-800">
+    {doctor.first_name}{doctor.last_name}
+  </h3>
 
-                    <p>
-                      🎓 學歷：
-                      <span className="text-gray-800">
-                        {doctor.education || "暫無"}
-                      </span>
-                    </p>
+  {/* 科別 badge */}
+  <span className="mt-1 px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">
+    {doctor.specialty}
+  </span>
 
-                    <p>
-                      💼 經歷：
-                      <span className="text-gray-800">
-                        {doctor.experience || "暫無"}
-                      </span>
-                    </p>
+  {/* 院所 */}
+  <p className="text-gray-500 text-sm mt-1">
+    {doctor.practice_hospital}
+  </p>
 
-                    <p>
-                      🧾 證照：
-                      <span className="text-gray-800">
-                        {doctor.qualifications || "暫無"}
-                      </span>
-                    </p>
+  {/* 費用 */}
+  <p className="mt-2 text-lg font-semibold text-blue-600">
+    NT$ {doctor.consultation_fee || "—"}
+  </p>
 
-                    <p className="font-semibold text-blue-600">
-                      💰 掛號費 NT$ {doctor.consultation_fee || "—"}
-                    </p>
+  {/* Divider */}
+  <div className="w-full border-t my-4"></div>
 
-                  </div>
-                  <button
-                    onClick={() => window.location.href = `/reserve?doctor=${doctor.doctor_id}`}
-                    className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition mt-3"
-                  >
-                    立即預約
-                  </button>
-                </div>
-              </div>
+  {/* 專業資訊 Grid */}
+  <div className="grid grid-cols-1 gap-3 w-full text-left text-sm">
+
+    <div className="flex gap-2 items-start">
+      <span className="text-blue-500 font-bold">🎓</span>
+      <p className="text-gray-700">
+        <span className="font-semibold">學歷：</span>
+        {doctor.education || "暫無資料"}
+      </p>
+    </div>
+
+    <div className="flex gap-2 items-start">
+      <span className="text-green-500 font-bold">💼</span>
+      <p className="text-gray-700">
+        <span className="font-semibold">經歷：</span>
+        {doctor.experience || "暫無資料"}
+      </p>
+    </div>
+
+    <div className="flex gap-2 items-start">
+      <span className="text-purple-500 font-bold">🧾</span>
+      <p className="text-gray-700">
+        <span className="font-semibold">認證：</span>
+        {doctor.qualifications || "暫無資料"}
+      </p>
+    </div>
+
+  </div>
+
+  {/* 預約按鈕 */}
+  <button
+    onClick={() => window.location.href = `/reserve?doctor=${doctor.doctor_id}`}
+    className="mt-4 w-full bg-green-600 text-white py-2.5 rounded-xl font-medium hover:bg-green-700 transition"
+  >
+    立即預約
+  </button>
+</div>
             </div>
           );
         })}
