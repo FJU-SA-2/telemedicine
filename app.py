@@ -502,11 +502,32 @@ def get_doctor_dashboard_data():
 def get_doctors():
     db = get_db()
     cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT id, name, specialty FROM doctors")
-    doctors = cursor.fetchall()
-    cursor.close()
-    db.close()
-    return jsonify(doctors)
+    try:
+        cursor.execute("""
+            SELECT 
+                d.doctor_id,
+                d.first_name,
+                d.last_name,
+                d.gender,
+                d.specialty,
+                d.practice_hospital,
+                d.phone_number,
+                di.consultation_type,
+                di.consultation_fee,
+                di.description,
+                di.photo
+            FROM doctor d
+            LEFT JOIN doctor_info di ON d.doctor_id = di.doctor_id
+            WHERE d.approval_status = 'approved'
+        """)
+        doctors = cursor.fetchall()
+        return jsonify(doctors)
+    except Exception as e:
+        print(f"❌ 取得醫師錯誤: {str(e)}")
+        return jsonify({"error": "查詢失敗"}), 500
+    finally:
+        cursor.close()
+        db.close()
 
 
 @app.route("/api/send-verification", methods=["POST"])
@@ -1941,6 +1962,37 @@ def get_doctor_schedules(doctor_id):
         import traceback
         traceback.print_exc()
         return jsonify({"error": "查詢失敗"}), 500
+
+
+# 取得所有排班（前端預約頁面使用）
+@app.route('/api/schedules', methods=['GET'])
+def get_all_schedules():
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT 
+                schedule_id,
+                doctor_id,
+                DATE_FORMAT(schedule_date, '%Y-%m-%d') as schedule_date,
+                time_slot,
+                is_available
+            FROM schedules
+            WHERE is_available = 1
+            AND TIMESTAMP(schedule_date, time_slot) >= NOW()
+            ORDER BY schedule_date ASC, time_slot ASC
+        """)
+        schedules = cursor.fetchall()
+        for s in schedules:
+            for key, val in s.items():
+                s[key] = serialize_datetime(val)
+        return jsonify(schedules), 200
+    except Exception as e:
+        print(f"❌ 取得所有排班錯誤: {str(e)}")
+        return jsonify({"error": "查詢失敗"}), 500
+    finally:
+        cursor.close()
+        db.close()
 
 
 # 3. 儲存排班
