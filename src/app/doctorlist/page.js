@@ -168,7 +168,8 @@ function DoctorListPage({ onSelectDoctor, user }) {
   const [showFavoriteToast, setShowFavoriteToast] = useState(false);
   const [favoriteMessage, setFavoriteMessage] = useState("");
   const [showLoginModal, setShowLoginModal] = useState(false);
-
+  const [selectedHospital, setSelectedHospital] = useState("");
+  const [keyword, setKeyword] = useState("");
   const userId = 1; // 模拟登入使用者 ID
 
   useEffect(() => {
@@ -225,13 +226,28 @@ function DoctorListPage({ onSelectDoctor, user }) {
   const specialties = doctors.length > 0
     ? ["所有科別", ...new Set(doctors.map((d) => d.specialty))]
     : ["所有科別"];
+  const hospitals = doctors.length > 0
+  ? ["所有院所", ...new Set(doctors.map((d) => d.practice_hospital))]
+  : ["所有院所"];
 
   const filteredDoctors = doctors.filter((doctor) => {
     const specialtyMatch =
       !selectedSpecialty ||
       selectedSpecialty === "所有科別" ||
       doctor.specialty === selectedSpecialty;
-    return specialtyMatch;
+
+  const hospitalMatch =
+    !selectedHospital ||
+    selectedHospital === "所有院所" ||
+    doctor.practice_hospital === selectedHospital;
+
+  const keywordMatch = keyword
+      ? `${doctor.first_name}${doctor.last_name} ${doctor.specialty} ${doctor.practice_hospital} ${doctor.education} ${doctor.experience}`
+          .toLowerCase()
+          .includes(keyword.toLowerCase())
+      : true;
+
+    return specialtyMatch && hospitalMatch && keywordMatch;
   });
 
   const toggleFavorite = async (doctorId) => {
@@ -318,12 +334,12 @@ function DoctorListPage({ onSelectDoctor, user }) {
           <h3 className="text-lg font-semibold text-gray-800">篩選條件</h3>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <select
               value={selectedSpecialty}
               onChange={(e) => setSelectedSpecialty(e.target.value)}
-              className="w-150 px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700"
+              className="w-50 px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700"
             >
               <option value="">所有科別</option>
               {specialties
@@ -335,6 +351,31 @@ function DoctorListPage({ onSelectDoctor, user }) {
                 ))}
             </select>
             </div>
+            <div>
+            <select
+              value={selectedHospital}
+              onChange={(e) => setSelectedHospital(e.target.value)}
+              className="w-50 px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700"
+            >
+              <option value="">任職院所</option>
+              {hospitals
+                .filter((h) => h !== "所有院所")
+                .map((hospital) => (
+                  <option key={hospital} value={hospital}>
+                    {hospital}
+                  </option>
+                ))}
+            </select>
+          </div>
+          <div>
+          <input
+            type="text"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="搜尋醫師姓名、付費模式等"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
           </div>
         </div>
       </div>
@@ -375,9 +416,9 @@ function DoctorListPage({ onSelectDoctor, user }) {
               </div>
 
               <div className="flex items-start gap-4 mb-4">
-                {doctor.photo_url ? (
+                {doctor.photo ? (
                   <img
-                    src={doctor.photo_url}
+                    src={doctor.photo}
                     alt={`${doctor.first_name}${doctor.last_name} 頭像`}
                     className="w-16 h-16 rounded-full object-cover border"
                   />
@@ -393,15 +434,48 @@ function DoctorListPage({ onSelectDoctor, user }) {
                   <p className="text-gray-500 text-xs mt-1">
                     {doctor.practice_hospital}
                   </p>
+                  <div className="mt-3 space-y-1 text-sm text-gray-600">
+                    <p>
+                      🏥 院所：
+                      <span className="text-gray-800 font-medium">
+                        {doctor.practice_hospital || "暫無資料"}
+                      </span>
+                    </p>
+
+                    <p>
+                      🎓 學歷：
+                      <span className="text-gray-800">
+                        {doctor.education || "暫無"}
+                      </span>
+                    </p>
+
+                    <p>
+                      💼 經歷：
+                      <span className="text-gray-800">
+                        {doctor.experience || "暫無"}
+                      </span>
+                    </p>
+
+                    <p>
+                      🧾 證照：
+                      <span className="text-gray-800">
+                        {doctor.qualifications || "暫無"}
+                      </span>
+                    </p>
+
+                    <p className="font-semibold text-blue-600">
+                      💰 掛號費 NT$ {doctor.consultation_fee || "—"}
+                    </p>
+
+                  </div>
+                  <button
+                    onClick={() => window.location.href = `/reserve?doctor=${doctor.doctor_id}`}
+                    className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition mt-3"
+                  >
+                    立即預約
+                  </button>
                 </div>
               </div>
-
-              <button
-                onClick={() => onSelectDoctor(doctor)}
-                className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-              >
-                查看更多
-              </button>
             </div>
           );
         })}
@@ -410,7 +484,7 @@ function DoctorListPage({ onSelectDoctor, user }) {
   );
 }
 
-// 其他分页
+// 其他分頁
 function HomePage() {
   return (
     <div className="p-6 min-h-screen">
