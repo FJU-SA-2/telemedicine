@@ -407,12 +407,7 @@ const AddDoctorModal = ({ onClose, onSaved }) => {
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-600 block mb-1">審核狀態</label>
-                  <select value={form.approval_status} onChange={e => set("approval_status", e.target.value)} className={selectCls}>
-                    <option value="pending">審核中</option>
-                    <option value="approved">審核通過</option>
-                    <option value="rejected">已拒絕</option>
-                  </select>
+                  
                 </div>
               </div>
               {[
@@ -684,7 +679,7 @@ const TelemedicineDashboard = () => {
 
           {/* 統計卡片 */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-            <StatCard icon={Stethoscope}  label="本院醫師"  value={stats?.total_doctors ?? "—"}      sub={`${stats?.approved_doctors ?? 0} 位審核通過`} color="bg-blue-500"   loading={statsLoading} />
+            <StatCard icon={Stethoscope}  label="本院醫師"  value={stats?.total_doctors ?? "—"}      sub="位醫師"  color="bg-blue-500"   loading={statsLoading} />
             <StatCard icon={HeartPulse}   label="本院患者"  value={stats?.total_patients ?? "—"}     sub="位患者"   color="bg-teal-500"   loading={statsLoading} />
             <StatCard icon={CalendarDays} label="今日看診"  value={stats?.today_appointments ?? "—"} sub="診次"     color="bg-violet-500" loading={statsLoading} />
           </div>
