@@ -20,6 +20,8 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const mechanismId = searchParams.get("mechanism_id");
+    const search = searchParams.get("search");
+    const status = searchParams.get("status");
 
     let query = `
       SELECT
@@ -41,9 +43,22 @@ export async function GET(request) {
       LEFT JOIN appointment a ON d.doctor_id = a.doctor_id
     `;
     const params = [];
+    const conditions = [];
+
     if (mechanismId) {
-      query += " WHERE d.mechanism_id = ?";
+      conditions.push("d.mechanism_id = ?");
       params.push(mechanismId);
+    }
+    if (search) {
+      conditions.push("(CONCAT(d.last_name, d.first_name) LIKE ? OR d.specialty LIKE ?)");
+      params.push(`%${search}%`, `%${search}%`);
+    }
+    if (status) {
+      conditions.push("d.approval_status = ?");
+      params.push(status);
+    }
+    if (conditions.length > 0) {
+      query += " WHERE " + conditions.join(" AND ");
     }
     query += " GROUP BY d.doctor_id ORDER BY d.created_at DESC";
 

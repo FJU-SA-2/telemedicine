@@ -637,7 +637,7 @@ const TelemedicineDashboard = () => {
       if (doctorSearch) p.set("search", doctorSearch);
       if (doctorStatus) p.set("status", doctorStatus);
       const data = await apiFetch(`/api/mechanism/doctors?${p}`);
-      setDoctors(data.doctors);
+      setDoctors(Array.isArray(data) ? data : (data.doctors ?? []));
     } catch (e) { showToast(e.message, "error"); }
     finally { setDoctorsLoading(false); }
   }, [doctorSearch, doctorStatus]);
