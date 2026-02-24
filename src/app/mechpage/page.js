@@ -90,10 +90,10 @@ const DoctorEditModal = ({ doctor, onClose, onSaved }) => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await apiFetch("http://127.0.0.1:5000/api/mechanism/doctors", {
+      await apiFetch("/api/mechanism/doctors", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, doctor_id: doctor.doctor_id }),
       });
       onSaved("醫師資料已更新");
     } catch (e) {
@@ -346,6 +346,8 @@ const AddDoctorModal = ({ onClose, onSaved }) => {
     phone_number: "",
     approval_status: "pending",
     certificate_path: "",
+    email: "",
+    password: "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -353,6 +355,8 @@ const AddDoctorModal = ({ onClose, onSaved }) => {
 
   const handleSave = async () => {
     if (!form.first_name || !form.last_name) { setError("姓名為必填"); return; }
+    if (!form.email) { setError("Email 為必填"); return; }
+    if (!form.password || form.password.length < 6) { setError("密碼為必填且至少 6 個字元"); return; }
     setSaving(true);
     setError("");
     try {
@@ -422,7 +426,22 @@ const AddDoctorModal = ({ onClose, onSaved }) => {
                     placeholder={placeholder} className={inputCls} />
                 </div>
               ))}
+          </div>
+
+          {/* ── 帳號資訊（users 表） ── */}
+          <div className="space-y-3 pt-3 border-t border-gray-100">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">登入帳號設定</p>
+            <div>
+              <label className="text-sm font-medium text-gray-600 block mb-1">Email <span className="text-rose-500">*</span></label>
+              <input type="email" value={form.email} onChange={e => set("email", e.target.value)}
+                placeholder="doctor@example.com" className={inputCls} />
             </div>
+            <div>
+              <label className="text-sm font-medium text-gray-600 block mb-1">密碼 <span className="text-rose-500">*</span></label>
+              <input type="password" value={form.password} onChange={e => set("password", e.target.value)}
+                placeholder="至少 6 個字元" className={inputCls} />
+            </div>
+          </div>
         </div>
 
         <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 flex-shrink-0">
