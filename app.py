@@ -19,7 +19,7 @@ import threading
 from datetime import datetime, timedelta
 from flask import Response
 import json
-
+from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = "your-very-secret-key-change-this"  # ⚠️ 改成更安全的密鑰
@@ -4325,7 +4325,328 @@ def get_doctor_appointments_range(doctor_id):
         import traceback
         traceback.print_exc()
         return jsonify({"error": "伺服器錯誤"}), 500
-    
+def require_mechanism(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            return jsonify({'error': '請先登入'}), 401
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        try:
+            cursor.execute("SELECT mechanism_id FROM mechanism WHERE user_id = %s", (session['user_id'],))
+            mech = cursor.fetchone()
+            if not mech:
+                return jsonify({'error': '權限不足'}), 403
+            request.mechanism_id = mech['mechanism_id']
+        finally:
+            cursor.close()
+            db.close()
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ── 統計 ─────────────────────────────────────────────────────────────
+
+@app.route('/api/mechanism/stats', methods=['GET'])
+@require_mechanism
+def get_mechanism_stats():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT COUNT(*) AS total FROM doctor WHERE mechanism_id = %s", (request.mechanism_id,))
+        total_doctors = cursor.fetchone()['total']
+
+        cursor.execute("SELECT COUNT(*) AS total FROM doctor WHERE mechanism_id = %s AND approval_status = 'approved'", (request.mechanism_id,))
+        approved_doctors = cursor.fetchone()['total']
+
+        cursor.execute("""
+            SELECT COUNT(DISTINCT a.patient_id) AS total
+            FROM appointments a JOIN doctor d ON a.doctor_id = d.doctor_id
+            WHERE d.mechanism_id = %s
+        """, (request.mechanism_id,))
+        total_patients = cursor.fetchone()['total']
+
+        cursor.execute("""
+            SELECT COUNT(*) AS total
+            FROM appointments a JOIN doctor d ON a.doctor_id = d.doctor_id
+            WHERE d.mechanism_id = %s AND DATE(a.appointment_date) = CURDATE()
+        """, (request.mechanism_id,))
+        today_appointments = cursor.fetchone()['total']
+
+        return jsonify({
+            'total_doctors': total_doctors,
+            'approved_doctors': approved_doctors,
+            'total_patients': total_patients,
+            'today_appointments': today_appointments,
+        })
+    finally:
+        cursor.close()
+        db.close()
+
+
+# ── 醫師管理 ──────────────────────────────────────────────────────────
+
+@app.route('/api/mechanism/doctors', methods=['GET'])
+@require_mechanism
+def get_mechanism_doctors():
+    search = request.args.get('search', '').strip()
+    status_filter = request.args.get('status', '')
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        sql = """
+            SELECT
+                d.doctor_id, d.first_name, d.last_name, d.gender,
+                d.specialty, d.phone_number, d.practice_hospital,
+                d.approval_status, d.approval_date, d.created_at,
+                COUNT(DISTINCT a.appointment_id) AS total_appointments,
+                SUM(CASE WHEN DATE(a.appointment_date) = CURDATE() THEN 1 ELSE 0 END) AS today_appointments
+            FROM doctor d
+            LEFT JOIN appointments a ON d.doctor_id = a.doctor_id
+            WHERE d.mechanism_id = %s
+        """
+        params = [request.mechanism_id]
+
+        if search:
+            sql += " AND (d.first_name LIKE %s OR d.last_name LIKE %s OR d.specialty LIKE %s)"
+            like = f'%{search}%'
+            params += [like, like, like]
+
+        if status_filter:
+            sql += " AND d.approval_status = %s"
+            params.append(status_filter)
+
+        sql += " GROUP BY d.doctor_id ORDER BY d.created_at DESC"
+        cursor.execute(sql, params)
+        doctors = cursor.fetchall()
+
+        for doc in doctors:
+            for key in ['approval_date', 'created_at']:
+                if doc.get(key):
+                    doc[key] = doc[key].isoformat() if hasattr(doc[key], 'isoformat') else str(doc[key])
+
+        return jsonify({'doctors': doctors, 'total': len(doctors)})
+    finally:
+        cursor.close()
+        db.close()
+
+
+@app.route('/api/mechanism/doctors/<int:doctor_id>', methods=['PUT'])
+@require_mechanism
+def update_mechanism_doctor(doctor_id):
+    data = request.get_json() or {}
+    allowed = ['specialty', 'phone_number', 'practice_hospital']
+    updates = {k: v for k, v in data.items() if k in allowed}
+    if not updates:
+        return jsonify({'error': '無可更新的欄位'}), 400
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        cursor.execute(
+            "SELECT doctor_id FROM doctor WHERE doctor_id = %s AND mechanism_id = %s",
+            (doctor_id, request.mechanism_id)
+        )
+        if not cursor.fetchone():
+            return jsonify({'error': '醫師不存在或無權限'}), 404
+
+        set_clause = ', '.join([f"`{k}` = %s" for k in updates])
+        cursor.execute(
+            f"UPDATE doctor SET {set_clause} WHERE doctor_id = %s",
+            list(updates.values()) + [doctor_id]
+        )
+        db.commit()
+        return jsonify({'message': '更新成功'})
+    finally:
+        cursor.close()
+        db.close()
+
+
+@app.route('/api/mechanism/doctors/<int:doctor_id>/remove', methods=['PATCH'])
+@require_mechanism
+def remove_mechanism_doctor(doctor_id):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        cursor.execute(
+            "SELECT doctor_id FROM doctor WHERE doctor_id = %s AND mechanism_id = %s",
+            (doctor_id, request.mechanism_id)
+        )
+        if not cursor.fetchone():
+            return jsonify({'error': '醫師不存在或無權限'}), 404
+
+        cursor.execute("UPDATE doctor SET mechanism_id = NULL WHERE doctor_id = %s", (doctor_id,))
+        db.commit()
+        return jsonify({'message': '已解除關聯'})
+    finally:
+        cursor.close()
+        db.close()
+
+
+# ── 患者管理 ──────────────────────────────────────────────────────────
+
+@app.route('/api/mechanism/patients', methods=['GET'])
+@require_mechanism
+def get_mechanism_patients():
+    search = request.args.get('search', '').strip()
+    gender_filter = request.args.get('gender', '')
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        sql = """
+            SELECT
+                p.patient_id, p.first_name, p.last_name, p.gender,
+                p.date_of_birth, p.phone_number, p.smoking_status, p.chronic_disease,
+                MAX(a.appointment_date) AS last_appointment,
+                COUNT(a.appointment_id) AS total_appointments
+            FROM patient p
+            JOIN appointments a ON p.patient_id = a.patient_id
+            JOIN doctor d ON a.doctor_id = d.doctor_id
+            WHERE d.mechanism_id = %s
+        """
+        params = [request.mechanism_id]
+
+        if search:
+            sql += " AND (p.first_name LIKE %s OR p.last_name LIKE %s OR p.id_number LIKE %s)"
+            like = f'%{search}%'
+            params += [like, like, like]
+
+        if gender_filter:
+            sql += " AND p.gender = %s"
+            params.append(gender_filter)
+
+        sql += " GROUP BY p.patient_id ORDER BY last_appointment DESC"
+        cursor.execute(sql, params)
+        patients = cursor.fetchall()
+
+        for pt in patients:
+            for key in ['date_of_birth', 'last_appointment']:
+                if pt.get(key):
+                    pt[key] = pt[key].isoformat() if hasattr(pt[key], 'isoformat') else str(pt[key])
+
+        return jsonify({'patients': patients, 'total': len(patients)})
+    finally:
+        cursor.close()
+        db.close()
+
+
+@app.route('/api/mechanism/patients/<int:patient_id>', methods=['GET'])
+@require_mechanism
+def get_mechanism_patient_detail(patient_id):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT COUNT(*) AS cnt FROM appointments a
+            JOIN doctor d ON a.doctor_id = d.doctor_id
+            WHERE a.patient_id = %s AND d.mechanism_id = %s
+        """, (patient_id, request.mechanism_id))
+        if cursor.fetchone()['cnt'] == 0:
+            return jsonify({'error': '患者不存在或無權限'}), 404
+
+        cursor.execute("SELECT * FROM patient WHERE patient_id = %s", (patient_id,))
+        patient = cursor.fetchone()
+
+        for key in ['date_of_birth', 'created_at', 'updated_at']:
+            if patient.get(key):
+                patient[key] = patient[key].isoformat() if hasattr(patient[key], 'isoformat') else str(patient[key])
+
+        return jsonify(patient)
+    finally:
+        cursor.close()
+        db.close()
+
+
+@app.route('/api/mechanism/patients/<int:patient_id>/appointments', methods=['GET'])
+@require_mechanism
+def get_mechanism_patient_appointments(patient_id):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT
+                a.appointment_id, a.appointment_date, a.appointment_time,
+                a.status, a.symptoms, a.consultation_notes, a.doctor_advice,
+                a.amount, a.payment_method,
+                CONCAT(d.first_name, d.last_name) AS doctor_name,
+                d.specialty
+            FROM appointments a
+            JOIN doctor d ON a.doctor_id = d.doctor_id
+            WHERE a.patient_id = %s AND d.mechanism_id = %s
+            ORDER BY a.appointment_date DESC, a.appointment_time DESC
+        """, (patient_id, request.mechanism_id))
+        appts = cursor.fetchall()
+
+        for ap in appts:
+            if ap.get('appointment_date'):
+                ap['appointment_date'] = ap['appointment_date'].isoformat() if hasattr(ap['appointment_date'], 'isoformat') else str(ap['appointment_date'])
+            # mysql.connector 回傳 timedelta，轉成 HH:MM 字串
+            if ap.get('appointment_time') and hasattr(ap['appointment_time'], 'total_seconds'):
+                total = int(ap['appointment_time'].total_seconds())
+                ap['appointment_time'] = f"{total // 3600:02d}:{(total % 3600) // 60:02d}"
+
+        return jsonify({'appointments': appts, 'total': len(appts)})
+    finally:
+        cursor.close()
+        db.close()
+
+@app.route("/api/mechanism/doctors", methods=["POST"])
+def add_doctor():
+    try:
+        data = request.get_json()
+
+        first_name = data.get("first_name")
+        last_name = data.get("last_name")
+        gender = data.get("gender")
+        specialty = data.get("specialty")
+        practice_hospital = data.get("practice_hospital")
+        phone_number = data.get("phone_number")
+        approval_status = data.get("approval_status")
+        certificate_path = data.get("certificate_path")
+
+        # 基本驗證
+        if not first_name or not last_name:
+            return jsonify({"error": "姓名為必填"}), 400
+
+        conn = get_db()
+        cursor = conn.cursor()
+        sql = """
+        INSERT INTO doctor_info
+        (first_name, last_name, gender, specialty,
+         practice_hospital, phone_number,
+         approval_status, certificate_path)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
+
+        values = (
+            first_name,
+            last_name,
+            gender,
+            specialty,
+            practice_hospital,
+            phone_number,
+            approval_status,
+            certificate_path
+        )
+
+        cursor.execute(sql, values)
+        conn.commit()
+
+        doctor_id = cursor.lastrowid
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "message": "醫師新增成功",
+            "doctor_id": doctor_id
+        }), 201
+
+    except Exception as e:
+        print("新增醫師錯誤:", e)
+        return jsonify({"error": "伺服器錯誤"}), 500
 if __name__ == "__main__":
     start_background_tasks()
     app.run(debug=True)
