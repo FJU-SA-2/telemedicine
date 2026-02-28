@@ -888,6 +888,17 @@ def get_current_user():
                     'chronic_disease': patient_data.get('chronic_disease') or [],
                     'other_chronic_disease': patient_data.get('other_chronic_disease') or ""
                 }
+        elif role == "mech":
+            cursor.execute("""
+                SELECT mechanism_id, mechanism_name
+                FROM mechanism
+                WHERE user_id = %s
+            """, (user_id,))
+            mech_data = cursor.fetchone()
+            if mech_data:
+                user_data["mechanism_id"] = mech_data["mechanism_id"]
+                user_data["mechanism_name"] = mech_data["mechanism_name"]
+
     # 新增：如果是醫師，取得完整專業資料
         elif role == "doctor":
             cursor.execute("""
@@ -4477,6 +4488,9 @@ def get_mechanism_doctors():
             for key in ['approval_date', 'created_at']:
                 if doc.get(key):
                     doc[key] = doc[key].isoformat() if hasattr(doc[key], 'isoformat') else str(doc[key])
+            # 修正 SUM/COUNT 可能回傳 None 或 Decimal 的問題
+            doc['total_appointments'] = int(doc['total_appointments'] or 0)
+            doc['today_appointments'] = int(doc['today_appointments'] or 0)
 
         return jsonify({'doctors': doctors, 'total': len(doctors)})
     finally:

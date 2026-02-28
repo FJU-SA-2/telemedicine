@@ -40,7 +40,7 @@ export async function GET(request) {
         SUM(CASE WHEN DATE(a.appointment_date) = CURDATE() THEN 1 ELSE 0 END) AS today_appointments
       FROM doctor d
       LEFT JOIN users u ON d.user_id = u.user_id
-      LEFT JOIN appointment a ON d.doctor_id = a.doctor_id
+      LEFT JOIN appointments a ON d.doctor_id = a.doctor_id
     `;
     const params = [];
     const conditions = [];
