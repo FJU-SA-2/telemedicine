@@ -20,6 +20,21 @@ from datetime import datetime, timedelta
 from flask import Response
 import json
 from functools import wraps
+from linebot import LineBotApi, WebhookHandler
+from linebot.exceptions import InvalidSignatureError
+from linebot.models import (
+    MessageEvent, TextMessage, TextSendMessage,
+    TemplateSendMessage, ButtonsTemplate, URIAction,
+    FlexSendMessage
+)
+from dotenv import load_dotenv
+load_dotenv()
+
+LINE_CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET')
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
+
+line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
+handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 app = Flask(__name__)
 app.secret_key = "your-very-secret-key-change-this"  # ⚠️ 改成更安全的密鑰
@@ -4395,6 +4410,34 @@ def require_mechanism(f):
             db.close()
         return f(*args, **kwargs)
     return decorated
+
+@app.route("/webhook", methods=['POST'])
+def webhook():
+    signature = request.headers.get('X-Line-Signature', '')
+    body = request.get_data(as_text=True)
+    try:
+        handler.handle(body, signature)
+    except InvalidSignatureError:
+        return jsonify({'error': 'Invalid signature'}), 400
+    return 'OK', 200
+
+@handler.add(MessageEvent, message=TextMessage)
+def handle_message(event):
+    user_message = event.message.text.strip()
+    
+    if '預約' in user_message:
+        reply = '📅 請點選連結進行線上預約：\nhttps://your-medonco-url.com/booking'
+    elif '視訊' in user_message or '看診' in user_message:
+        reply = '🎥 請登入平台開始視訊看診：\nhttps://your-medonco-url.com/video'
+    elif '紀錄' in user_message or '記錄' in user_message:
+        reply = '📋 請登入查看您的就診紀錄：\nhttps://your-medonco-url.com/records'
+    else:
+        reply = '您好！我是醫隨行小幫手 👋\n請問有什麼可以協助您？\n\n📅 預約\n🎥 視訊看診\n📋 就診紀錄'
+
+    line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(text=reply)
+    )
 
 
 # ── 統計 ─────────────────────────────────────────────────────────────
