@@ -586,6 +586,7 @@ const TelemedicineDashboard = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [approvalStatus, setApprovalStatus] = useState(null);
+  const [mechanismId, setMechanismId] = useState(null);
 
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -616,7 +617,14 @@ const TelemedicineDashboard = () => {
       try {
         const res = await fetch("/api/me", { credentials: "include" });
         const data = await res.json();
-        setApprovalStatus(data.authenticated && data.user?.role === "doctor" ? data.user.approval_status : "unauthorized");
+        if (data.authenticated && data.user?.role === "mech") {
+          setApprovalStatus("approved");
+          if (data.user?.mechanism_id) setMechanismId(data.user.mechanism_id);
+        } else if (data.authenticated && data.user?.role === "doctor") {
+          setApprovalStatus(data.user.approval_status);
+        } else {
+          setApprovalStatus("unauthorized");
+        }
       } catch {
         setApprovalStatus("error");
       }
@@ -634,13 +642,14 @@ const TelemedicineDashboard = () => {
     setDoctorsLoading(true);
     try {
       const p = new URLSearchParams();
+      if (mechanismId) p.set("mechanism_id", mechanismId);
       if (doctorSearch) p.set("search", doctorSearch);
       if (doctorStatus) p.set("status", doctorStatus);
       const data = await apiFetch(`/api/mechanism/doctors?${p}`);
-      setDoctors(data.doctors);
+      setDoctors(Array.isArray(data) ? data : (data.doctors ?? []));
     } catch (e) { showToast(e.message, "error"); }
     finally { setDoctorsLoading(false); }
-  }, [doctorSearch, doctorStatus]);
+  }, [mechanismId, doctorSearch, doctorStatus]);
 
   const fetchPatients = useCallback(async () => {
     setPatientsLoading(true);
@@ -681,9 +690,12 @@ const TelemedicineDashboard = () => {
 
       <Mech_Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} activeTab={activeTab} setActiveTab={setActiveTab} approvalStatus={approvalStatus} />
 
-      <div className={`transition-all duration-300 ${sidebarOpen ? "ml-64" : "ml-0"}`}>
+      {/* 修改點 1：在外層容器加上 min-h-screen flex flex-col */}
+      <div className={`transition-all duration-300 min-h-screen flex flex-col ${sidebarOpen ? "ml-64" : "ml-0"}`}>
         <Navbar />
-        <main className="p-6 md:p-8 max-w-7xl mx-auto">
+        
+        {/* 修改點 2：在 main 加上 flex-1 讓它撐開空間 */}
+        <main className="flex-1 p-6 md:p-8 max-w-7xl mx-auto w-full">
 
           <div className="mb-8 flex items-center justify-between">
             <div>
@@ -825,11 +837,10 @@ const TelemedicineDashboard = () => {
 
           </div>
         </main>
-      </div>
-
-      <div className="bg-gray-800 text-white py-8 mt-8">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-gray-400">© 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。</p>
+        <div className="bg-gray-800 text-white py-8 mt-8 flex-shrink-0">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <p className="text-gray-400">© 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。</p>
+          </div>
         </div>
       </div>
 
