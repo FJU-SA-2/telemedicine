@@ -70,19 +70,16 @@ export default function DoctorSchedulePage() {
                         if (doctorRes.ok) {
                             const doctorData = await doctorRes.json();
                             setDoctorId(doctorData.doctor_id);
+                            // mechanism_id 有值 → 唯讀模式，不需要額外 API
+                            if (doctorData.mechanism_id) {
+                                setViewOnly(true);
+                                setHasMechanism(true);
+                                setMechanismName(doctorData.mechanism_name || "所屬機構");
+                            }
                         } else {
                             const errorData = await doctorRes.json();
                             console.error('❌ 取得醫師資料失敗:', errorData);
                             alert(`無法取得醫師資料: ${errorData.message}`);
-                        }
-
-                        // ── 新增：查詢是否有所屬機構 ─────────────────
-                        const mechRes = await fetch("/api/doctor/has-mechanism", { credentials: 'include' });
-                        if (mechRes.ok) {
-                            const mechData = await mechRes.json();
-                            setHasMechanism(mechData.has_mechanism);
-                            setMechanismName(mechData.mechanism_name);
-                            setViewOnly(mechData.has_mechanism); // 有機構 → 唯讀
                         }
 
                     } else {

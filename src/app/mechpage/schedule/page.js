@@ -5,7 +5,7 @@ import Navbar from "../../components/Navbar";
 import {
     Save, ChevronLeft, ChevronRight,
     Sunrise, Sun, Moon,
-    CheckCircle, Copy, RefreshCw, Eye, Building2
+    CheckCircle, Copy, RefreshCw, Eye, Building2,Menu
 } from "lucide-react";
 
 // ─── 工具函式 ──────────────────────────────────────────────────────────
@@ -62,35 +62,39 @@ export default function MechanismSchedulePage() {
     const [loading, setLoading] = useState(false);
     const [toast, setToast] = useState(null);
 
+    // 套用多週彈窗
+    const [applyModal, setApplyModal] = useState(false);
+    const [applyWeeks, setApplyWeeks] = useState(4);
+
     // ── Toast ─────────────────────────────────────────────────────────
     const showToast = (msg, type = "info") => {
         setToast({ msg, type });
         setTimeout(() => setToast(null), 3500);
     };
 
-    // ── 抓醫師列表（跟管理頁面一樣，直接呼叫 API，由後端 require_mechanism 驗證）──
+    // ── 抓醫師列表（只回傳登入機構所屬的醫師，由後端 require_mechanism 驗證）──
     const fetchDoctors = useCallback(async () => {
         setDoctorsLoading(true);
         try {
+            // /api/mechanism/doctors 後端需根據 session 中的 mechanism_id 篩選，只回傳所屬醫師
             const res = await fetch("/api/mechanism/doctors", { credentials: "include" });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 throw new Error(err.error || "無法取得醫師列表");
             }
             const data = await res.json();
-            // 後端回傳 { doctors: [...], total: n }（跟管理頁面 fetchDoctors 一致）
             const list = Array.isArray(data) ? data : (data.doctors ?? []);
             setDoctors(list);
-            // 預設選第一位
-            if (list.length > 0 && !selectedDoctorId) {
-                setSelectedDoctorId(list[0].doctor_id);
+            // 預設選第一位（只在尚未選擇時才自動選）
+            if (list.length > 0) {
+                setSelectedDoctorId(prev => prev ?? list[0].doctor_id);
             }
         } catch (e) {
             showToast(e.message || "取得醫師列表失敗", "error");
         } finally {
             setDoctorsLoading(false);
         }
-    }, []); // 只在 mount 時執行一次
+    }, []);
 
     // ── 驗證登入並載入醫師 ────────────────────────────────────────────
     useEffect(() => {
@@ -116,6 +120,17 @@ export default function MechanismSchedulePage() {
         })();
     }, [fetchDoctors]);
 
+    // ── 判斷時段是否已過期（以 session 最後一個 slot 為準）────────────
+    const isSessionPast = (dateString, sessKey) => {
+        const slots = SESSION_GROUPS[sessKey]?.slots;
+        if (!slots || slots.length === 0) return false;
+        const lastSlot = slots[slots.length - 1]; // 例如 "11:30"
+        const [year, month, day] = dateString.split("-").map(Number);
+        const [hour, minute] = lastSlot.split(":").map(Number);
+        const slotEnd = new Date(year, month - 1, day, hour, minute + 30); // 加 30 分鐘緩衝
+        return slotEnd < new Date();
+    };
+
     // ── 載入排班 ──────────────────────────────────────────────────────
     useEffect(() => {
         if (!selectedDoctorId) return;
@@ -139,19 +154,26 @@ export default function MechanismSchedulePage() {
                 init[d.fullDate] = { morning: false, afternoon: false, evening: false };
             });
 
-            // 填入已有排班
+            // 填入已有排班：只要資料庫中存在該日期+時段且 is_available 為真，就開啟對應 session
             if (Array.isArray(data)) {
                 data.forEach(item => {
                     if (!item.schedule_date || !item.time_slot) return;
                     const date = item.schedule_date.slice(0, 10);
-                    let [h, m] = item.time_slot.split(":");
-                    if (h.length === 1) h = "0" + h;
+                    if (!init[date]) return;
+
+                    // 標準化時間格式，例如 "9:00:00" → "09:00"
+                    const rawSlot = String(item.time_slot);
+                    const parts = rawSlot.split(":");
+                    const h = String(parts[0]).padStart(2, "0");
+                    const m = String(parts[1] || "00").padStart(2, "0");
                     const slot = `${h}:${m}`;
-                    const isAvailable = !!item.is_available && item.is_available !== 0 && item.is_available !== "0";
+
+                    // is_available 判斷：支援 1 / "1" / true
+                    const isAvailable = item.is_available == 1 || item.is_available === true;
                     if (!isAvailable) return;
 
                     for (const [sess, info] of Object.entries(SESSION_GROUPS)) {
-                        if (info.slots.includes(slot) && init[date]) {
+                        if (info.slots.includes(slot)) {
                             init[date][sess] = true;
                         }
                     }
@@ -165,6 +187,7 @@ export default function MechanismSchedulePage() {
 
     // ── Toggle ────────────────────────────────────────────────────────
     const toggleSession = (date, session) => {
+        if (isSessionPast(date, session)) return; // 過期不可點
         setSchedules(prev => ({
             ...prev,
             [date]: { ...prev[date], [session]: !prev[date]?.[session] }
@@ -174,7 +197,11 @@ export default function MechanismSchedulePage() {
     const setDayAll = (date, value) => {
         setSchedules(prev => ({
             ...prev,
-            [date]: { morning: value, afternoon: value, evening: value }
+            [date]: {
+                morning:   isSessionPast(date, "morning")   ? prev[date]?.morning   ?? false : value,
+                afternoon: isSessionPast(date, "afternoon") ? prev[date]?.afternoon ?? false : value,
+                evening:   isSessionPast(date, "evening")   ? prev[date]?.evening   ?? false : value,
+            }
         }));
     };
 
@@ -182,6 +209,7 @@ export default function MechanismSchedulePage() {
         setSchedules(prev => {
             const next = { ...prev };
             weekDates.forEach(d => {
+                if (isSessionPast(d.fullDate, session)) return; // 過期跳過
                 next[d.fullDate] = { ...next[d.fullDate], [session]: value };
             });
             return next;
@@ -192,43 +220,60 @@ export default function MechanismSchedulePage() {
         setSchedules(prev => {
             const next = { ...prev };
             weekDates.forEach(d => {
-                next[d.fullDate] = { morning: value, afternoon: value, evening: value };
+                next[d.fullDate] = {
+                    morning:   isSessionPast(d.fullDate, "morning")   ? prev[d.fullDate]?.morning   ?? false : value,
+                    afternoon: isSessionPast(d.fullDate, "afternoon") ? prev[d.fullDate]?.afternoon ?? false : value,
+                    evening:   isSessionPast(d.fullDate, "evening")   ? prev[d.fullDate]?.evening   ?? false : value,
+                };
             });
             return next;
         });
     };
 
-    const copyToNextWeek = () => {
-        const nextStart = new Date(currentWeekStart);
-        nextStart.setDate(nextStart.getDate() + 7);
-        const nextDates = getWeekDates(nextStart);
-        const copied = {};
-        nextDates.forEach((nd, i) => {
-            const src = weekDates[i]?.fullDate;
-            copied[nd.fullDate] = schedules[src]
-                ? { ...schedules[src] }
-                : { morning: false, afternoon: false, evening: false };
-        });
-        setCurrentWeekStart(nextStart);
-        setTimeout(() => setSchedules(prev => ({ ...prev, ...copied })), 50);
-        showToast("已複製到下一週，請記得儲存", "info");
-    };
+    // ── 套用到之後 N 週（連續，每週都套用）────────────────────────────
+    const applyToWeeks = async (numWeeks) => {
+        if (!selectedDoctorId) return showToast("請先選擇醫師", "error");
+        setApplyModal(false);
+        setLoading(true);
+        let successCount = 0;
+        try {
+            for (let w = 1; w <= numWeeks; w++) {
+                const ws = new Date(currentWeekStart);
+                ws.setDate(ws.getDate() + w * 7);
+                const targetDates = getWeekDates(ws);
 
-    const applyBiweekly = () => {
-        const template = {};
-        weekDates.forEach((d, i) => {
-            template[i] = schedules[d.fullDate] || { morning: false, afternoon: false, evening: false };
-        });
-        const bulk = {};
-        for (let w = 2; w <= 8; w += 2) {
-            const ws = new Date(currentWeekStart);
-            ws.setDate(ws.getDate() + w * 7);
-            getWeekDates(ws).forEach((d, i) => {
-                bulk[d.fullDate] = { ...template[i] };
-            });
+                const scheduleList = [];
+                targetDates.forEach((d, i) => {
+                    const src = weekDates[i]?.fullDate;
+                    const srcSessions = schedules[src] || { morning: false, afternoon: false, evening: false };
+                    Object.entries(srcSessions).forEach(([sess, isOn]) => {
+                        if (isOn) {
+                            SESSION_GROUPS[sess].slots.forEach(slot => {
+                                scheduleList.push({ date: d.fullDate, time_slot: slot + ":00", is_available: 1 });
+                            });
+                        }
+                    });
+                });
+
+                const res = await fetch("/api/mechanism/schedules", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({
+                        doctor_id:  selectedDoctorId,
+                        schedules:  scheduleList,
+                        week_start: targetDates[0].fullDate,
+                        week_end:   targetDates[6].fullDate,
+                    })
+                });
+                if (res.ok) successCount++;
+            }
+            showToast(`已套用到之後 ${successCount} 週並儲存完成！`, "success");
+        } catch {
+            showToast("套用失敗，請稍後再試", "error");
+        } finally {
+            setLoading(false);
         }
-        setSchedules(prev => ({ ...prev, ...bulk }));
-        showToast("已套用隔週排班（共 4 週），請逐週儲存", "success");
     };
 
     // ── 儲存 ──────────────────────────────────────────────────────────
@@ -239,11 +284,13 @@ export default function MechanismSchedulePage() {
             const scheduleList = [];
             Object.entries(schedules).forEach(([date, sessions]) => {
                 Object.entries(sessions).forEach(([sess, isOn]) => {
-                    if (isOn) {
-                        SESSION_GROUPS[sess].slots.forEach(slot => {
-                            scheduleList.push({ date, time_slot: slot + ":00", is_available: 1 });
+                    SESSION_GROUPS[sess].slots.forEach(slot => {
+                        scheduleList.push({
+                            date,
+                            time_slot: slot + ":00",
+                            is_available: isOn ? 1 : 0   // ← 開關都儲存，確保刷新後能正確讀回
                         });
-                    }
+                    });
                 });
             });
 
@@ -293,13 +340,81 @@ export default function MechanismSchedulePage() {
                 </div>
             )}
 
+            {/* ── 套用多週彈窗 ──────────────────────────────────────── */}
+            {applyModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+                    onClick={() => setApplyModal(false)}>
+                    <div className="bg-white rounded-2xl shadow-2xl p-6 w-80"
+                        onClick={e => e.stopPropagation()}>
+                        <h3 className="text-base font-bold text-gray-800 mb-1">套用到之後幾週</h3>
+                        <p className="text-xs text-gray-400 mb-4">
+                            以<span className="font-semibold text-gray-600"> {getWeekRangeText()} </span>
+                            的排班為模板，連續套用到之後選定的週數。
+                        </p>
+
+                        {/* 快速選擇 */}
+                        <div className="grid grid-cols-4 gap-2 mb-4">
+                            {[1, 2, 3, 4].map(n => (
+                                <button key={n}
+                                    onClick={() => setApplyWeeks(n)}
+                                    className={`py-2 rounded-lg text-sm font-semibold border-2 transition
+                                        ${applyWeeks === n
+                                            ? "border-purple-500 bg-purple-50 text-purple-700"
+                                            : "border-gray-200 text-gray-500 hover:border-purple-300"}`}>
+                                    {n} 週
+                                </button>
+                            ))}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 mb-5">
+                            {[6, 8, 12].map(n => (
+                                <button key={n}
+                                    onClick={() => setApplyWeeks(n)}
+                                    className={`py-2 rounded-lg text-sm font-semibold border-2 transition
+                                        ${applyWeeks === n
+                                            ? "border-purple-500 bg-purple-50 text-purple-700"
+                                            : "border-gray-200 text-gray-500 hover:border-purple-300"}`}>
+                                    {n} 週{n === 4 ? "（1個月）" : n === 8 ? "（2個月）" : n === 12 ? "（3個月）" : ""}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* 自訂週數 */}
+                        <div className="flex items-center gap-2 mb-5">
+                            <span className="text-xs text-gray-500 shrink-0">自訂週數：</span>
+                            <input
+                                type="number" min={1} max={52} value={applyWeeks}
+                                onChange={e => setApplyWeeks(Math.max(1, Math.min(52, Number(e.target.value))))}
+                                className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-purple-300"
+                            />
+                            <span className="text-xs text-gray-500 shrink-0">週</span>
+                        </div>
+
+                        <div className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2 mb-4">
+                            將套用到 <span className="font-semibold text-gray-600">{applyWeeks}</span> 週，
+                            共 <span className="font-semibold text-gray-600">{applyWeeks * 7}</span> 天
+                        </div>
+
+                        <div className="flex gap-2">
+                            <button onClick={() => setApplyModal(false)}
+                                className="flex-1 py-2 rounded-lg border border-gray-200 text-sm text-gray-500 hover:bg-gray-50">
+                                取消
+                            </button>
+                            <button onClick={() => applyToWeeks(applyWeeks)}
+                                className="flex-1 py-2 rounded-lg bg-purple-500 text-white text-sm font-semibold hover:bg-purple-600">
+                                確認套用
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ── Sidebar toggle ────────────────────────────────────── */}
             {!isOpen && (
                 <button
                     onClick={() => setIsOpen(true)}
                     className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
                 >
-                    <Building2 size={22} />
+                    <Menu size={22} />
                 </button>
             )}
 
@@ -353,7 +468,7 @@ export default function MechanismSchedulePage() {
                                                 ? "bg-[var(--color-azure)] text-white border-transparent shadow-sm"
                                                 : "bg-white text-gray-700 border-gray-200 hover:border-[var(--color-azure)] hover:text-[var(--color-azure)]"}`}
                                     >
-                                        {d.last_name}{d.first_name}
+                                        {d.first_name}{d.last_name}
                                         {d.specialty && (
                                             <span className="ml-1 text-xs opacity-70">· {d.specialty}</span>
                                         )}
@@ -421,31 +536,23 @@ export default function MechanismSchedulePage() {
                                 );
                             })}
                             <div className="w-px bg-gray-200 mx-1" />
-                            <button onClick={copyToNextWeek}
-                                className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 font-medium">
-                                <Copy size={13} /> 複製到下週
-                            </button>
-                            <button onClick={applyBiweekly}
-                                title="以本週為模板，往後每隔一週套用，共 4 週"
-                                className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg bg-sky-100 text-sky-700 hover:bg-sky-200 font-medium">
-                                <RefreshCw size={13} /> 隔週排班 (×4)
+                            <button onClick={() => setApplyModal(true)}
+                                disabled={loading}
+                                className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                                <Copy size={13} /> 套用到之後幾週
                             </button>
                         </div>
 
                         <div className="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-gray-100">
                             <span className="text-xs text-gray-400">圖例：</span>
-                            {SESSION_KEYS.map(sess => {
-                                const { label, icon: Icon } = SESSION_GROUPS[sess];
-                                const c = sessionColorMap[sess];
-                                return (
-                                    <div key={sess} className="flex items-center gap-1 text-xs text-gray-500">
-                                        <div className={`w-3 h-3 rounded ${c.bg}`} />
-                                        <Icon size={11} className={c.text} /> {label}
-                                    </div>
-                                );
-                            })}
+                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                                <div className="w-3 h-3 rounded bg-green-500" /> 開診
+                            </div>
                             <div className="flex items-center gap-1 text-xs text-gray-500">
                                 <div className="w-3 h-3 rounded bg-gray-200" /> 休診
+                            </div>
+                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                                <div className="w-3 h-3 rounded bg-gray-100" /> 已過期
                             </div>
                         </div>
                     </div>
@@ -506,17 +613,23 @@ export default function MechanismSchedulePage() {
                                             </button>
                                         </div>
                                         {weekDates.map(d => {
-                                            const isOn = schedules[d.fullDate]?.[sess] ?? false;
+                                            const isOn  = schedules[d.fullDate]?.[sess] ?? false;
+                                            const isPast = isSessionPast(d.fullDate, sess);
                                             return (
                                                 <button
                                                     key={d.fullDate + sess}
                                                     onClick={() => toggleSession(d.fullDate, sess)}
+                                                    disabled={isPast}
+                                                    title={isPast ? "此時段已過期" : undefined}
                                                     className={`py-4 rounded-xl text-sm font-semibold border-2 transition-all select-none
-                                                        ${isOn
-                                                            ? `${c.bg} text-white border-transparent shadow-sm`
-                                                            : `bg-gray-50 text-gray-300 border-gray-200 hover:border-gray-300 hover:text-gray-400`}`}
+                                                        ${isPast
+                                                            ? "bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed opacity-60"
+                                                            : isOn
+                                                                ? "bg-green-500 text-white border-transparent shadow-sm hover:bg-green-600"
+                                                                : "bg-gray-50 text-gray-300 border-gray-200 hover:border-gray-300 hover:text-gray-400 cursor-pointer"
+                                                        }`}
                                                 >
-                                                    {isOn ? label : "—"}
+                                                    {isPast ? "已過期" : isOn ? label : "—"}
                                                 </button>
                                             );
                                         })}
@@ -537,7 +650,7 @@ export default function MechanismSchedulePage() {
                                 const hasSessions = Object.values(daySchedule).some(Boolean);
                                 return (
                                     <div key={d.fullDate}
-                                        className={`rounded-lg p-3 border ${hasSessions ? "border-blue-200 bg-blue-50" : "border-gray-100 bg-gray-50"}`}>
+                                        className={`rounded-lg p-3 border ${hasSessions ? "border-green-200 bg-green-50" : "border-gray-100 bg-gray-50"}`}>
                                         <div className="text-xs font-semibold text-gray-600 text-center mb-2">
                                             {d.day}<br />
                                             <span className="font-normal text-gray-400">{d.date}日</span>
@@ -546,11 +659,14 @@ export default function MechanismSchedulePage() {
                                             {SESSION_KEYS.map(sess => {
                                                 if (!daySchedule[sess]) return null;
                                                 const { label, icon: Icon } = SESSION_GROUPS[sess];
-                                                const c = sessionColorMap[sess];
+                                                const isPast = isSessionPast(d.fullDate, sess);
                                                 return (
                                                     <div key={sess}
-                                                        className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md ${c.light} ${c.text} font-medium`}>
-                                                        <Icon size={10} /> {label}
+                                                        className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md font-medium
+                                                            ${isPast
+                                                                ? "bg-gray-100 text-gray-400"
+                                                                : "bg-green-100 text-green-700"}`}>
+                                                        <Icon size={10} /> {isPast ? `${label}(過期)` : label}
                                                     </div>
                                                 );
                                             })}
