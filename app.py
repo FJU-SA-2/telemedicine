@@ -4437,11 +4437,11 @@ def handle_message(event):
     user_message = event.message.text.strip()
     
     if '預約' in user_message:
-        reply = '📅 請點選連結進行線上預約：\nhttps://your-medonco-url.com/booking'
+        reply = '📅 請點選下方選單中的"立即預約"/n進行線上預約'
     elif '視訊' in user_message or '看診' in user_message:
-        reply = '🎥 請登入平台開始視訊看診：\nhttps://your-medonco-url.com/video'
+        reply = '🎥 請點選下方選單中的"視訊看診"/n開始進行視訊看診'
     elif '紀錄' in user_message or '記錄' in user_message:
-        reply = '📋 請登入查看您的就診紀錄：\nhttps://your-medonco-url.com/records'
+        reply = '📋 請點選下方選單中的"就診紀錄"/n查看您的就診紀錄'
     else:
         reply = '您好！我是醫隨行小幫手 👋\n請問有什麼可以協助您？\n\n📅 預約\n🎥 視訊看診\n📋 就診紀錄'
 
