@@ -89,7 +89,7 @@ export default function PatientVideoConsultation() {
 
   const fetchUpcomingAppointments = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/appointments/upcoming', {
+      const response = await fetch('/api/appointments/upcoming', {
         credentials: 'include'
       });
 
@@ -109,7 +109,7 @@ export default function PatientVideoConsultation() {
 
   const fetchConsultationHistory = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/appointments/history', {
+      const response = await fetch('/api/appointments/history', {
         credentials: 'include'
       });
 
@@ -316,14 +316,14 @@ export default function PatientVideoConsultation() {
 
   const viewRecording = async (appointmentId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/appointments/${appointmentId}/recording`, {
+      const response = await fetch(`/api/appointments/${appointmentId}/recording`, {
         credentials: 'include'
       });
 
       if (response.ok) {
         const data = await response.json();
         if (data.appointment.recording_url) {
-          window.open(`http://localhost:5000/api/recording/${data.appointment.recording_url}`, '_blank');
+          window.open(`/api/recording/${data.appointment.recording_url}`, '_blank');
         } else {
           setError('此次看診尚無錄影記錄');
         }

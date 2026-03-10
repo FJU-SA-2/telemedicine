@@ -855,7 +855,7 @@ const handleSave = async () => {
                       <img
                         className="h-32 w-32 object-cover rounded-2xl border-4 border-blue-200 shadow-lg group-hover:shadow-xl transition-shadow"
                         src={doctorForm.photo 
-                          ? `http://localhost:5000/uploads/profile_pictures/${doctorForm.photo}`
+                          ? `/uploads/profile_pictures/${doctorForm.photo}`
                           : "/default-doctor-photo.png"
                         }
                         alt="醫師頭像"

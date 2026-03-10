@@ -20,25 +20,18 @@ const TelemedicineDashboard = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [approvalStatus, setApprovalStatus] = useState(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
-  const [isLoadingData, setIsLoadingData] = useState(true); // 新增：用於預約和日曆
+  const [isLoadingData, setIsLoadingData] = useState(true);
   
-  // 儀表板統計數據
   const [dashboardStats, setDashboardStats] = useState({
     todayTotal: 0,
     pending: 0,
     completed: 0
   });
 
-  // 真實預約資料 (替代原來的假資料 `appointments`)
   const [todayAppointments, setTodayAppointments] = useState([]);
-
-  // 本週日曆資料
   const [weeklyCalendar, setWeeklyCalendar] = useState([]);
   
-  // 臺灣星期對應
   const dayNames = ["日", "一", "二", "三", "四", "五", "六"];
-
-  // --- Utility Functions ---
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -58,16 +51,11 @@ const TelemedicineDashboard = () => {
 
   const getStatusText = (status) => {
     switch (status) {
-      case "confirmed":
-        return "已確認";
-      case "pending":
-        return "待確認";
-      case "completed":
-        return "已完成";
-      case "已取消":
-        return "已取消";
-      default:
-        return status;
+      case "confirmed": return "已確認";
+      case "pending": return "待確認";
+      case "completed": return "已完成";
+      case "已取消": return "已取消";
+      default: return status;
     }
   };
   
@@ -76,23 +64,17 @@ const TelemedicineDashboard = () => {
     const dayName = dayNames[date.getDay()];
     const dateOfMonth = date.getDate();
     const isToday = date.toDateString() === new Date().toDateString();
-
     return { dayName, dateOfMonth, isToday };
   };
 
-  // --- Fetching Logic ---
-
-  // 1. 獲取醫師審核狀態
   useEffect(() => {
     async function fetchApprovalStatus() {
       try {
         const res = await fetch("/api/me", { credentials: 'include' });
         const data = await res.json();
-        
         if (data.authenticated && data.user && data.user.role === 'doctor') {
           setApprovalStatus(data.user.approval_status);
         } else {
-          // 處理未登入或非醫師的情況
           setApprovalStatus('unauthorized');
         }
       } catch (error) {
@@ -103,19 +85,15 @@ const TelemedicineDashboard = () => {
     fetchApprovalStatus();
   }, []);
 
-  // 2. 獲取儀表板統計數據 (未修改，保留原邏輯)
   useEffect(() => {
     async function fetchDashboardStats() {
       if (approvalStatus !== 'approved') {
         setIsLoadingStats(false);
         return;
       }
-
       try {
         setIsLoadingStats(true);
-        // **注意: 這裡假設 /api/doctor/dashboard-stats 仍然存在並提供統計數據**
         const res = await fetch("/api/doctor/dashboard-stats", { credentials: 'include' });
-        
         if (res.ok) {
           const data = await res.json();
           setDashboardStats({
@@ -130,92 +108,55 @@ const TelemedicineDashboard = () => {
         setIsLoadingStats(false);
       }
     }
-
-    if (approvalStatus) {
-      fetchDashboardStats();
-    }
+    if (approvalStatus) fetchDashboardStats();
   }, [approvalStatus]);
 
-  // 3. 獲取今天的預約和本週日曆數據 (新增主要邏輯)
   useEffect(() => {
     async function fetchAppointmentsAndCalendar() {
       if (approvalStatus !== 'approved') {
         setIsLoadingData(false);
         return;
       }
-
       try {
         setIsLoadingData(true);
-        // **注意: 這裡使用您新創建的 API 端點**
         const res = await fetch("/api/doctor/appointments-data", { credentials: 'include' });
-        
         if (res.ok) {
           const data = await res.json();
-          
-          // 更新今日預約
           setTodayAppointments(data.todayAppointments || []);
-          
-          // 更新本週日曆統計
           setWeeklyCalendar(data.weeklyStats || []);
-
         } else if (res.status === 401) {
-            // 處理未授權
-            console.warn("Doctor data fetch unauthorized.");
-            setTodayAppointments([]);
-            setWeeklyCalendar([]);
+          setTodayAppointments([]);
+          setWeeklyCalendar([]);
         } else {
-             // 處理其他錯誤
-            console.error("Failed to fetch appointments and calendar data.");
-            setTodayAppointments([]);
-            setWeeklyCalendar([]);
+          setTodayAppointments([]);
+          setWeeklyCalendar([]);
         }
-
       } catch (error) {
         console.error("Network or parsing error fetching appointments data:", error);
       } finally {
         setIsLoadingData(false);
       }
     }
-
-    if (approvalStatus === 'approved') {
-      fetchAppointmentsAndCalendar();
-    }
+    if (approvalStatus === 'approved') fetchAppointmentsAndCalendar();
   }, [approvalStatus]);
 
-  // 判斷是否為未核准狀態
   const isNotApproved = approvalStatus !== 'approved';
 
-  // 將 stats 數據放入 healthMetrics，用於卡片渲染
   const healthMetrics = [
-    { 
-      label: "今日預約", 
-      value: dashboardStats.todayTotal.toString(), 
-      icon: Calendar, 
-      color: "bg-blue-500" 
-    },
-    { 
-      label: "已確認", 
-      value: dashboardStats.pending.toString(), 
-      icon: Clock, 
-      color: "bg-yellow-500" 
-    },
-    { 
-      label: "已完成", 
-      value: dashboardStats.completed.toString(), 
-      icon: Activity, 
-      color: "bg-green-500" 
-    },
+    { label: "今日預約", value: dashboardStats.todayTotal.toString(), icon: Calendar, color: "bg-blue-500" },
+    { label: "已確認",   value: dashboardStats.pending.toString(),    icon: Clock,     color: "bg-yellow-500" },
+    { label: "已完成",   value: dashboardStats.completed.toString(),  icon: Activity,  color: "bg-green-500" },
   ];
 
-
   return (
-    
     <div className="relative min-h-screen bg-gray-50">
-      {/* Sidebar 開關按鈕（只在 Sidebar 關閉時顯示） */}
+
+      {/* Sidebar 開關按鈕（sidebar 關閉時顯示） */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
+          className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition shadow-sm"
+          aria-label="開啟選單"
         >
           <Menu size={24} />
         </button>
@@ -230,19 +171,22 @@ const TelemedicineDashboard = () => {
         approvalStatus={approvalStatus}
       />
 
-      {/* 主內容 */}
-      <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
-        {/* 頂部導覽列 */}
-        <Navbar />
+      {/* 主內容：sidebar 只在桌機版推移，手機版 overlay 不推移 */}
+      <div className={`transition-all duration-300 ${isOpen ? "md:ml-64" : "ml-0"}`}>
 
-        <div className="p-8">
+        {/* 頂部導覽列 */}
+        <Navbar sidebarOpen={isOpen} />
+
+        {/* 頁面主體 */}
+        <div className="p-4 sm:p-6 lg:p-8">
+
           {/* 未核准提示框 */}
           {isNotApproved && (
             <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg shadow-sm">
-              <div className="flex items-center">
-                <Bell className="text-yellow-600 mr-3" size={24} />
+              <div className="flex items-start sm:items-center gap-3">
+                <Bell className="text-yellow-600 flex-shrink-0 mt-0.5 sm:mt-0" size={24} />
                 <div>
-                  <h4 className="text-yellow-800 font-semibold text-lg mb-1">
+                  <h4 className="text-yellow-800 font-semibold text-base sm:text-lg mb-1">
                     帳號審核中
                   </h4>
                   <p className="text-yellow-700 text-sm">
@@ -253,51 +197,51 @@ const TelemedicineDashboard = () => {
             </div>
           )}
 
-          {/* 統計卡片 */}
-    
-            <div className="mb-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {healthMetrics.map((metric, idx) => {
-                const Icon = metric.icon;
-                return (
-                  <div
-                    key={idx}
-                    className="bg-[var(--color-lime-cream)]/20 rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow"
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={`${metric.color} p-3 rounded-lg`}>
-                        <Icon size={24} className="text-white" />
-                      </div>
+          {/* 統計卡片：手機 1 欄，平板以上 3 欄 */}
+          <div className="mb-6 sm:mb-8 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+            {healthMetrics.map((metric, idx) => {
+              const Icon = metric.icon;
+              return (
+                <div
+                  key={idx}
+                  className="bg-[var(--color-lime-cream)]/20 rounded-xl shadow-md p-5 sm:p-6 hover:shadow-lg transition-shadow"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`${metric.color} p-3 rounded-lg`}>
+                      <Icon size={24} className="text-white" />
                     </div>
-                    <p className="text-gray-600 text-sm mb-1">{metric.label}</p>
-                    <p className="text-3xl font-bold text-gray-800">
-                      {isNotApproved || isLoadingStats ? "0" : metric.value}
-                    </p>
-                    {isLoadingStats && !isNotApproved && (
-                      <p className="text-xs text-gray-400 mt-1">載入中...</p>
-                    )}
                   </div>
-                );
-              })}
-            </div>
-          
+                  <p className="text-gray-600 text-sm mb-1">{metric.label}</p>
+                  <p className="text-3xl font-bold text-gray-800">
+                    {isNotApproved || isLoadingStats ? "0" : metric.value}
+                  </p>
+                  {isLoadingStats && !isNotApproved && (
+                    <p className="text-xs text-gray-400 mt-1">載入中...</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* 今日預約 - 使用真實數據 `todayAppointments` */}
-            <div className="lg:col-span-2 bg-white rounded-xl shadow-md p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-800">今日預約</h3>
+          {/* 今日預約 + 本週日曆：手機 1 欄，桌機 3 欄 */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+
+            {/* 今日預約 */}
+            <div className="lg:col-span-2 bg-white rounded-xl shadow-md p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <h3 className="text-lg sm:text-xl font-bold text-gray-800">今日預約</h3>
                 <button className="text-[var(--color-azure)] text-sm font-medium hover:underline">
                   查看全部
                 </button>
               </div>
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {isNotApproved || isLoadingData ? (
                   <div className="text-center py-8 text-gray-500">
                     {isLoadingData && !isNotApproved ? (
-                       <div className="flex justify-center items-center">
-                          <Activity size={24} className="animate-spin mr-3 opacity-50" />
-                          <p>預約資料載入中...</p>
-                       </div>
+                      <div className="flex justify-center items-center">
+                        <Activity size={24} className="animate-spin mr-3 opacity-50" />
+                        <p>預約資料載入中...</p>
+                      </div>
                     ) : (
                       <>
                         <Users size={48} className="mx-auto mb-3 opacity-50" />
@@ -310,23 +254,20 @@ const TelemedicineDashboard = () => {
                     todayAppointments.map((apt) => (
                       <div
                         key={apt.appointment_id}
-                        className="flex items-center gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                        className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                       >
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold flex-shrink-0 text-sm sm:text-base">
                           {apt.patient_name.charAt(0)}
                         </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-800">{apt.patient_name}</p>
-                          <p className="text-sm text-gray-500">
-                            {/* 假設 symptoms 欄位用於描述預約類型，否則這裡可能需要 patient 表中其他欄位 */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-800 truncate">{apt.patient_name}</p>
+                          <p className="text-sm text-gray-500 truncate">
                             {apt.symptoms.substring(0, 15)}
                           </p>
                         </div>
-                        <div className="text-right">
-                          <p className="font-medium text-gray-800">{apt.time}</p>
-                          <span
-                            className={`text-xs px-2 py-1 rounded-full ${getStatusColor(apt.status)}`}
-                          >
+                        <div className="text-right flex-shrink-0">
+                          <p className="font-medium text-gray-800 text-sm sm:text-base">{apt.time}</p>
+                          <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(apt.status)}`}>
                             {getStatusText(apt.status)}
                           </span>
                         </div>
@@ -334,25 +275,25 @@ const TelemedicineDashboard = () => {
                     ))
                   ) : (
                     <div className="text-center py-8 text-gray-500">
-                        <Users size={48} className="mx-auto mb-3 opacity-50" />
-                        <p>今天沒有任何預約</p>
+                      <Users size={48} className="mx-auto mb-3 opacity-50" />
+                      <p>今天沒有任何預約</p>
                     </div>
                   )
                 )}
               </div>
             </div>
 
-            {/* 本週日曆 - 使用真實數據 `weeklyCalendar` */}
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">本週日曆</h3>
-              <div className="space-y-3">
+            {/* 本週日曆 */}
+            <div className="bg-white rounded-xl shadow-md p-4 sm:p-6">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-4">本週日曆</h3>
+              <div className="space-y-2 sm:space-y-3">
                 {isNotApproved || isLoadingData ? (
                   <div className="text-center py-8 text-gray-500">
                     {isLoadingData && !isNotApproved ? (
-                       <div className="flex justify-center items-center">
-                          <Activity size={24} className="animate-spin mr-3 opacity-50" />
-                          <p>日曆資料載入中...</p>
-                       </div>
+                      <div className="flex justify-center items-center">
+                        <Activity size={24} className="animate-spin mr-3 opacity-50" />
+                        <p>日曆資料載入中...</p>
+                      </div>
                     ) : (
                       <>
                         <Calendar size={48} className="mx-auto mb-3 opacity-50" />
@@ -362,15 +303,12 @@ const TelemedicineDashboard = () => {
                   </div>
                 ) : (
                   weeklyCalendar.length > 0 ? (
-                    weeklyCalendar.map((item, idx) => {
+                    weeklyCalendar.map((item) => {
                       const { dayName, dateOfMonth, isToday } = getDayNameAndDate(item.date_day);
                       return (
                         <div
                           key={item.date_day}
-                          className={`p-3 rounded-lg ${
-                            // 更改今日強調色為 COLOR_MAHOGANY，非今日背景色為 COLOR_LIGHT_CYAN
-                            isToday ? "bg-blue-200 text-gray-800" : "bg-blue-100"
-                          }`}
+                          className={`p-3 rounded-lg ${isToday ? "bg-blue-200 text-gray-800" : "bg-blue-100"}`}
                         >
                           <div className="flex justify-between items-center">
                             <span className={`font-medium ${isToday ? 'text-[var(--color-mahogany)]' : 'text-gray-700'}`}>
@@ -386,8 +324,8 @@ const TelemedicineDashboard = () => {
                     })
                   ) : (
                     <div className="text-center py-8 text-gray-500">
-                        <Calendar size={48} className="mx-auto mb-3 opacity-50" />
-                        <p>本週沒有任何預約</p>
+                      <Calendar size={48} className="mx-auto mb-3 opacity-50" />
+                      <p>本週沒有任何預約</p>
                     </div>
                   )
                 )}
@@ -395,62 +333,41 @@ const TelemedicineDashboard = () => {
             </div>
           </div>
 
-         {/* 快速操作 */}
-          <div className="mt-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-lg p-6 border border-blue-100">
-            <h3 className="text-xl font-bold mb-4 text-gray-800">快速操作</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <a 
-                href={isNotApproved ? "#" : "/facetime"}
-                className={`bg-white hover:bg-blue-50 rounded-lg p-6 transition-all flex flex-col items-center justify-center shadow-sm border border-gray-200 ${
-                  isNotApproved ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
-                }`}
-                onClick={(e) => isNotApproved && e.preventDefault()}
-              >
-                <Video size={32} className="mb-3 text-blue-600" />
-                <p className="text-base font-semibold text-center text-gray-800">開始視訊</p>
-              </a>
-              <a 
-                href={isNotApproved ? "#" : "/schedules"}
-                className={`bg-white hover:bg-blue-50 rounded-lg p-6 transition-all flex flex-col items-center justify-center shadow-sm border border-gray-200 ${
-                  isNotApproved ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
-                }`}
-                onClick={(e) => isNotApproved && e.preventDefault()}
-              >
-                <Calendar size={32} className="mb-3 text-green-600" />
-                <p className="text-base font-semibold text-center text-gray-800">新增排程</p>
-              </a>
-              <a 
-                href={isNotApproved ? "#" : "/recordoc"}
-                className={`bg-white hover:bg-blue-50 rounded-lg p-6 transition-all flex flex-col items-center justify-center shadow-sm border border-gray-200 ${
-                  isNotApproved ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
-                }`}
-                onClick={(e) => isNotApproved && e.preventDefault()}
-              >
-                <FileText size={32} className="mb-3 text-orange-600" />
-                <p className="text-base font-semibold text-center text-gray-800">查看預約紀錄</p>
-              </a>
-              <a 
-                href={isNotApproved ? "#" : "/patientmanage"}
-                className={`bg-white hover:bg-blue-50 rounded-lg p-6 transition-all flex flex-col items-center justify-center shadow-sm border border-gray-200 ${
-                  isNotApproved ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
-                }`}
-                onClick={(e) => isNotApproved && e.preventDefault()}
-              >
-                <Users size={32} className="mb-3 text-purple-600" />
-                <p className="text-base font-semibold text-center text-gray-800">查看患者/寫病歷</p>
-              </a>
+          {/* 快速操作：手機 2 欄，平板以上 4 欄 */}
+          <div className="mt-6 sm:mt-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-lg p-4 sm:p-6 border border-blue-100">
+            <h3 className="text-lg sm:text-xl font-bold mb-4 text-gray-800">快速操作</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              {[
+                { href: "/facetime",     icon: Video,     color: "text-blue-600",   label: "開始視訊" },
+                { href: "/schedules",    icon: Calendar,  color: "text-green-600",  label: "新增排程" },
+                { href: "/recordoc",     icon: FileText,  color: "text-orange-600", label: "查看預約紀錄" },
+                { href: "/patientmanage",icon: Users,     color: "text-purple-600", label: "查看患者/寫病歷" },
+              ].map(({ href, icon: Icon, color, label }) => (
+                <a
+                  key={href}
+                  href={isNotApproved ? "#" : href}
+                  className={`bg-white hover:bg-blue-50 rounded-lg p-4 sm:p-6 transition-all flex flex-col items-center justify-center shadow-sm border border-gray-200 ${
+                    isNotApproved ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
+                  }`}
+                  onClick={(e) => isNotApproved && e.preventDefault()}
+                >
+                  <Icon size={28} className={`mb-2 sm:mb-3 ${color}`} />
+                  <p className="text-xs sm:text-sm font-semibold text-center text-gray-800 leading-tight">{label}</p>
+                </a>
+              ))}
             </div>
           </div>
         </div>
       </div>
-    {/* Footer */}
-        <div className="bg-gray-800 text-white py-8">
-          <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400">
-              © 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。
-            </p>
-          </div>
+
+      {/* Footer */}
+      <div className="bg-gray-800 text-white py-6 sm:py-8">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <p className="text-gray-400 text-sm sm:text-base">
+            © 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。
+          </p>
         </div>
+      </div>
     </div>
   );
 };
