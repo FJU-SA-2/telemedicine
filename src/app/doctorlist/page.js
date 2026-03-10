@@ -168,7 +168,8 @@ function DoctorListPage({ onSelectDoctor, user }) {
   const [showFavoriteToast, setShowFavoriteToast] = useState(false);
   const [favoriteMessage, setFavoriteMessage] = useState("");
   const [showLoginModal, setShowLoginModal] = useState(false);
-
+  const [selectedHospital, setSelectedHospital] = useState("");
+  const [keyword, setKeyword] = useState("");
   const userId = 1; // 模拟登入使用者 ID
 
   useEffect(() => {
@@ -225,13 +226,28 @@ function DoctorListPage({ onSelectDoctor, user }) {
   const specialties = doctors.length > 0
     ? ["所有科別", ...new Set(doctors.map((d) => d.specialty))]
     : ["所有科別"];
+  const hospitals = doctors.length > 0
+  ? ["所有院所", ...new Set(doctors.map((d) => d.practice_hospital))]
+  : ["所有院所"];
 
   const filteredDoctors = doctors.filter((doctor) => {
     const specialtyMatch =
       !selectedSpecialty ||
       selectedSpecialty === "所有科別" ||
       doctor.specialty === selectedSpecialty;
-    return specialtyMatch;
+
+  const hospitalMatch =
+    !selectedHospital ||
+    selectedHospital === "所有院所" ||
+    doctor.practice_hospital === selectedHospital;
+
+  const keywordMatch = keyword
+      ? `${doctor.first_name}${doctor.last_name} ${doctor.specialty} ${doctor.practice_hospital} ${doctor.education} ${doctor.experience}`
+          .toLowerCase()
+          .includes(keyword.toLowerCase())
+      : true;
+
+    return specialtyMatch && hospitalMatch && keywordMatch;
   });
 
   const toggleFavorite = async (doctorId) => {
@@ -318,12 +334,12 @@ function DoctorListPage({ onSelectDoctor, user }) {
           <h3 className="text-lg font-semibold text-gray-800">篩選條件</h3>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <select
               value={selectedSpecialty}
               onChange={(e) => setSelectedSpecialty(e.target.value)}
-              className="w-150 px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700"
+              className="w-50 px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700"
             >
               <option value="">所有科別</option>
               {specialties
@@ -335,6 +351,31 @@ function DoctorListPage({ onSelectDoctor, user }) {
                 ))}
             </select>
             </div>
+            <div>
+            <select
+              value={selectedHospital}
+              onChange={(e) => setSelectedHospital(e.target.value)}
+              className="w-50 px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700"
+            >
+              <option value="">任職院所</option>
+              {hospitals
+                .filter((h) => h !== "所有院所")
+                .map((hospital) => (
+                  <option key={hospital} value={hospital}>
+                    {hospital}
+                  </option>
+                ))}
+            </select>
+          </div>
+          <div>
+          <input
+            type="text"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="搜尋醫師姓名、付費模式等"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
           </div>
         </div>
       </div>
@@ -353,55 +394,94 @@ function DoctorListPage({ onSelectDoctor, user }) {
           return (
             <div
               key={doctor.doctor_id}
-              className="bg-white rounded-lg shadow p-6 relative hover:shadow-lg transition"
+              className=""
             >
               {/* 收藏按鈕 - 改為愛心 */}
-              <div
-                onClick={() => toggleFavorite(doctor.doctor_id)}
-                className="absolute top-3 right-3 cursor-pointer select-none transition-all"
-                title={user ? (isFavorited ? "取消收藏" : "加入收藏") : "需要登入才能收藏"}
-              >
-                <Heart 
-                  size={24}
-                  className={`${
-                    isFavorited 
-                      ? 'text-red-500 fill-red-500' 
-                      : user 
-                        ? 'text-gray-300 hover:text-red-400' 
-                        : 'text-gray-200'
-                  } transition-colors`}
-                  fill={isFavorited ? 'currentColor' : 'none'}
-                />
-              </div>
+<div
+  key={doctor.doctor_id}
+  className="bg-white rounded-2xl shadow-md transition p-6 flex flex-col items-center text-center relative"
+>
+  {/* 收藏愛心 */}
+  <div
+    onClick={() => toggleFavorite(doctor.doctor_id)}
+    className="absolute top-4 right-4 cursor-pointer"
+  >
+    <Heart
+      size={24}
+      className={isFavorited ? "text-red-500 fill-red-500" : "text-gray-300 hover:text-red-400"}
+      fill={isFavorited ? "currentColor" : "none"}
+    />
+  </div>
 
-              <div className="flex items-start gap-4 mb-4">
-                {doctor.photo_url ? (
-                  <img
-                    src={doctor.photo_url}
-                    alt={`${doctor.first_name}${doctor.last_name} 頭像`}
-                    className="w-16 h-16 rounded-full object-cover border"
-                  />
-                ) : (
-                  <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                    {doctor.first_name?.charAt(0) || "醫"}
-                  </div>
-                )}
+  {/* 大頭像 */}
+  <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-blue-100 shadow mb-4">
+    <img
+      src={doctor.photo || "/default-doctor.png"}
+      onError={(e) => e.target.src = "/default-doctor.png"}
+      className="w-full h-full object-cover"
+    />
+  </div>
 
-                <div className="flex-1">
-                  <h3 className="font-bold text-lg">{fullName}</h3>
-                  <p className="text-blue-600 text-sm">{doctor.specialty}</p>
-                  <p className="text-gray-500 text-xs mt-1">
-                    {doctor.practice_hospital}
-                  </p>
-                </div>
-              </div>
+  {/* 姓名 */}
+  <h3 className="text-xl font-bold text-gray-800">
+    {doctor.first_name}{doctor.last_name}
+  </h3>
 
-              <button
-                onClick={() => onSelectDoctor(doctor)}
-                className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-              >
-                查看更多
-              </button>
+  {/* 科別 badge */}
+  <span className="mt-1 px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">
+    {doctor.specialty}
+  </span>
+
+  {/* 院所 */}
+  <p className="text-gray-500 text-sm mt-1">
+    {doctor.practice_hospital}
+  </p>
+
+  {/* 費用 */}
+  <p className="mt-2 text-lg font-semibold text-blue-600">
+    NT$ {doctor.consultation_fee || "—"}
+  </p>
+
+  {/* Divider */}
+  <div className="w-full border-t my-4"></div>
+
+  {/* 專業資訊 Grid */}
+  <div className="grid grid-cols-1 gap-3 w-full text-left text-sm">
+
+    <div className="flex gap-2 items-start">
+      <span className="text-blue-500 font-bold">🎓</span>
+      <p className="text-gray-700">
+        <span className="font-semibold">學歷：</span>
+        {doctor.education || "暫無資料"}
+      </p>
+    </div>
+
+    <div className="flex gap-2 items-start">
+      <span className="text-green-500 font-bold">💼</span>
+      <p className="text-gray-700">
+        <span className="font-semibold">經歷：</span>
+        {doctor.experience || "暫無資料"}
+      </p>
+    </div>
+
+    <div className="flex gap-2 items-start">
+      <span className="text-purple-500 font-bold">🧾</span>
+      <p className="text-gray-700">
+        <span className="font-semibold">認證：</span>
+        {doctor.qualifications || "暫無資料"}
+      </p>
+    </div>
+
+  </div>
+
+  {/* 預約按鈕 */}
+  <button
+    onClick={() => window.location.href = `/reserve?doctor=${doctor.doctor_id}`}
+    className="mt-4 w-full bg-green-600 text-white py-2.5 rounded-xl font-medium hover:bg-green-700 transition"
+  >
+    立即預約
+  </button>
+</div>
             </div>
           );
         })}
@@ -410,7 +490,7 @@ function DoctorListPage({ onSelectDoctor, user }) {
   );
 }
 
-// 其他分页
+// 其他分頁
 function HomePage() {
   return (
     <div className="p-6 min-h-screen">

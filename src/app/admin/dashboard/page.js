@@ -17,6 +17,7 @@ function FeedbackList() {
     const map = {
       'patient': '患者',
       'doctor': '醫師',
+      'mech': '機構',
       'unknown': '未知'
     };
     return map[role] || '未知';
@@ -26,6 +27,7 @@ function FeedbackList() {
     const colorMap = {
       'patient': 'bg-blue-100 text-blue-700',
       'doctor': 'bg-purple-100 text-purple-700',
+      'mech': 'bg-purple-100 text-red-700',
       'unknown': 'bg-gray-100 text-gray-700'
     };
     return colorMap[role] || 'bg-gray-100 text-gray-700';

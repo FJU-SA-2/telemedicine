@@ -18,6 +18,10 @@ function BookingPage({ doctors, schedules, setSchedules }) {
   const [showSuccess, setShowSuccess] = useState(false);
   const [bookingInfo, setBookingInfo] = useState(null);
   const [showAlert, setShowAlert] = useState(true);
+  const [selectedHospital, setSelectedHospital] = useState("all");
+  const [selectedPaymentType, setSelectedPaymentType] = useState("all");
+  const availableHospitals = [...new Set(doctors.map(d => d.practice_hospital))].filter(Boolean);
+  const paymentTypes = [...new Set(doctors.map(d => d.consultation_type))].filter(Boolean);
 
   const isTimeSlotExpired = (dateStr, timeStr) => {
     const now = new Date();
@@ -42,6 +46,8 @@ function BookingPage({ doctors, schedules, setSchedules }) {
   const filteredDoctors = doctors.filter(doctor => {
     if (!doctorsWithSchedules.has(doctor.doctor_id)) return false;
     if (selectedSpecialty !== "all" && doctor.specialty !== selectedSpecialty) return false;
+    if (selectedHospital !== "all" && doctor.practice_hospital !== selectedHospital) return false;
+    if (selectedPaymentType !== "all" && doctor.consultation_type !== selectedPaymentType) return false;
 
     if (selectedDate) {
       const hasAvailableSlot = validSchedules.some(
@@ -179,6 +185,33 @@ function BookingPage({ doctors, schedules, setSchedules }) {
               />
               <Search className="absolute left-3 top-3 text-gray-400" size={20} />
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-2">任職院所</label>
+            <select
+              value={selectedHospital}
+              onChange={e => setSelectedHospital(e.target.value)}
+              className="w-full px-4 py-2.5 pl-10 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-800"
+            >
+              <option value="all">所有院所</option>
+              {availableHospitals.map(h => (
+                <option key={h} value={h}>{h}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-2">自費/健保</label>
+            <select
+              value={selectedPaymentType}
+              onChange={e => setSelectedPaymentType(e.target.value)}
+              className="w-full px-4 py-2.5 pl-10 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-800"
+            >
+              <option value="all">全部</option>
+              {paymentTypes.map(p => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
           </div>
         </div>
       </div>

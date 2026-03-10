@@ -29,16 +29,19 @@ export async function GET(request) {
         CASE 
           WHEN f.user_role = 'doctor' THEN d.first_name
           WHEN f.user_role = 'patient' THEN p.first_name
+          WHEN f.user_role = 'mech' THEN m.mechanism_name
           ELSE '未知'
         END as first_name,
         CASE 
           WHEN f.user_role = 'doctor' THEN d.last_name
           WHEN f.user_role = 'patient' THEN p.last_name
+          WHEN f.user_role = 'mech' THEN ''
           ELSE ''
         END as last_name
       FROM feedback f
       LEFT JOIN doctor d ON f.doctor_id = d.doctor_id AND f.user_role = 'doctor'
       LEFT JOIN patient p ON f.patient_id = p.patient_id AND f.user_role = 'patient'
+      LEFT JOIN mechanism m ON f.mechanism_id = m.mechanism_id AND f.user_role = 'mech'
       ORDER BY 
         CASE WHEN f.status = 'unread' THEN 0 ELSE 1 END,
         f.created_at DESC

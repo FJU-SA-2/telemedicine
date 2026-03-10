@@ -29,6 +29,7 @@ export async function PATCH(request) {
         feedback_id, 
         patient_id, 
         doctor_id, 
+        mechanism_id
         user_role, 
         feedback_text
       FROM feedback

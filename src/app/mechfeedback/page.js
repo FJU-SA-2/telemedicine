@@ -67,7 +67,7 @@ function MechanismFeedbackFormContent() {
 
       const requestBody = {
         user_id: userIdNumber,
-        user_type: 'mechanism', 
+        user_type: 'mech', 
         categories: selectedCategories,
         feedback_text: feedback,
       };

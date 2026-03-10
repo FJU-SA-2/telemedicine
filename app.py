@@ -20,7 +20,24 @@ from datetime import datetime, timedelta
 from flask import Response
 import json
 from functools import wraps
+<<<<<<< HEAD
+=======
+from linebot import LineBotApi, WebhookHandler
+from linebot.exceptions import InvalidSignatureError
+from linebot.models import (
+    MessageEvent, TextMessage, TextSendMessage,
+    TemplateSendMessage, ButtonsTemplate, URIAction,
+    FlexSendMessage
+)
+from dotenv import load_dotenv
+load_dotenv()
 
+LINE_CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET')
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
+
+# line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
+# handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 app = Flask(__name__)
 app.secret_key = "your-very-secret-key-change-this"  # ⚠️ 改成更安全的密鑰
@@ -503,11 +520,32 @@ def get_doctor_dashboard_data():
 def get_doctors():
     db = get_db()
     cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT id, name, specialty FROM doctors")
-    doctors = cursor.fetchall()
-    cursor.close()
-    db.close()
-    return jsonify(doctors)
+    try:
+        cursor.execute("""
+            SELECT 
+                d.doctor_id,
+                d.first_name,
+                d.last_name,
+                d.gender,
+                d.specialty,
+                d.practice_hospital,
+                d.phone_number,
+                di.consultation_type,
+                di.consultation_fee,
+                di.description,
+                di.photo
+            FROM doctor d
+            LEFT JOIN doctor_info di ON d.doctor_id = di.doctor_id
+            WHERE d.approval_status = 'approved'
+        """)
+        doctors = cursor.fetchall()
+        return jsonify(doctors)
+    except Exception as e:
+        print(f"❌ 取得醫師錯誤: {str(e)}")
+        return jsonify({"error": "查詢失敗"}), 500
+    finally:
+        cursor.close()
+        db.close()
 
 
 @app.route("/api/send-verification", methods=["POST"])
@@ -868,6 +906,17 @@ def get_current_user():
                     'chronic_disease': patient_data.get('chronic_disease') or [],
                     'other_chronic_disease': patient_data.get('other_chronic_disease') or ""
                 }
+        elif role == "mech":
+            cursor.execute("""
+                SELECT mechanism_id, mechanism_name
+                FROM mechanism
+                WHERE user_id = %s
+            """, (user_id,))
+            mech_data = cursor.fetchone()
+            if mech_data:
+                user_data["mechanism_id"] = mech_data["mechanism_id"]
+                user_data["mechanism_name"] = mech_data["mechanism_name"]
+
     # 新增：如果是醫師，取得完整專業資料
         elif role == "doctor":
             cursor.execute("""
@@ -1846,7 +1895,7 @@ def get_doctor_profile():
         cursor.execute("""
             SELECT doctor_id, user_id, first_name, last_name, 
                    gender, phone_number, specialty, practice_hospital, 
-                   approval_status
+                   approval_status, mechanism_id
             FROM doctor 
             WHERE user_id = %s
         """, (user_id,))
@@ -1942,6 +1991,37 @@ def get_doctor_schedules(doctor_id):
         import traceback
         traceback.print_exc()
         return jsonify({"error": "查詢失敗"}), 500
+
+
+# 取得所有排班（前端預約頁面使用）
+@app.route('/api/schedules', methods=['GET'])
+def get_all_schedules():
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT 
+                schedule_id,
+                doctor_id,
+                DATE_FORMAT(schedule_date, '%Y-%m-%d') as schedule_date,
+                time_slot,
+                is_available
+            FROM schedules
+            WHERE is_available = 1
+            AND TIMESTAMP(schedule_date, time_slot) >= NOW()
+            ORDER BY schedule_date ASC, time_slot ASC
+        """)
+        schedules = cursor.fetchall()
+        for s in schedules:
+            for key, val in s.items():
+                s[key] = serialize_datetime(val)
+        return jsonify(schedules), 200
+    except Exception as e:
+        print(f"❌ 取得所有排班錯誤: {str(e)}")
+        return jsonify({"error": "查詢失敗"}), 500
+    finally:
+        cursor.close()
+        db.close()
 
 
 # 3. 儲存排班
@@ -4329,6 +4409,12 @@ def get_doctor_appointments_range(doctor_id):
 def require_mechanism(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+<<<<<<< HEAD
+=======
+        print(f"=== require_mechanism 被呼叫 ===")
+        print(f"session user_id = {session.get('user_id')}")
+        print(f"session role = {session.get('role')}")
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
         if 'user_id' not in session:
             return jsonify({'error': '請先登入'}), 401
         db = get_db()
@@ -4336,6 +4422,10 @@ def require_mechanism(f):
         try:
             cursor.execute("SELECT mechanism_id FROM mechanism WHERE user_id = %s", (session['user_id'],))
             mech = cursor.fetchone()
+<<<<<<< HEAD
+=======
+            print(f"查詢結果 mech = {mech}")
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
             if not mech:
                 return jsonify({'error': '權限不足'}), 403
             request.mechanism_id = mech['mechanism_id']
@@ -4345,6 +4435,37 @@ def require_mechanism(f):
         return f(*args, **kwargs)
     return decorated
 
+<<<<<<< HEAD
+=======
+# @app.route("/webhook", methods=['POST'])
+# def webhook():
+#     signature = request.headers.get('X-Line-Signature', '')
+#     body = request.get_data(as_text=True)
+#     try:
+#         handler.handle(body, signature)
+#     except InvalidSignatureError:
+#         return jsonify({'error': 'Invalid signature'}), 400
+#     return 'OK', 200
+
+# @handler.add(MessageEvent, message=TextMessage)
+# def handle_message(event):
+#     user_message = event.message.text.strip()
+    
+    if '預約' in user_message:
+        reply = '📅 請點選下方選單中的"立即預約"/n進行線上預約'
+    elif '視訊' in user_message or '看診' in user_message:
+        reply = '🎥 請點選下方選單中的"視訊看診"/n開始進行視訊看診'
+    elif '紀錄' in user_message or '記錄' in user_message:
+        reply = '📋 請點選下方選單中的"就診紀錄"/n查看您的就診紀錄'
+    else:
+        reply = '您好！我是醫隨行小幫手 👋\n請問有什麼可以協助您？\n\n📅 預約\n🎥 視訊看診\n📋 就診紀錄'
+
+#     line_bot_api.reply_message(
+#         event.reply_token,
+#         TextSendMessage(text=reply)
+#     )
+
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
 
 # ── 統計 ─────────────────────────────────────────────────────────────
 
@@ -4390,6 +4511,10 @@ def get_mechanism_stats():
 @app.route('/api/mechanism/doctors', methods=['GET'])
 @require_mechanism
 def get_mechanism_doctors():
+<<<<<<< HEAD
+=======
+    print(f"🔍 mechanism_id = {request.mechanism_id}") 
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
     search = request.args.get('search', '').strip()
     status_filter = request.args.get('status', '')
 
@@ -4426,6 +4551,12 @@ def get_mechanism_doctors():
             for key in ['approval_date', 'created_at']:
                 if doc.get(key):
                     doc[key] = doc[key].isoformat() if hasattr(doc[key], 'isoformat') else str(doc[key])
+<<<<<<< HEAD
+=======
+            # 修正 SUM/COUNT 可能回傳 None 或 Decimal 的問題
+            doc['total_appointments'] = int(doc['total_appointments'] or 0)
+            doc['today_appointments'] = int(doc['today_appointments'] or 0)
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
 
         return jsonify({'doctors': doctors, 'total': len(doctors)})
     finally:
@@ -4571,7 +4702,11 @@ def get_mechanism_patient_appointments(patient_id):
                 a.appointment_id, a.appointment_date, a.appointment_time,
                 a.status, a.symptoms, a.consultation_notes, a.doctor_advice,
                 a.amount, a.payment_method,
+<<<<<<< HEAD
                 CONCAT(d.last_name, d.first_name) AS doctor_name,
+=======
+                CONCAT(d.first_name, d.last_name) AS doctor_name,
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
                 d.specialty
             FROM appointments a
             JOIN doctor d ON a.doctor_id = d.doctor_id
@@ -4593,6 +4728,7 @@ def get_mechanism_patient_appointments(patient_id):
         cursor.close()
         db.close()
 
+<<<<<<< HEAD
 
 @app.route('/api/mechanism/patients', methods=['POST'])
 @require_mechanism
@@ -4661,7 +4797,170 @@ def update_mechanism_patient(patient_id):
     finally:
         cursor.close()
         db.close()
+=======
+@app.route("/api/mechanism/doctors", methods=["POST"])
+@require_mechanism
+def add_doctor():
+    try:
+        data = request.get_json()
+        first_name = data.get("first_name")
+        last_name = data.get("last_name")
+        gender = data.get("gender", "male")
+        specialty = data.get("specialty", "")
+        practice_hospital = data.get("practice_hospital", "")
+        phone_number = data.get("phone_number", "")
+        email = data.get("email")
+        password = data.get("password")
+
+        if not first_name or not last_name:
+            return jsonify({"error": "姓名為必填"}), 400
+        if not email:
+            return jsonify({"error": "Email 為必填"}), 400
+        if not password or len(password) < 6:
+            return jsonify({"error": "密碼至少 6 個字元"}), 400
+
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        cursor.execute("SELECT user_id FROM users WHERE email = %s", (email,))
+        if cursor.fetchone():
+            return jsonify({"error": "此 Email 已被使用"}), 400
+
+        # 1. 建立 users 帳號
+        cursor.execute(
+            "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, 'doctor')",
+            (last_name + first_name, email, password)
+        )
+        user_id = cursor.lastrowid
+
+        # 2. 建立 doctor 記錄，綁定 mechanism_id
+        cursor.execute("""
+            INSERT INTO doctor
+                (user_id, first_name, last_name, gender, phone_number,
+                 specialty, practice_hospital, mechanism_id, approval_status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'approved')
+        """, (user_id, first_name, last_name, gender, phone_number,
+              specialty, practice_hospital, request.mechanism_id))
+        doctor_id = cursor.lastrowid
+
+        # 3. 建立 doctor_info 補充資料
+        cursor.execute("""
+            INSERT INTO doctor_info
+                (doctor_id, first_name, last_name, specialty, practice_hospital, phone_number)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (doctor_id, first_name, last_name, specialty, practice_hospital, phone_number))
+
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
     
+        db.commit()
+        cursor.close()
+        db.close()
+
+        return jsonify({"message": "醫師新增成功", "doctor_id": doctor_id}), 201
+
+    except Exception as e:
+        if 'db' in locals():
+            db.rollback()
+        print("新增醫師錯誤:", e)
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/mechanism/schedules', methods=['POST'])
+@require_mechanism
+def mechanism_save_schedules():
+    data = request.get_json() or {}
+    doctor_id  = data.get('doctor_id')
+    schedules  = data.get('schedules', [])
+    week_start = data.get('week_start')
+    week_end   = data.get('week_end')
+
+    if not doctor_id or not week_start or not week_end:
+        return jsonify({'error': '缺少必要欄位'}), 400
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        # ✅ 確認醫師屬於本機構
+        cursor.execute(
+            "SELECT doctor_id FROM doctor WHERE doctor_id = %s AND mechanism_id = %s",
+            (doctor_id, request.mechanism_id)
+        )
+        if not cursor.fetchone():
+            return jsonify({'error': '醫師不存在或無權限'}), 403
+
+        # ✅ 清理過期排班
+        cursor.execute("""
+            DELETE FROM schedules
+            WHERE doctor_id = %s
+            AND TIMESTAMP(schedule_date, time_slot) < NOW()
+        """, (doctor_id,))
+
+        # ✅ 刪除該週舊排班
+        cursor.execute("""
+            DELETE FROM schedules
+            WHERE doctor_id = %s
+            AND schedule_date BETWEEN %s AND %s
+        """, (doctor_id, week_start, week_end))
+
+        # ✅ 只寫入開診時段
+        success_count = 0
+        for s in schedules:
+            if not s.get('date') or not s.get('time_slot'):
+                continue
+            if s.get('is_available') != 1:
+                continue
+            cursor.execute("""
+                INSERT INTO schedules (doctor_id, schedule_date, time_slot, is_available)
+                VALUES (%s, %s, %s, 1)
+            """, (doctor_id, s['date'], s['time_slot']))
+            success_count += 1
+
+        db.commit()
+        return jsonify({'success': True, 'message': f'成功儲存 {success_count} 個開診時段'})
+    except Exception as e:
+        db.rollback()
+        import traceback; traceback.print_exc()
+        return jsonify({'error': '伺服器錯誤'}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+# ─── 醫師查詢自己是否有所屬院所 ──────────────────────────────────────
+
+@app.route('/api/doctor/has-mechanism', methods=['GET'])
+def doctor_has_mechanism():
+    """
+    回傳目前登入醫師是否有所屬機構。
+    Response: { has_mechanism: bool, mechanism_name: str|null }
+    """
+    if 'user_id' not in session:
+        return jsonify({'error': '未登入'}), 401
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        cursor.execute(
+            """
+            SELECT d.mechanism_id, m.name AS mechanism_name
+            FROM doctor d
+            LEFT JOIN mechanism m ON d.mechanism_id = m.mechanism_id
+            WHERE d.user_id = %s
+            """,
+            (session['user_id'],)
+        )
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({'has_mechanism': False, 'mechanism_name': None})
+
+        has = row['mechanism_id'] is not None
+        return jsonify({
+            'has_mechanism': has,
+            'mechanism_name': row['mechanism_name'] if has else None
+        })
+    finally:
+        cursor.close()
+        db.close()
+
 if __name__ == "__main__":
     start_background_tasks()
     app.run(debug=True)

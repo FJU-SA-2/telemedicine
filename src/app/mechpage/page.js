@@ -90,10 +90,17 @@ const DoctorEditModal = ({ doctor, onClose, onSaved }) => {
   const handleSave = async () => {
     setSaving(true);
     try {
+<<<<<<< HEAD
       await apiFetch(`/api/mechanism/doctors/${doctor.doctor_id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
+=======
+      await apiFetch("/api/mechanism/doctors", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, doctor_id: doctor.doctor_id }),
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
       });
       onSaved("醫師資料已更新");
     } catch (e) {
@@ -229,7 +236,11 @@ const PatientDetailModal = ({ patientId, onClose }) => {
                   {patient.last_name?.charAt(0)}
                 </div>
                 <div>
+<<<<<<< HEAD
                   <h2 className="text-xl font-bold text-gray-800">{patient.last_name}{patient.first_name}</h2>
+=======
+                  <h2 className="text-xl font-bold text-gray-800">{patient.first_name}{patient.last_name}</h2>
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
                   <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
                     <span>{patient.gender === "male" ? "男" : "女"}</span>
                     {calcAge(patient.date_of_birth) && <><span>·</span><span>{calcAge(patient.date_of_birth)} 歲</span></>}
@@ -321,6 +332,7 @@ const PatientDetailModal = ({ patientId, onClose }) => {
               )}
             </div>
 
+<<<<<<< HEAD
             {activeTab === "info" && (
               <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 flex-shrink-0">
                 {editing ? (
@@ -340,6 +352,9 @@ const PatientDetailModal = ({ patientId, onClose }) => {
                 )}
               </div>
             )}
+=======
+            
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center py-16 text-gray-400">載入失敗</div>
@@ -355,14 +370,34 @@ const PatientDetailModal = ({ patientId, onClose }) => {
 //  新增醫師 Modal
 // ════════════════════════════════════════════════════════════════════
 const AddDoctorModal = ({ onClose, onSaved }) => {
+<<<<<<< HEAD
   const [form, setForm] = useState({ gender: "male", approval_status: "pending" });
+=======
+  const [form, setForm] = useState({
+    first_name: "",
+    last_name: "",
+    gender: "male",
+    specialty: "",
+    practice_hospital: "",
+    phone_number: "",
+    approval_status: "pending",
+    certificate_path: "",
+    email: "",
+    password: "",
+  });
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSave = async () => {
     if (!form.first_name || !form.last_name) { setError("姓名為必填"); return; }
+<<<<<<< HEAD
     if (!form.user_id) { setError("user_id 為必填"); return; }
+=======
+    if (!form.email) { setError("Email 為必填"); return; }
+    if (!form.password || form.password.length < 6) { setError("密碼為必填且至少 6 個字元"); return; }
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
     setSaving(true);
     setError("");
     try {
@@ -378,6 +413,12 @@ const AddDoctorModal = ({ onClose, onSaved }) => {
     }
   };
 
+<<<<<<< HEAD
+=======
+  const inputCls = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400";
+  const selectCls = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200";
+
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
@@ -385,12 +426,18 @@ const AddDoctorModal = ({ onClose, onSaved }) => {
           <h3 className="font-semibold text-gray-800">新增醫師</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><X size={18} /></button>
         </div>
+<<<<<<< HEAD
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+=======
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
           {error && (
             <div className="flex items-center gap-2 text-rose-600 bg-rose-50 px-3 py-2 rounded-lg text-sm">
               <AlertCircle size={14} />{error}
             </div>
           )}
+<<<<<<< HEAD
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-gray-600 block mb-1">姓 <span className="text-rose-500">*</span></label>
@@ -440,6 +487,63 @@ const AddDoctorModal = ({ onClose, onSaved }) => {
             </div>
           ))}
         </div>
+=======
+
+          {/* ── 醫師基本資料（doctor 表） ── */}
+          <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-600 block mb-1">姓 <span className="text-rose-500">*</span></label>
+                  <input type="text" value={form.last_name} onChange={e => set("last_name", e.target.value)} className={inputCls} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-600 block mb-1">名 <span className="text-rose-500">*</span></label>
+                  <input type="text" value={form.first_name} onChange={e => set("first_name", e.target.value)} className={inputCls} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-600 block mb-1">性別</label>
+                  <select value={form.gender} onChange={e => set("gender", e.target.value)} className={selectCls}>
+                    <option value="male">男</option>
+                    <option value="female">女</option>
+                  </select>
+                </div>
+                <div>
+                  
+                </div>
+              </div>
+              {[
+                { key: "specialty",         label: "專科",     placeholder: "例：內科、外科" },
+                { key: "phone_number",      label: "聯絡電話", placeholder: "09xx-xxx-xxx" },
+                { key: "practice_hospital", label: "執業院所", placeholder: "醫院名稱" },
+                { key: "certificate_path",  label: "證書路徑", placeholder: "上傳後填入路徑（選填）" },
+              ].map(({ key, label, placeholder }) => (
+                <div key={key}>
+                  <label className="text-sm font-medium text-gray-600 block mb-1">{label}</label>
+                  <input type="text" value={form[key] || ""} onChange={e => set(key, e.target.value)}
+                    placeholder={placeholder} className={inputCls} />
+                </div>
+              ))}
+          </div>
+
+          {/* ── 帳號資訊（users 表） ── */}
+          <div className="space-y-3 pt-3 border-t border-gray-100">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">登入帳號設定</p>
+            <div>
+              <label className="text-sm font-medium text-gray-600 block mb-1">Email <span className="text-rose-500">*</span></label>
+              <input type="email" value={form.email} onChange={e => set("email", e.target.value)}
+                placeholder="doctor@example.com" className={inputCls} />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-600 block mb-1">密碼 <span className="text-rose-500">*</span></label>
+              <input type="password" value={form.password} onChange={e => set("password", e.target.value)}
+                placeholder="至少 6 個字元" className={inputCls} />
+            </div>
+          </div>
+        </div>
+
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
         <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 flex-shrink-0">
           <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition">取消</button>
           <button onClick={handleSave} disabled={saving}
@@ -582,6 +686,10 @@ const TelemedicineDashboard = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [approvalStatus, setApprovalStatus] = useState(null);
+<<<<<<< HEAD
+=======
+  const [mechanismId, setMechanismId] = useState(null);
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
 
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -612,7 +720,18 @@ const TelemedicineDashboard = () => {
       try {
         const res = await fetch("/api/me", { credentials: "include" });
         const data = await res.json();
+<<<<<<< HEAD
         setApprovalStatus(data.authenticated && data.user?.role === "doctor" ? data.user.approval_status : "unauthorized");
+=======
+        if (data.authenticated && data.user?.role === "mech") {
+          setApprovalStatus("approved");
+          if (data.user?.mechanism_id) setMechanismId(data.user.mechanism_id);
+        } else if (data.authenticated && data.user?.role === "doctor") {
+          setApprovalStatus(data.user.approval_status);
+        } else {
+          setApprovalStatus("unauthorized");
+        }
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
       } catch {
         setApprovalStatus("error");
       }
@@ -630,6 +749,7 @@ const TelemedicineDashboard = () => {
     setDoctorsLoading(true);
     try {
       const p = new URLSearchParams();
+<<<<<<< HEAD
       if (doctorSearch) p.set("search", doctorSearch);
       if (doctorStatus) p.set("status", doctorStatus);
       const data = await apiFetch(`/api/mechanism/doctors?${p}`);
@@ -637,6 +757,16 @@ const TelemedicineDashboard = () => {
     } catch (e) { showToast(e.message, "error"); }
     finally { setDoctorsLoading(false); }
   }, [doctorSearch, doctorStatus]);
+=======
+      if (mechanismId) p.set("mechanism_id", mechanismId);
+      if (doctorSearch) p.set("search", doctorSearch);
+      if (doctorStatus) p.set("status", doctorStatus);
+      const data = await apiFetch(`/api/mechanism/doctors?${p}`);
+      setDoctors(Array.isArray(data) ? data : (data.doctors ?? []));
+    } catch (e) { showToast(e.message, "error"); }
+    finally { setDoctorsLoading(false); }
+  }, [mechanismId, doctorSearch, doctorStatus]);
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
 
   const fetchPatients = useCallback(async () => {
     setPatientsLoading(true);
@@ -677,9 +807,18 @@ const TelemedicineDashboard = () => {
 
       <Mech_Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} activeTab={activeTab} setActiveTab={setActiveTab} approvalStatus={approvalStatus} />
 
+<<<<<<< HEAD
       <div className={`transition-all duration-300 ${sidebarOpen ? "ml-64" : "ml-0"}`}>
         <Navbar />
         <main className="p-6 md:p-8 max-w-7xl mx-auto">
+=======
+      {/* 修改點 1：在外層容器加上 min-h-screen flex flex-col */}
+      <div className={`transition-all duration-300 min-h-screen flex flex-col ${sidebarOpen ? "ml-64" : "ml-0"}`}>
+        <Navbar />
+        
+        {/* 修改點 2：在 main 加上 flex-1 讓它撐開空間 */}
+        <main className="flex-1 p-6 md:p-8 max-w-7xl mx-auto w-full">
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
 
           <div className="mb-8 flex items-center justify-between">
             <div>
@@ -694,7 +833,11 @@ const TelemedicineDashboard = () => {
 
           {/* 統計卡片 */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+<<<<<<< HEAD
             <StatCard icon={Stethoscope}  label="本院醫師"  value={stats?.total_doctors ?? "—"}      sub={"位醫師"} color="bg-blue-500"   loading={statsLoading} />
+=======
+            <StatCard icon={Stethoscope}  label="本院醫師"  value={stats?.total_doctors ?? "—"}      sub="位醫師"  color="bg-blue-500"   loading={statsLoading} />
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
             <StatCard icon={HeartPulse}   label="本院患者"  value={stats?.total_patients ?? "—"}     sub="位患者"   color="bg-teal-500"   loading={statsLoading} />
             <StatCard icon={CalendarDays} label="今日看診"  value={stats?.today_appointments ?? "—"} sub="診次"     color="bg-violet-500" loading={statsLoading} />
           </div>
@@ -721,7 +864,11 @@ const TelemedicineDashboard = () => {
                     onChange={e => setDoctorSearch(e.target.value)}
                     className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition" />
                 </div>
+<<<<<<< HEAD
                 
+=======
+               
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
               </div>
               <div className="divide-y divide-gray-50 overflow-y-auto flex-1" style={{ maxHeight: "22rem" }}>
                 {doctorsLoading
@@ -805,6 +952,7 @@ const TelemedicineDashboard = () => {
                             總診次 {pt.total_appointments}
                             {pt.chronic_disease ? ` ‧ ${pt.chronic_disease.substring(0, 12)}` : ""}
                           </p>
+<<<<<<< HEAD
                         </div>
                         <div className="text-right flex-shrink-0">
                           <div className="flex items-center gap-1 text-gray-400 justify-end">
@@ -813,6 +961,16 @@ const TelemedicineDashboard = () => {
                           </div>
                           <p className="text-xs text-gray-400">最近看診</p>
                         </div>
+=======
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="flex items-center gap-1 text-gray-400 justify-end">
+                            <Clock size={11} />
+                            <p className="text-xs">{pt.last_appointment?.substring(0, 10) || "—"}</p>
+                          </div>
+                          <p className="text-xs text-gray-400">最近看診</p>
+                        </div>
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
                         <ChevronRight size={16} className="opacity-0 group-hover:opacity-100 text-gray-400 transition-all flex-shrink-0" />
                       </div>
                     ))}
@@ -821,11 +979,18 @@ const TelemedicineDashboard = () => {
 
           </div>
         </main>
+<<<<<<< HEAD
       </div>
 
       <div className="bg-gray-800 text-white py-8 mt-8">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <p className="text-gray-400">© 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。</p>
+=======
+        <div className="bg-gray-800 text-white py-8 mt-8 flex-shrink-0">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <p className="text-gray-400">© 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。</p>
+          </div>
+>>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
         </div>
       </div>
 
