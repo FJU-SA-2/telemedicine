@@ -20,8 +20,6 @@ from datetime import datetime, timedelta
 from flask import Response
 import json
 from functools import wraps
-<<<<<<< HEAD
-=======
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import (
@@ -34,7 +32,6 @@ load_dotenv()
 
 LINE_CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET')
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
 
 # line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 # handler = WebhookHandler(LINE_CHANNEL_SECRET)
@@ -4409,12 +4406,9 @@ def get_doctor_appointments_range(doctor_id):
 def require_mechanism(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-<<<<<<< HEAD
-=======
         print(f"=== require_mechanism 被呼叫 ===")
         print(f"session user_id = {session.get('user_id')}")
         print(f"session role = {session.get('role')}")
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
         if 'user_id' not in session:
             return jsonify({'error': '請先登入'}), 401
         db = get_db()
@@ -4422,10 +4416,7 @@ def require_mechanism(f):
         try:
             cursor.execute("SELECT mechanism_id FROM mechanism WHERE user_id = %s", (session['user_id'],))
             mech = cursor.fetchone()
-<<<<<<< HEAD
-=======
             print(f"查詢結果 mech = {mech}")
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
             if not mech:
                 return jsonify({'error': '權限不足'}), 403
             request.mechanism_id = mech['mechanism_id']
@@ -4435,8 +4426,6 @@ def require_mechanism(f):
         return f(*args, **kwargs)
     return decorated
 
-<<<<<<< HEAD
-=======
 # @app.route("/webhook", methods=['POST'])
 # def webhook():
 #     signature = request.headers.get('X-Line-Signature', '')
@@ -4465,7 +4454,6 @@ def require_mechanism(f):
 #         TextSendMessage(text=reply)
 #     )
 
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
 
 # ── 統計 ─────────────────────────────────────────────────────────────
 
@@ -4511,10 +4499,7 @@ def get_mechanism_stats():
 @app.route('/api/mechanism/doctors', methods=['GET'])
 @require_mechanism
 def get_mechanism_doctors():
-<<<<<<< HEAD
-=======
     print(f"🔍 mechanism_id = {request.mechanism_id}") 
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
     search = request.args.get('search', '').strip()
     status_filter = request.args.get('status', '')
 
@@ -4551,12 +4536,9 @@ def get_mechanism_doctors():
             for key in ['approval_date', 'created_at']:
                 if doc.get(key):
                     doc[key] = doc[key].isoformat() if hasattr(doc[key], 'isoformat') else str(doc[key])
-<<<<<<< HEAD
-=======
             # 修正 SUM/COUNT 可能回傳 None 或 Decimal 的問題
             doc['total_appointments'] = int(doc['total_appointments'] or 0)
             doc['today_appointments'] = int(doc['today_appointments'] or 0)
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
 
         return jsonify({'doctors': doctors, 'total': len(doctors)})
     finally:
@@ -4702,11 +4684,7 @@ def get_mechanism_patient_appointments(patient_id):
                 a.appointment_id, a.appointment_date, a.appointment_time,
                 a.status, a.symptoms, a.consultation_notes, a.doctor_advice,
                 a.amount, a.payment_method,
-<<<<<<< HEAD
-                CONCAT(d.last_name, d.first_name) AS doctor_name,
-=======
                 CONCAT(d.first_name, d.last_name) AS doctor_name,
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
                 d.specialty
             FROM appointments a
             JOIN doctor d ON a.doctor_id = d.doctor_id
@@ -4728,76 +4706,6 @@ def get_mechanism_patient_appointments(patient_id):
         cursor.close()
         db.close()
 
-<<<<<<< HEAD
-
-@app.route('/api/mechanism/patients', methods=['POST'])
-@require_mechanism
-def create_mechanism_patient():
-    data = request.get_json() or {}
-    required = ['first_name', 'last_name', 'gender', 'user_id']
-    for field in required:
-        if not data.get(field):
-            return jsonify({'error': f'{field} 為必填'}), 400
-
-    fields = [
-        'user_id', 'first_name', 'last_name', 'gender', 'date_of_birth',
-        'phone_number', 'address', 'id_number', 'smoking_status',
-        'drug_allergies', 'medical_history', 'height', 'weight',
-        'chronic_disease', 'emergency_contact_name', 'emergency_contact_phone'
-    ]
-    insert_fields = [f for f in fields if f in data]
-
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    try:
-        cols = ', '.join([f'`{f}`' for f in insert_fields])
-        placeholders = ', '.join(['%s'] * len(insert_fields))
-        cursor.execute(
-            f"INSERT INTO patient ({cols}) VALUES ({placeholders})",
-            [data[f] for f in insert_fields]
-        )
-        db.commit()
-        return jsonify({'message': '新增成功', 'patient_id': cursor.lastrowid}), 201
-    finally:
-        cursor.close()
-        db.close()
-
-
-@app.route('/api/mechanism/patients/<int:patient_id>', methods=['PUT'])
-@require_mechanism
-def update_mechanism_patient(patient_id):
-    data = request.get_json() or {}
-    allowed = [
-        'first_name', 'last_name', 'phone_number', 'date_of_birth', 'address',
-        'smoking_status', 'drug_allergies', 'medical_history', 'height', 'weight',
-        'chronic_disease', 'emergency_contact_name', 'emergency_contact_phone'
-    ]
-    updates = {k: v for k, v in data.items() if k in allowed}
-    if not updates:
-        return jsonify({'error': '無可更新的欄位'}), 400
-
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    try:
-        cursor.execute("""
-            SELECT COUNT(*) AS cnt FROM appointments a
-            JOIN doctor d ON a.doctor_id = d.doctor_id
-            WHERE a.patient_id = %s AND d.mechanism_id = %s
-        """, (patient_id, request.mechanism_id))
-        if cursor.fetchone()['cnt'] == 0:
-            return jsonify({'error': '患者不存在或無權限'}), 404
-
-        set_clause = ', '.join([f"`{k}` = %s" for k in updates])
-        cursor.execute(
-            f"UPDATE patient SET {set_clause} WHERE patient_id = %s",
-            list(updates.values()) + [patient_id]
-        )
-        db.commit()
-        return jsonify({'message': '更新成功'})
-    finally:
-        cursor.close()
-        db.close()
-=======
 @app.route("/api/mechanism/doctors", methods=["POST"])
 @require_mechanism
 def add_doctor():
@@ -4850,7 +4758,6 @@ def add_doctor():
             VALUES (%s, %s, %s, %s, %s, %s)
         """, (doctor_id, first_name, last_name, specialty, practice_hospital, phone_number))
 
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
     
         db.commit()
         cursor.close()
