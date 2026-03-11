@@ -440,7 +440,7 @@ export default function DoctorVideoConsultation() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition shadow-sm"
+          className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition"
           aria-label="開啟選單"
         >
           <Menu size={24} />
@@ -459,7 +459,8 @@ export default function DoctorVideoConsultation() {
       <div className={`transition-all duration-300 ${isOpen ? "md:ml-64" : "ml-0"}`}>
         <Navbar setIsSidebarOpen={setIsOpen} />
 
-        <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
+        {/* bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 */}
+        <div className="min-h-screen">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
             {/* 錯誤提示 */}

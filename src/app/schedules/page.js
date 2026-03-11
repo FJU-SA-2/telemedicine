@@ -21,10 +21,9 @@ export default function DoctorSchedulePage() {
     const [approvalStatus, setApprovalStatus] = useState(null);
     const [hoveredSlot, setHoveredSlot] = useState(null);
 
-    // ── 新增：所屬院所狀態 ────────────────────────────────────────────
-    const [hasMechanism, setHasMechanism] = useState(false);       // 是否有所屬機構
-    const [mechanismName, setMechanismName] = useState(null);      // 機構名稱
-    const [viewOnly, setViewOnly] = useState(false);               // 唯讀模式
+    const [hasMechanism, setHasMechanism] = useState(false);
+    const [mechanismName, setMechanismName] = useState(null);
+    const [viewOnly, setViewOnly] = useState(false);
 
     const timeSlots = [
         "09:00", "09:30", "10:00", "10:30",
@@ -39,7 +38,6 @@ export default function DoctorSchedulePage() {
         evening: ["18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00"]
     };
 
-    // ── 取得審核狀態 ─────────────────────────────────────────────────
     useEffect(() => {
         async function fetchApprovalStatus() {
             try {
@@ -55,7 +53,6 @@ export default function DoctorSchedulePage() {
         fetchApprovalStatus();
     }, []);
 
-    // ── 取得醫師 ID & 所屬機構狀態 ──────────────────────────────────
     useEffect(() => {
         const fetchDoctorId = async () => {
             try {
@@ -70,7 +67,6 @@ export default function DoctorSchedulePage() {
                         if (doctorRes.ok) {
                             const doctorData = await doctorRes.json();
                             setDoctorId(doctorData.doctor_id);
-                            // mechanism_id 有值 → 唯讀模式，不需要額外 API
                             if (doctorData.mechanism_id) {
                                 setViewOnly(true);
                                 setHasMechanism(true);
@@ -81,7 +77,6 @@ export default function DoctorSchedulePage() {
                             console.error('❌ 取得醫師資料失敗:', errorData);
                             alert(`無法取得醫師資料: ${errorData.message}`);
                         }
-
                     } else {
                         alert('請先以醫師身份登入');
                         window.location.href = '/auth';
@@ -205,9 +200,8 @@ export default function DoctorSchedulePage() {
         loadSchedulesAndAppointments();
     }, [currentWeekStart, doctor_id]);
 
-    // ── 操作函式（唯讀時阻擋） ────────────────────────────────────────
     const toggleSlot = (date, time) => {
-        if (viewOnly) return; // ← 有機構 → 阻擋
+        if (viewOnly) return;
         if (isTimeSlotPast(date, time)) {
             alert('無法設定已過期的排班時段');
             return;
@@ -347,20 +341,24 @@ export default function DoctorSchedulePage() {
         const isBooked = isSlotBooked(date, time);
         const isAvailable = isSlotAvailable(date, time);
 
-        if (isPast) return "已過期";
-        if (isBooked) return "已預約";
+        if (isPast) return "過期";
+        if (isBooked) return "已約";
         if (isAvailable) return "開診";
         return "休診";
     };
 
     return (
         <div className="relative min-h-screen bg-gray-50">
+
             {!isOpen && (
-                <button onClick={() => setIsOpen(true)}
-                    className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition">
-                    <Menu size={24} />
-                </button>
-            )}
+                    <button
+                      onClick={() => setIsOpen(true)}
+                      className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition "
+                      aria-label="開啟選單"
+                    >
+                      <Menu size={24} />
+                    </button>
+                  )}
 
             <DoctorSidebar
                 isOpen={isOpen}
@@ -370,234 +368,251 @@ export default function DoctorSchedulePage() {
                 approvalStatus={approvalStatus}
             />
 
-            <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+
+            {/* 主內容：桌機推移，手機/平板不推移 */}
+            <div className={`transition-all duration-300 ${isOpen ? "md:ml-64" : "ml-0"}`}>
                 <Navbar setIsSidebarOpen={setIsOpen} />
-                <div className="p-6">
 
+                <div className="p-4 sm:p-6">
+
+                    {/* 儲存成功提示 */}
                     {saveSuccess && (
-                        <div className="fixed top-20 right-6 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-2">
-                            <Save size={20} /> 排班儲存成功!
+                        <div className="fixed top-16 right-4 sm:top-20 sm:right-6 bg-green-500 text-white px-4 py-3 sm:px-6 sm:py-4 rounded-lg shadow-lg z-50 flex items-center gap-2 text-sm sm:text-base">
+                            <Save size={18} /> 排班儲存成功!
                         </div>
                     )}
 
-                    {/* ── 唯讀提示橫幅 ────────────────────────────────── */}
+                    {/* 唯讀提示橫幅 */}
                     {viewOnly && (
-                        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-5 py-4 flex items-start gap-3">
-                            <div className="mt-0.5">
-                                <Building2 size={20} className="text-blue-500" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-semibold text-blue-800 flex items-center gap-2">
-                                    <Lock size={14} /> 排班由院所管理（僅供檢視）
+                        <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 sm:px-5 sm:py-4 flex items-start gap-3">
+                            <Building2 size={20} className="text-blue-500 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-blue-800 flex items-center gap-1.5">
+                                    <Lock size={13} /> 排班由院所管理（僅供檢視）
                                 </p>
-                                <p className="text-sm text-blue-600 mt-0.5">
+                                <p className="text-xs sm:text-sm text-blue-600 mt-0.5 leading-relaxed">
                                     您目前隸屬於 <strong>{mechanismName}</strong>，排班由院所負責安排，您只能查看不能修改。
-                                    如有疑問請聯絡所屬院所。
                                 </p>
                             </div>
-                            <div className="ml-auto">
-                                <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full flex items-center gap-1">
-                                    <Eye size={12} /> 檢視模式
-                                </span>
-                            </div>
+                            <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
+                                <Eye size={11} /> 檢視模式
+                            </span>
                         </div>
                     )}
 
-                    {/* ── 週導覽 ────────────────────────────────────────── */}
-                    <div className="bg-white rounded-lg shadow-lg p-4 mb-4 flex items-center justify-between">
-                        <button onClick={previousWeek} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                            <ChevronLeft size={20} /> 上一週
+                    {/* 週導覽 */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4 mb-4 flex items-center justify-between gap-2">
+                        <button onClick={previousWeek}
+                            className="flex items-center gap-1 sm:gap-2 px-3 py-2 sm:px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base flex-shrink-0">
+                            <ChevronLeft size={18} />
+                            <span className="hidden sm:inline">上一週</span>
                         </button>
-                        <div className="text-center">
-                            <div className="text-lg font-semibold text-gray-800">{getWeekRangeText()}</div>
-                            <button onClick={goToCurrentWeek} className="text-sm text-blue-600 hover:text-blue-700 mt-1">回到本週</button>
+                        <div className="text-center flex-1 min-w-0">
+                            <div className="text-sm sm:text-lg font-semibold text-gray-800 truncate">{getWeekRangeText()}</div>
+                            <button onClick={goToCurrentWeek} className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 mt-0.5">回到本週</button>
                         </div>
-                        <button onClick={nextWeek} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                            下一週 <ChevronRight size={20} />
+                        <button onClick={nextWeek}
+                            className="flex items-center gap-1 sm:gap-2 px-3 py-2 sm:px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base flex-shrink-0">
+                            <span className="hidden sm:inline">下一週</span>
+                            <ChevronRight size={18} />
                         </button>
                     </div>
 
-                    {/* ── 圖例 ────────────────────────────────────────── */}
-                    <div className="bg-white rounded-lg shadow-lg p-4 mb-4">
-                        <div className="flex items-center justify-center gap-6 text-sm">
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 bg-green-500 rounded"></div>
-                                <span className="text-gray-500">開診</span>
+                    {/* 圖例 */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4 mb-4">
+                        <div className="flex items-center justify-center flex-wrap gap-3 sm:gap-8 text-xs sm:text-base">
+                            <div className="flex items-center gap-1.5 sm:gap-2">
+                                <div className="w-3 h-3 sm:w-5 sm:h-5 bg-green-500 rounded"></div>
+                                <span className="text-gray-600">開診</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 bg-gray-200 rounded"></div>
-                                <span className="text-gray-500">休診</span>
+                            <div className="flex items-center gap-1.5 sm:gap-2">
+                                <div className="w-3 h-3 sm:w-5 sm:h-5 bg-gray-200 rounded"></div>
+                                <span className="text-gray-600">休診</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 bg-red-500 rounded"></div>
-                                <span className="text-gray-500">已預約</span>
+                            <div className="flex items-center gap-1.5 sm:gap-2">
+                                <div className="w-3 h-3 sm:w-5 sm:h-5 bg-red-500 rounded"></div>
+                                <span className="text-gray-600">已預約</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 bg-gray-100 rounded"></div>
-                                <span className="text-gray-500">已過期</span>
+                            <div className="flex items-center gap-1.5 sm:gap-2">
+                                <div className="w-3 h-3 sm:w-5 sm:h-5 bg-gray-100 border border-gray-200 rounded"></div>
+                                <span className="text-gray-600">已過期</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* ── 排班表 ──────────────────────────────────────── */}
-                    <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    {/* 排班表 */}
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4 sm:p-6 mb-6">
+
+                        {/* 標題列 + 儲存按鈕 */}
+                        <div className="flex justify-between items-center mb-4 sm:mb-6 gap-2">
+                            <h2 className="text-base sm:text-xl font-semibold text-gray-800 flex items-center gap-2">
                                 週排班表
                                 {viewOnly && (
-                                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full flex items-center gap-1">
-                                        <Eye size={11} /> 僅供檢視
+                                    <span className="text-xs sm:text-sm bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                        <Eye size={12} /> 僅供檢視
                                     </span>
                                 )}
                             </h2>
                             {!viewOnly ? (
                                 <button onClick={saveSchedules} disabled={loading || !doctor_id}
-                                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed">
-                                    <Save size={18} /> {loading ? "儲存中..." : "儲存排班"}
+                                    className="bg-blue-600 text-white px-4 py-2 sm:px-6 sm:py-2.5 rounded-lg hover:bg-blue-700 flex items-center gap-1.5 sm:gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm sm:text-base flex-shrink-0">
+                                    <Save size={16} /> {loading ? "儲存中..." : "儲存排班"}
                                 </button>
                             ) : (
-                                <span className="text-sm text-gray-400 flex items-center gap-1.5 bg-gray-50 px-4 py-2 rounded-lg border">
-                                    <Lock size={14} /> 院所管理中
+                                <span className="text-xs sm:text-sm text-gray-400 flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg border flex-shrink-0">
+                                    <Lock size={13} /> 院所管理中
                                 </span>
                             )}
                         </div>
 
-                        {/* 表頭 */}
-                        <div className="grid grid-cols-8 gap-3 mb-4">
-                            <div className="font-medium text-gray-700 flex items-center">
-                                <Clock size={18} className="mr-2" />時段
-                            </div>
-                            {weekDates.map(item => (
-                                <div key={item.fullDate} className="text-center">
-                                    <div className="font-medium text-gray-700">{item.day}</div>
-                                    <div className="text-sm text-gray-500">{item.date}日</div>
+                        {/* ── 橫向滾動容器（手機/平板核心修正） ── */}
+                        <div className="overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6">
+                            {/* minWidth 確保 7 天表格有足夠空間，不被壓縮 */}
+                            <div style={{ minWidth: "600px" }}>
 
-                                    {/* 快捷按鈕：唯讀時隱藏 */}
-                                    {!viewOnly && (
-                                        <>
-                                            <div className="mt-2 flex gap-1 justify-center">
-                                                <button onClick={() => setWholeDay(item.fullDate, true)}
-                                                    className="text-xs px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200"
-                                                    title="全天開診">全開</button>
-                                                <button onClick={() => setWholeDay(item.fullDate, false)}
-                                                    className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                                    title="全天休診">全關</button>
-                                            </div>
-                                            <div className="mt-2 space-y-1">
-                                                <button onClick={() => setQuickSchedule(item.fullDate, 'morning', true)}
-                                                    className="w-full text-xs px-2 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 flex items-center justify-center gap-1">
-                                                    <Sunrise size={12} /> 早
-                                                </button>
-                                                <button onClick={() => setQuickSchedule(item.fullDate, 'afternoon', true)}
-                                                    className="w-full text-xs px-2 py-1 rounded bg-orange-100 text-orange-700 hover:bg-orange-200 flex items-center justify-center gap-1">
-                                                    <Sun size={12} /> 午
-                                                </button>
-                                                <button onClick={() => setQuickSchedule(item.fullDate, 'evening', true)}
-                                                    className="w-full text-xs px-2 py-1 rounded bg-indigo-100 text-indigo-700 hover:bg-indigo-200 flex items-center justify-center gap-1">
-                                                    <Moon size={12} /> 晚
-                                                </button>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* 時段格子 */}
-                        <div className="space-y-2">
-                            {timeSlots.map((time) => {
-                                const isFirstMorning   = time === timeSlotGroups.morning[0];
-                                const isFirstAfternoon = time === timeSlotGroups.afternoon[0];
-                                const isFirstEvening   = time === timeSlotGroups.evening[0];
-                                return (
-                                    <div key={time}>
-                                        {isFirstMorning && (
-                                            <div className="flex items-center gap-2 border-t-2 border-amber-200 pt-1 pb-1 mb-1">
-                                                <Sunrise size={14} className="text-amber-500" />
-                                                <span className="text-xs font-medium text-amber-500">早上診</span>
-                                            </div>
-                                        )}
-                                        {isFirstAfternoon && (
-                                            <div className="flex items-center gap-2 border-t-2 border-orange-200 pt-1 pb-1 mb-1">
-                                                <Sun size={14} className="text-orange-500" />
-                                                <span className="text-xs font-medium text-orange-500">下午診</span>
-                                            </div>
-                                        )}
-                                        {isFirstEvening && (
-                                            <div className="flex items-center gap-2 border-t-2 border-indigo-200 pt-1 pb-1 mb-1">
-                                                <Moon size={14} className="text-indigo-500" />
-                                                <span className="text-xs font-medium text-indigo-500">晚間診</span>
-                                            </div>
-                                        )}
-                                        <div className="grid grid-cols-8 gap-3 items-center">
-                                            <div className="font-medium text-gray-600 text-sm">{time}</div>
-                                            {weekDates.map(item => {
-                                                const isBooked = isSlotBooked(item.fullDate, time);
-                                                const appointmentInfo = appointments[item.fullDate]?.[time];
-                                                const slotKey = `${item.fullDate}-${time}`;
-                                                const isPast = isTimeSlotPast(item.fullDate, time);
-
-                                                return (
-                                                    <div key={slotKey} className="relative"
-                                                        onMouseEnter={() => isBooked && setHoveredSlot(slotKey)}
-                                                        onMouseLeave={() => setHoveredSlot(null)}>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                e.stopPropagation();
-                                                                if (!isPast && !viewOnly) toggleSlot(item.fullDate, time);
-                                                            }}
-                                                            disabled={isPast || viewOnly && !isBooked}
-                                                            className={`w-full py-3 rounded-lg text-sm font-medium transition-all ${getSlotStyle(item.fullDate, time)}`}>
-                                                            {getSlotText(item.fullDate, time)}
-                                                        </button>
-
-                                                        {isBooked && hoveredSlot === slotKey && appointmentInfo && (
-                                                            <div className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-xl pointer-events-none">
-                                                                <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full">
-                                                                    <div className="border-8 border-transparent border-t-gray-900"></div>
-                                                                </div>
-                                                                <div className="font-semibold mb-2 text-sm">預約資訊</div>
-                                                                <div className="space-y-1">
-                                                                    <div className="flex justify-between">
-                                                                        <span className="text-gray-400">患者:</span>
-                                                                        <span className="font-medium">{appointmentInfo.patient_name}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between">
-                                                                        <span className="text-gray-400">狀態:</span>
-                                                                        <span className={`font-medium ${
-                                                                            appointmentInfo.status === '已確認' ? 'text-green-400' :
-                                                                            appointmentInfo.status === '已完成' ? 'text-blue-400' :
-                                                                            appointmentInfo.status === '已取消' ? 'text-red-400' :
-                                                                            'text-yellow-400'
-                                                                        }`}>{appointmentInfo.status}</span>
-                                                                    </div>
-                                                                    <div className="border-t border-gray-700 pt-1 mt-1">
-                                                                        <span className="text-gray-400">症狀:</span>
-                                                                        <div className="mt-1 text-gray-300">{appointmentInfo.symptoms}</div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                                {/* 表頭（日期 + 快捷按鈕） */}
+                                <div className="grid gap-1.5 mb-3" style={{ gridTemplateColumns: "64px repeat(7, 1fr)" }}>
+                                    <div className="font-medium text-gray-500 flex items-center text-xs sm:text-sm">
+                                        <Clock size={14} className="mr-1 flex-shrink-0" />時段
                                     </div>
-                                );
-                            })}
+                                    {weekDates.map(item => (
+                                        <div key={item.fullDate} className="text-center">
+                                            <div className="font-semibold text-gray-700 text-xs sm:text-base">{item.day}</div>
+                                            <div className="text-xs sm:text-sm text-gray-400">{item.date}日</div>
+
+                                            {/* 快捷按鈕：唯讀時隱藏 */}
+                                            {!viewOnly && (
+                                                <>
+                                                    <div className="mt-1.5 flex gap-0.5 justify-center">
+                                                        <button onClick={() => setWholeDay(item.fullDate, true)}
+                                                            className="text-xs sm:text-sm px-1 sm:px-2 py-0.5 rounded bg-green-100 text-green-700 hover:bg-green-200 leading-tight"
+                                                            title="全天開診">全開</button>
+                                                        <button onClick={() => setWholeDay(item.fullDate, false)}
+                                                            className="text-xs sm:text-sm px-1 sm:px-2 py-0.5 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 leading-tight"
+                                                            title="全天休診">全關</button>
+                                                    </div>
+                                                    <div className="mt-1 space-y-0.5">
+                                                        <button onClick={() => setQuickSchedule(item.fullDate, 'morning', true)}
+                                                            className="w-full text-xs sm:text-sm py-0.5 sm:py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 flex items-center justify-center gap-0.5">
+                                                            <Sunrise size={11} /> 早
+                                                        </button>
+                                                        <button onClick={() => setQuickSchedule(item.fullDate, 'afternoon', true)}
+                                                            className="w-full text-xs sm:text-sm py-0.5 sm:py-1 rounded bg-orange-100 text-orange-700 hover:bg-orange-200 flex items-center justify-center gap-0.5">
+                                                            <Sun size={11} /> 午
+                                                        </button>
+                                                        <button onClick={() => setQuickSchedule(item.fullDate, 'evening', true)}
+                                                            className="w-full text-xs sm:text-sm py-0.5 sm:py-1 rounded bg-indigo-100 text-indigo-700 hover:bg-indigo-200 flex items-center justify-center gap-0.5">
+                                                            <Moon size={11} /> 晚
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* 時段格子 */}
+                                <div className="space-y-1">
+                                    {timeSlots.map((time) => {
+                                        const isFirstMorning   = time === timeSlotGroups.morning[0];
+                                        const isFirstAfternoon = time === timeSlotGroups.afternoon[0];
+                                        const isFirstEvening   = time === timeSlotGroups.evening[0];
+                                        return (
+                                            <div key={time}>
+                                                {isFirstMorning && (
+                                                    <div className="flex items-center gap-2 border-t-2 border-amber-200 pt-1 pb-0.5 mb-0.5">
+                                                        <Sunrise size={13} className="text-amber-500" />
+                                                        <span className="text-xs sm:text-sm font-medium text-amber-500">早上診</span>
+                                                    </div>
+                                                )}
+                                                {isFirstAfternoon && (
+                                                    <div className="flex items-center gap-2 border-t-2 border-orange-200 pt-1 pb-0.5 mb-0.5">
+                                                        <Sun size={13} className="text-orange-500" />
+                                                        <span className="text-xs sm:text-sm font-medium text-orange-500">下午診</span>
+                                                    </div>
+                                                )}
+                                                {isFirstEvening && (
+                                                    <div className="flex items-center gap-2 border-t-2 border-indigo-200 pt-1 pb-0.5 mb-0.5">
+                                                        <Moon size={13} className="text-indigo-500" />
+                                                        <span className="text-xs sm:text-sm font-medium text-indigo-500">晚間診</span>
+                                                    </div>
+                                                )}
+
+                                                <div className="grid gap-1.5 items-center" style={{ gridTemplateColumns: "64px repeat(7, 1fr)" }}>
+                                                    <div className="font-medium text-gray-500 text-xs sm:text-sm">{time}</div>
+                                                    {weekDates.map(item => {
+                                                        const isBooked = isSlotBooked(item.fullDate, time);
+                                                        const appointmentInfo = appointments[item.fullDate]?.[time];
+                                                        const slotKey = `${item.fullDate}-${time}`;
+                                                        const isPast = isTimeSlotPast(item.fullDate, time);
+
+                                                        return (
+                                                            <div key={slotKey} className="relative"
+                                                                onMouseEnter={() => isBooked && setHoveredSlot(slotKey)}
+                                                                onMouseLeave={() => setHoveredSlot(null)}>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation();
+                                                                        if (!isPast && !viewOnly) toggleSlot(item.fullDate, time);
+                                                                    }}
+                                                                    disabled={isPast || viewOnly && !isBooked}
+                                                                    className={`w-full py-1.5 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${getSlotStyle(item.fullDate, time)}`}>
+                                                                    {getSlotText(item.fullDate, time)}
+                                                                </button>
+
+                                                                {/* Hover tooltip */}
+                                                                {isBooked && hoveredSlot === slotKey && appointmentInfo && (
+                                                                    <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-xl pointer-events-none">
+                                                                        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full">
+                                                                            <div className="border-8 border-transparent border-t-gray-900"></div>
+                                                                        </div>
+                                                                        <div className="font-semibold mb-1.5 text-sm">預約資訊</div>
+                                                                        <div className="space-y-1">
+                                                                            <div className="flex justify-between gap-2">
+                                                                                <span className="text-gray-400">患者:</span>
+                                                                                <span className="font-medium truncate">{appointmentInfo.patient_name}</span>
+                                                                            </div>
+                                                                            <div className="flex justify-between gap-2">
+                                                                                <span className="text-gray-400">狀態:</span>
+                                                                                <span className={`font-medium ${
+                                                                                    appointmentInfo.status === '已確認' ? 'text-green-400' :
+                                                                                    appointmentInfo.status === '已完成' ? 'text-blue-400' :
+                                                                                    appointmentInfo.status === '已取消' ? 'text-red-400' :
+                                                                                    'text-yellow-400'
+                                                                                }`}>{appointmentInfo.status}</span>
+                                                                            </div>
+                                                                            <div className="border-t border-gray-700 pt-1">
+                                                                                <span className="text-gray-400">症狀:</span>
+                                                                                <div className="mt-0.5 text-gray-300 break-words">{appointmentInfo.symptoms}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div className="bg-gray-800 text-white py-8">
-                <div className="max-w-7xl mx-auto px-4 text-center">
-                    <p className="text-gray-400">
-                        © 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。
-                    </p>
-                </div>
+                
             </div>
+            {/* Footer */}
+                <div className="bg-gray-800 text-white py-6 sm:py-8">
+                    <div className="max-w-7xl mx-auto px-4 text-center">
+                        <p className="text-gray-400 text-xs sm:text-sm">
+                            © 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。
+                        </p>
+                    </div>
+                </div>
         </div>
     );
 }

@@ -155,7 +155,7 @@ const TelemedicineDashboard = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition shadow-sm"
+          className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition "
           aria-label="開啟選單"
         >
           <Menu size={24} />
