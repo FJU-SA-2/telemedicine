@@ -9,13 +9,10 @@ export default function Navbar({ sidebarOpen = false }) {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [showOnlyIcon, setShowOnlyIcon] = useState(false);
-  const navbarRef = useRef(null);
   const dropdownRef = useRef(null);
 
   const displayName = user ? `${user.first_name}${user.last_name}` : "訪客";
 
-  // 取得登入用戶
   useEffect(() => {
     (async () => {
       try {
@@ -27,7 +24,6 @@ export default function Navbar({ sidebarOpen = false }) {
     })();
   }, []);
 
-  // 點擊外部關閉下拉
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -37,30 +33,6 @@ export default function Navbar({ sidebarOpen = false }) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  // 監控 Navbar 可用寬度，根據 sidebar 狀態和視窗寬度調整
-  useEffect(() => {
-    const checkWidth = () => {
-      if (navbarRef.current) {
-        const rightAreaWidth = navbarRef.current.offsetWidth;
-        // 當 sidebar 打開時，提早切換到只顯示圖示模式
-        const threshold = sidebarOpen ? 350 : 450;
-        setShowOnlyIcon(rightAreaWidth < threshold);
-      }
-    };
-    checkWidth();
-    window.addEventListener("resize", checkWidth);
-    return () => window.removeEventListener("resize", checkWidth);
-  });
-
-  // 當 sidebar 狀態改變時重新檢查寬度
-  useEffect(() => {
-    if (navbarRef.current) {
-      const rightAreaWidth = navbarRef.current.offsetWidth;
-      const threshold = sidebarOpen ? 350 : 450;
-      setShowOnlyIcon(rightAreaWidth < threshold);
-    }
-  }, [sidebarOpen]);
 
   const handleLogout = async () => {
     try {
@@ -86,17 +58,18 @@ export default function Navbar({ sidebarOpen = false }) {
       <header className="sticky top-0 z-10 bg-[var(--background)]/50 backdrop-blur-sm border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-1">
-              <img src="/images/logo.png" alt="MedonGO Logo" className="h-12" />
-              <img src="/images/logo3.png" alt="MedonGO Logo" className="h-16 w-auto" />
+            <div className="flex items-center gap-1 pl-10 sm:pl-0">
+              <img src="/images/logo.png" alt="MedonGO Logo" className="h-9 sm:h-12 flex-shrink-0" />
+              {/* 文字 logo：手機隱藏，sm 以上顯示 */}
+              <img src="/images/logo3.png" alt="MedonGO" className="hidden sm:block h-16 w-auto flex-shrink-0" />
             </div>
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-[var(--color-periwinkle)] transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--color-periwinkle)] transition-colors"
               >
                 <UserIcon size={20} className="text-gray-500" />
-                <span className="font-medium text-gray-800">訪客</span>
+                <span className="font-medium text-gray-800 hidden sm:inline">訪客</span>
               </Link>
             </div>
           </div>
@@ -108,40 +81,43 @@ export default function Navbar({ sidebarOpen = false }) {
   // 已登入
   return (
     <header className="sticky top-0 z-10 bg-[var(--background)]/50 backdrop-blur-sm border-b border-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" ref={navbarRef}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
 
           {/* 左側 Logo */}
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <img src="/images/logo.png" alt="MedonGO Logo" className="h-12" />
-            <img src="/images/logo3.png" alt="MedonGO Logo" className="h-16 w-auto" />
+          <div className="flex items-center gap-1 flex-shrink-0 pl-10 sm:pl-0">
+            <img src="/images/logo.png" alt="MedonGO Logo" className="h-9 sm:h-12 flex-shrink-0" />
+            {/* 文字 logo：手機隱藏，sm 以上顯示 */}
+            <img src="/images/logo3.png" alt="MedonGO" className="hidden sm:block h-16 w-auto flex-shrink-0" />
           </div>
 
           {/* 右側按鈕區 */}
-          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-            {/* 查看方案按鈕 */}
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+
+            {/* 查看方案 */}
             <Link
               href={user?.role === "doctor" ? "/docplan" : "/plan"}
-              className="group inline-flex items-center gap-2 px-3 py-2
+              className="inline-flex items-center gap-2 px-2 sm:px-3 py-2
                          text-[var(--color-azure)] bg-[var(--color-periwinkle)]
-                         rounded-full hover:bg-[var(--color-azure)]/30 transition-all shadow-md hover:shadow-lg
-                         whitespace-nowrap"
+                         rounded-full hover:bg-[var(--color-azure)]/30 transition-all shadow-md hover:shadow-lg"
               title="查看方案"
             >
               <Gift size={18} className="flex-shrink-0" />
-              {!showOnlyIcon && <span className="hidden sm:inline">查看方案</span>}
+              <span className="hidden sm:inline text-sm whitespace-nowrap">查看方案</span>
             </Link>
 
-            {/* 通知 + 使用者下拉 */}
+            {/* 通知鈴鐺 */}
             <NotificationBell className="hover:bg-[var(--color-periwinkle)]" user={user} />
 
+            {/* 使用者下拉 */}
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg hover:bg-[var(--color-periwinkle)] transition-colors"
+                className="inline-flex items-center gap-1 px-2 sm:px-3 py-2 rounded-lg hover:bg-[var(--color-periwinkle)] transition-colors"
+                aria-label="使用者選單"
               >
                 <UserIcon size={20} className="text-gray-500 flex-shrink-0" />
-                <span className="font-medium text-gray-800 hidden md:inline whitespace-nowrap">
+                <span className="font-medium text-gray-800 whitespace-nowrap">
                   {displayName}
                 </span>
                 <ChevronDown
@@ -163,7 +139,7 @@ export default function Navbar({ sidebarOpen = false }) {
                     <span className="font-medium">個人檔案</span>
                   </Link>
 
-                  <div className="border-t border-gray-100 my-1"></div>
+                  <div className="border-t border-gray-100 my-1" />
 
                   <button
                     onClick={() => {

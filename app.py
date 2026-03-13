@@ -27,14 +27,15 @@ from linebot.models import (
     TemplateSendMessage, ButtonsTemplate, URIAction,
     FlexSendMessage
 )
+from line_notifier import generate_bind_code, verify_and_bind, start_scheduler
 from dotenv import load_dotenv
 load_dotenv()
 
 LINE_CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET')
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
 
-# line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
-# handler = WebhookHandler(LINE_CHANNEL_SECRET)
+line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
+handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 app = Flask(__name__)
 app.secret_key = "your-very-secret-key-change-this"  # ⚠️ 改成更安全的密鑰
@@ -4426,33 +4427,54 @@ def require_mechanism(f):
         return f(*args, **kwargs)
     return decorated
 
-# @app.route("/webhook", methods=['POST'])
-# def webhook():
-#     signature = request.headers.get('X-Line-Signature', '')
-#     body = request.get_data(as_text=True)
-#     try:
-#         handler.handle(body, signature)
-#     except InvalidSignatureError:
-#         return jsonify({'error': 'Invalid signature'}), 400
-#     return 'OK', 200
+@app.route("/webhook", methods=['POST'])
+def webhook():
+    signature = request.headers.get('X-Line-Signature', '')
+    body = request.get_data(as_text=True)
+    try:
+        handler.handle(body, signature)
+    except InvalidSignatureError:
+        return jsonify({'error': 'Invalid signature'}), 400
+    return 'OK', 200
 
-# @handler.add(MessageEvent, message=TextMessage)
-# def handle_message(event):
-#     user_message = event.message.text.strip()
-    
-#     if '預約' in user_message:
-#         reply = '📅 請點選連結進行線上預約：\nhttps://your-medonco-url.com/booking'
-#     elif '視訊' in user_message or '看診' in user_message:
-#         reply = '🎥 請登入平台開始視訊看診：\nhttps://your-medonco-url.com/video'
-#     elif '紀錄' in user_message or '記錄' in user_message:
-#         reply = '📋 請登入查看您的就診紀錄：\nhttps://your-medonco-url.com/records'
-#     else:
-#         reply = '您好！我是醫隨行小幫手 👋\n請問有什麼可以協助您？\n\n📅 預約\n🎥 視訊看診\n📋 就診紀錄'
+@handler.add(MessageEvent, message=TextMessage)
+def handle_message(event):
+    line_user_id = event.source.user_id
+    user_message = event.message.text.strip()
 
-#     line_bot_api.reply_message(
-#         event.reply_token,
-#         TextSendMessage(text=reply)
-#     )
+    # ── 綁定碼判斷 ──────────────────────────
+    if user_message.isdigit() and len(user_message) == 6:
+        success = verify_and_bind(line_user_id, user_message)
+        if success:
+            reply = '✅ 綁定成功！\n\n之後看診前 5 分鐘，\n我會自動在這裡提醒您 🎉'
+        else:
+            reply = '❌ 綁定碼無效或已過期\n\n請至系統個人設定頁面重新產生綁定碼'
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
+        return
+    # ────────────────────────────────────────
+
+    if '預約' in user_message:
+        reply = '📅 請點選下方選單中的「立即預約」\n進行線上預約'
+    elif '視訊' in user_message or '看診' in user_message:
+        reply = '🎥 請點選下方選單中的「視訊看診」\n開始進行視訊看診'
+    elif '紀錄' in user_message or '記錄' in user_message:
+        reply = '📋 請點選下方選單中的「就診紀錄」\n查看您的就診紀錄'
+    else:
+        reply = '您好！我是醫隨行小幫手 👋\n請問有什麼可以協助您？\n\n📅 預約\n🎥 視訊看診\n📋 就診紀錄'
+
+    line_bot_api.reply_message(
+        event.reply_token,
+        TextSendMessage(text=reply)
+    )
+
+@app.route("/api/generate-bind-code", methods=["POST"])
+def api_generate_bind_code():
+    data = request.get_json()
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "缺少 user_id"}), 400
+    code = generate_bind_code(user_id)
+    return jsonify({"code": code, "expires_in": "10 分鐘內有效"})
 
 
 # ── 統計 ─────────────────────────────────────────────────────────────
@@ -4870,4 +4892,5 @@ def doctor_has_mechanism():
 
 if __name__ == "__main__":
     start_background_tasks()
+    start_scheduler()
     app.run(debug=True)

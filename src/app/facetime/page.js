@@ -21,6 +21,8 @@ export default function DoctorVideoConsultation() {
   const [isOpen, setIsOpen] = useState(false);
   const [approvalStatus, setApprovalStatus] = useState(null);
   const [doctorInfo, setDoctorInfo] = useState(null);
+  // 診間內側邊資訊面板（手機用）
+  const [showPatientPanel, setShowPatientPanel] = useState(false);
 
   const jitsiContainerRef = useRef(null);
   const jitsiApiRef = useRef(null);
@@ -30,58 +32,32 @@ export default function DoctorVideoConsultation() {
   const recordingStartTimeRef = useRef(null);
 
   useEffect(() => {
-        async function fetchApprovalStatus() {
-            try {
-                const res = await fetch("/api/me", {
-                    credentials: 'include'
-                });
-                const data = await res.json();
-                
-                console.log("📡 API 回應:", data);
-                console.log("📡 approval_status:", data.user?.approval_status);
-                
-                if (data.authenticated && data.user && data.user.role === 'doctor') {
-                    const status = data.user.approval_status;
-                    setApprovalStatus(status);
-                    setDoctorInfo(data.user);
-                    console.log("✅ 已設定 approvalStatus 為:", status);
-                    console.log("✅ 已設定 doctorInfo:", data.user);
-                }
-            } catch (error) {
-                console.error("❌ Failed to fetch approval status:", error);
-            }
+    async function fetchApprovalStatus() {
+      try {
+        const res = await fetch("/api/me", { credentials: 'include' });
+        const data = await res.json();
+        if (data.authenticated && data.user && data.user.role === 'doctor') {
+          setApprovalStatus(data.user.approval_status);
+          setDoctorInfo(data.user);
         }
-        fetchApprovalStatus();
-    }, []);
+      } catch (error) {
+        console.error("Failed to fetch approval status:", error);
+      }
+    }
+    fetchApprovalStatus();
+  }, []);
 
-    
   // 載入 Jitsi API
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
-    if (window.JitsiMeetExternalAPI) {
-      setJitsiLoaded(true);
-      return;
-    }
-
+    if (window.JitsiMeetExternalAPI) { setJitsiLoaded(true); return; }
     const script = document.createElement('script');
     script.src = 'https://meet.jit.si/external_api.js';
     script.async = true;
-    script.onload = () => {
-      console.log('✅ Jitsi API 載入完成');
-      setJitsiLoaded(true);
-    };
-    script.onerror = () => {
-      console.error('❌ Jitsi API 載入失敗');
-      setError('無法載入視訊服務,請重新整理頁面');
-    };
+    script.onload = () => setJitsiLoaded(true);
+    script.onerror = () => setError('無法載入視訊服務,請重新整理頁面');
     document.body.appendChild(script);
-
-    return () => {
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-    };
+    return () => { if (script.parentNode) script.parentNode.removeChild(script); };
   }, []);
 
   useEffect(() => {
@@ -92,9 +68,7 @@ export default function DoctorVideoConsultation() {
 
   useEffect(() => {
     return () => {
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
-      }
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.stop();
       }
@@ -103,10 +77,7 @@ export default function DoctorVideoConsultation() {
 
   const fetchUpcomingAppointments = async () => {
     try {
-      const response = await fetch('/api/appointments/upcoming', {
-        credentials: 'include'
-      });
-
+      const response = await fetch('/api/appointments/upcoming', { credentials: 'include' });
       if (response.ok) {
         const data = await response.json();
         setAppointments(data);
@@ -114,7 +85,6 @@ export default function DoctorVideoConsultation() {
         setError('無法獲取預約資訊');
       }
     } catch (err) {
-      console.error('獲取預約失敗:', err);
       setError('網路連接失敗');
     } finally {
       setIsLoading(false);
@@ -127,9 +97,7 @@ export default function DoctorVideoConsultation() {
     const birthDate = new Date(dob);
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age--;
     return `${age}歲`;
   };
 
@@ -138,30 +106,21 @@ export default function DoctorVideoConsultation() {
       setError('視訊服務尚未準備好,請稍後再試');
       return;
     }
-
     try {
       setIsLoading(true);
       setSelectedPatient(appointment);
-
-      const response = await fetch('http://localhost:5000/api/meeting/create', {
+      const response = await fetch('/api/meeting/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ appointment_id: appointment.appointment_id })
       });
-
       if (!response.ok) throw new Error('無法創建會議室');
-
       const data = await response.json();
       setCurrentMeeting({ ...appointment, meeting_room_id: data.meeting_room_id });
       setIsMeetingActive(true);
-
-      setTimeout(() => {
-        initJitsi(data.meeting_room_id, appointment);
-      }, 100);
-
+      setTimeout(() => { initJitsi(data.meeting_room_id, appointment); }, 100);
     } catch (err) {
-      console.error('開始會議失敗:', err);
       setError('無法開始會議,請稍後再試');
       setIsMeetingActive(false);
     } finally {
@@ -171,17 +130,11 @@ export default function DoctorVideoConsultation() {
 
   const initJitsi = (roomId, appointment) => {
     if (!jitsiContainerRef.current || typeof window === 'undefined' || !window.JitsiMeetExternalAPI) {
-      console.error('Jitsi 初始化條件不滿足');
       setError('視訊服務初始化失敗');
       return;
     }
-
     try {
-      if (jitsiApiRef.current) {
-        jitsiApiRef.current.dispose();
-        jitsiApiRef.current = null;
-      }
-
+      if (jitsiApiRef.current) { jitsiApiRef.current.dispose(); jitsiApiRef.current = null; }
       const domain = 'meet.jit.si';
       const options = {
         roomName: `MedOnGo_${roomId}`,
@@ -198,67 +151,26 @@ export default function DoctorVideoConsultation() {
           enableNoAudioDetection: true,
           enableNoisyMicDetection: true,
           resolution: 720,
-          constraints: {
-            video: {
-              height: { ideal: 720, max: 1080, min: 360 }
-            }
-          }
+          constraints: { video: { height: { ideal: 720, max: 1080, min: 360 } } }
         },
         interfaceConfigOverwrite: {
-          TOOLBAR_BUTTONS: [
-            'microphone', 'camera', 'desktop', 'chat',
-            'raisehand', 'settings', 'hangup'
-          ],
+          TOOLBAR_BUTTONS: ['microphone', 'camera', 'desktop', 'chat', 'raisehand', 'settings', 'hangup'],
           SHOW_JITSI_WATERMARK: false,
           SHOW_WATERMARK_FOR_GUESTS: false,
           DEFAULT_BACKGROUND: '#0f172a',
           DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
           MOBILE_APP_PROMO: false
         },
-        userInfo: {
-          displayName: doctorInfo 
-            ? `${doctorInfo.first_name} ${doctorInfo.last_name}`
-            : '醫師'
-        }
+        userInfo: { displayName: doctorInfo ? `${doctorInfo.first_name} ${doctorInfo.last_name}` : '醫師' }
       };
-
-      console.log('🎬 初始化 Jitsi 會議室:', roomId);
       const api = new window.JitsiMeetExternalAPI(domain, options);
       jitsiApiRef.current = api;
-
-      api.addEventListener('videoConferenceJoined', () => {
-        console.log('✅ 已加入會議');
-        console.log('🎬 2秒後自動啟動錄影...');
-        setTimeout(() => {
-          console.log('🎬 執行 startRecording()');
-          startRecording();
-        }, 2000);
-      });
-
-      api.addEventListener('participantJoined', (participant) => {
-        console.log('👤 參與者加入:', participant.displayName);
-      });
-
-      api.addEventListener('audioMuteStatusChanged', ({ muted }) => {
-        setIsMuted(muted);
-      });
-
-      api.addEventListener('videoMuteStatusChanged', ({ muted }) => {
-        setIsVideoOff(muted);
-      });
-
-      api.addEventListener('videoConferenceLeft', () => {
-        console.log('👋 已離開會議');
-        handleMeetingEnd();
-      });
-
-      api.addEventListener('readyToClose', () => {
-        console.log('📚 會議準備關閉');
-        handleMeetingEnd();
-      });
-
+      api.addEventListener('videoConferenceJoined', () => { setTimeout(() => startRecording(), 2000); });
+      api.addEventListener('audioMuteStatusChanged', ({ muted }) => setIsMuted(muted));
+      api.addEventListener('videoMuteStatusChanged', ({ muted }) => setIsVideoOff(muted));
+      api.addEventListener('videoConferenceLeft', () => handleMeetingEnd());
+      api.addEventListener('readyToClose', () => handleMeetingEnd());
     } catch (err) {
-      console.error('❌ Jitsi 初始化失敗:', err);
       setError('視訊初始化失敗,請重新開始');
       setIsMeetingActive(false);
     }
@@ -266,260 +178,80 @@ export default function DoctorVideoConsultation() {
 
   const startRecording = async () => {
     try {
-      console.log('🎥 準備開始錄影...');
-
       const userStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 }
-        },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 48000
-        }
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000 }
       });
-
-      const mimeTypes = [
-        'video/webm;codecs=vp9,opus',
-        'video/webm;codecs=vp8,opus',
-        'video/webm;codecs=h264,opus',
-        'video/webm'
-      ];
-
+      const mimeTypes = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm;codecs=h264,opus','video/webm'];
       let selectedMimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
-
-      if (!selectedMimeType) {
-        throw new Error('瀏覽器不支援錄影功能');
-      }
-
-      console.log('✅ 使用 MIME 類型:', selectedMimeType);
-
-      const mediaRecorder = new MediaRecorder(userStream, {
-        mimeType: selectedMimeType,
-        videoBitsPerSecond: 2500000,
-        audioBitsPerSecond: 128000
-      });
-
+      if (!selectedMimeType) throw new Error('瀏覽器不支援錄影功能');
+      const mediaRecorder = new MediaRecorder(userStream, { mimeType: selectedMimeType, videoBitsPerSecond: 2500000, audioBitsPerSecond: 128000 });
       mediaRecorderRef.current = mediaRecorder;
       recordedChunksRef.current = [];
       recordingStartTimeRef.current = Date.now();
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-          recordedChunksRef.current.push(event.data);
-          const sizeMB = (event.data.size / 1024 / 1024).toFixed(2);
-          console.log(`📦 收集數據塊 #${recordedChunksRef.current.length}: ${sizeMB} MB`);
-        } else {
-          console.warn('⚠️ 收到空數據塊');
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        console.log('⏹️ 錄影已停止');
-        const totalSize = recordedChunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0);
-        const totalSizeMB = (totalSize / 1024 / 1024).toFixed(2);
-        console.log(`📊 總數據量: ${totalSizeMB} MB`);
-        console.log(`📊 總數據塊: ${recordedChunksRef.current.length} 個`);
-        
-        if (recordedChunksRef.current.length > 0) {
-          console.log('💾 開始保存錄影...');
-          await saveRecording();
-        } else {
-          console.error('❌ 沒有錄影數據可保存');
-          setError('錄影數據為空,請重新嘗試');
-        }
-      };
-
-      mediaRecorder.onerror = (event) => {
-        console.error('❌ MediaRecorder 錯誤:', event.error);
-        setError('錄影過程發生錯誤: ' + event.error?.message);
-      };
-
+      mediaRecorder.ondataavailable = (event) => { if (event.data && event.data.size > 0) recordedChunksRef.current.push(event.data); };
+      mediaRecorder.onstop = async () => { if (recordedChunksRef.current.length > 0) await saveRecording(); else setError('錄影數據為空,請重新嘗試'); };
+      mediaRecorder.onerror = (event) => setError('錄影過程發生錯誤: ' + event.error?.message);
       mediaRecorder.start(1000);
       setIsRecording(true);
-
       setRecordingDuration(0);
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingDuration(prev => prev + 1);
-      }, 1000);
-
-      console.log('✅ 錄影已開始 (狀態:', mediaRecorder.state, ')');
-
-      userStream.getTracks().forEach(track => {
-        track.onended = () => {
-          console.log(`⚠️ 軌道 ${track.kind} 已結束`);
-        };
-      });
-
+      recordingTimerRef.current = setInterval(() => setRecordingDuration(prev => prev + 1), 1000);
+      userStream.getTracks().forEach(track => { track.onended = () => {}; });
     } catch (err) {
-      console.error('❌ 錄影啟動失敗:', err);
-      if (err.name === 'NotAllowedError') {
-        setError('請授予攝像頭和麥克風權限');
-      } else if (err.name === 'NotFoundError') {
-        setError('找不到攝像頭或麥克風');
-      } else {
-        setError('無法啟動錄影功能: ' + err.message);
-      }
+      if (err.name === 'NotAllowedError') setError('請授予攝像頭和麥克風權限');
+      else if (err.name === 'NotFoundError') setError('找不到攝像頭或麥克風');
+      else setError('無法啟動錄影功能: ' + err.message);
     }
   };
 
   const saveRecording = async () => {
-    console.log('💾 saveRecording 被調用');
-    console.log('📦 recordedChunks 數量:', recordedChunksRef.current.length);
-    
-    if (recordedChunksRef.current.length === 0) {
-      console.warn('⚠️ 沒有錄影數據');
-      setError('沒有錄影數據可保存');
-      return;
-    }
-
+    if (recordedChunksRef.current.length === 0) { setError('沒有錄影數據可保存'); return; }
     try {
-      console.log('💾 開始處理錄影文件...');
-
       const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-      const blobSize = blob.size / 1024 / 1024;
-
-      console.log(`📦 Blob 大小: ${blobSize.toFixed(2)} MB`);
-
-      if (blob.size === 0) {
-        console.error('❌ 錄影文件大小為 0');
-        setError('錄影文件無效');
-        return;
-      }
-
+      if (blob.size === 0) { setError('錄影文件無效'); return; }
       const formData = new FormData();
       const filename = `consultation_${currentMeeting.appointment_id}_${Date.now()}.webm`;
       formData.append('video', blob, filename);
       formData.append('appointment_id', currentMeeting.appointment_id);
       formData.append('duration', recordingDuration);
-
-      console.log('📤 開始上傳錄影...');
-      console.log('📋 FormData 內容:');
-      console.log('  - video:', filename, `(${blobSize.toFixed(2)} MB)`);
-      console.log('  - appointment_id:', currentMeeting.appointment_id);
-      console.log('  - duration:', recordingDuration);
-
-      const response = await fetch('http://localhost:5000/api/meeting/upload-recording', {
-        method: 'POST',
-        credentials: 'include',
-        body: formData
-      });
-
-      console.log('📡 伺服器回應狀態:', response.status);
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ 錄影上傳成功:', result);
-        setError(null);
-      } else {
-        const error = await response.json();
-        console.error('❌ 錄影上傳失敗:', error);
-        setError('錄影上傳失敗: ' + (error.message || '未知錯誤'));
-      }
+      const response = await fetch('/api/meeting/upload-recording', { method: 'POST', credentials: 'include', body: formData });
+      if (!response.ok) { const error = await response.json(); setError('錄影上傳失敗: ' + (error.message || '未知錯誤')); }
     } catch (err) {
-      console.error('❌ 錄影保存錯誤:', err);
       setError('錄影保存失敗: ' + err.message);
     }
   };
 
   const stopRecording = () => {
-    console.log('⏹️ stopRecording 被調用');
-    
-    if (mediaRecorderRef.current) {
-      console.log('📊 MediaRecorder 狀態:', mediaRecorderRef.current.state);
-      
-      if (mediaRecorderRef.current.state === 'recording') {
-        console.log('⏹️ 正在停止錄影...');
-        
-        if (recordingTimerRef.current) {
-          clearInterval(recordingTimerRef.current);
-          recordingTimerRef.current = null;
-        }
-        
-        mediaRecorderRef.current.stop();
-        
-        mediaRecorderRef.current.stream.getTracks().forEach(track => {
-          track.stop();
-          console.log(`🛑 停止軌道: ${track.kind}`);
-        });
-        
-        setIsRecording(false);
-        console.log('✅ 錄影已停止,等待保存...');
-        
-      } else {
-        console.log(`⚠️ MediaRecorder 狀態不是 recording: ${mediaRecorderRef.current.state}`);
-      }
-    } else {
-      console.log('⚠️ mediaRecorderRef.current 不存在');
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      if (recordingTimerRef.current) { clearInterval(recordingTimerRef.current); recordingTimerRef.current = null; }
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      setIsRecording(false);
     }
   };
 
   const handleMeetingEnd = async () => {
     if (!currentMeeting) return;
-
-    console.log('📚 處理會議結束...');
-    console.log('📊 當前 isRecording 狀態:', isRecording);
-    console.log('📦 recordedChunks 數量:', recordedChunksRef.current?.length || 0);
-
-    if (isRecording) {
-      console.log('⏹️ 停止錄影中...');
-      stopRecording();
-      
-      console.log('⏳ 等待錄影保存完成 (5秒)...');
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    } else {
-      console.log('ℹ️ 沒有進行中的錄影');
-    }
-
+    if (isRecording) { stopRecording(); await new Promise(resolve => setTimeout(resolve, 5000)); }
     try {
-      console.log('📤 發送會議結束請求...');
-      const response = await fetch('http://localhost:5000/api/meeting/end', {
+      await fetch('/api/meeting/end', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          appointment_id: currentMeeting.appointment_id,
-          consultation_notes: consultationNotes,
-          recording_duration: recordingDuration
-        })
+        body: JSON.stringify({ appointment_id: currentMeeting.appointment_id, consultation_notes: consultationNotes, recording_duration: recordingDuration })
       });
-
-      if (response.ok) {
-        console.log('✅ 會議記錄已儲存');
-      } else {
-        const error = await response.json();
-        console.error('❌ 會議記錄儲存失敗:', error);
-      }
-    } catch (err) {
-      console.error('❌ 儲存會議記錄失敗:', err);
-    }
-
-    if (jitsiApiRef.current) {
-      try {
-        jitsiApiRef.current.dispose();
-        jitsiApiRef.current = null;
-      } catch (err) {
-        console.error('清理 Jitsi 實例失敗:', err);
-      }
-    }
-
+    } catch (err) { console.error('儲存會議記錄失敗:', err); }
+    if (jitsiApiRef.current) { try { jitsiApiRef.current.dispose(); jitsiApiRef.current = null; } catch (err) {} }
     setIsMeetingActive(false);
     setCurrentMeeting(null);
     setSelectedPatient(null);
     setConsultationNotes('');
     setRecordingDuration(0);
-
-    console.log('✅ 會議已完全結束');
     fetchUpcomingAppointments();
   };
 
   const endMeeting = () => {
-    if (jitsiApiRef.current) {
-      jitsiApiRef.current.executeCommand('hangup');
-    }
+    if (jitsiApiRef.current) jitsiApiRef.current.executeCommand('hangup');
     handleMeetingEnd();
   };
 
@@ -530,6 +262,7 @@ export default function DoctorVideoConsultation() {
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // 載入中畫面
   if (isLoading && appointments.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center">
@@ -541,67 +274,93 @@ export default function DoctorVideoConsultation() {
     );
   }
 
+  // ── 診間畫面 ──────────────────────────────────────────────
   if (isMeetingActive && currentMeeting) {
     return (
-      <div className="h-screen bg-gray-900 flex flex-col">
-        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-6 py-4 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center space-x-4">
-            <Stethoscope className="w-6 h-6" />
-            <div>
-              <h2 className="font-semibold text-lg">視訊看診進行中</h2>
-              <p className="text-sm text-emerald-100">
-                患者: {currentMeeting.patient_first_name} {currentMeeting.patient_last_name}
-                <span className="mx-2">•</span>
-                {calculateAge(currentMeeting.patient_dob)}
-                <span className="mx-2">•</span>
-                {currentMeeting.patient_gender === 'male' ? '男' : '女'}
+      <div className="h-screen bg-gray-900 flex flex-col overflow-hidden">
+
+        {/* 頂部工具列 */}
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-3 sm:px-6 py-3 flex items-center justify-between flex-shrink-0 gap-2">
+          {/* 左：患者資訊 */}
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <Stethoscope className="w-5 h-5 flex-shrink-0" />
+            <div className="min-w-0">
+              <h2 className="font-semibold text-sm sm:text-lg leading-tight">視訊看診進行中</h2>
+              <p className="text-xs text-emerald-100 truncate">
+                {currentMeeting.patient_first_name} {currentMeeting.patient_last_name}
+                <span className="mx-1">·</span>{calculateAge(currentMeeting.patient_dob)}
+                <span className="mx-1">·</span>{currentMeeting.patient_gender === 'male' ? '男' : '女'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          {/* 右：操作按鈕 */}
+          <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
+            {/* 錄影狀態（手機上縮小） */}
             {isRecording && (
-              <div className="flex items-center space-x-2 bg-red-500/20 px-4 py-2 rounded-lg animate-pulse">
-                <Circle className="w-3 h-3 text-red-400 fill-current" />
-                <span className="font-mono text-sm font-semibold">{formatDuration(recordingDuration)}</span>
-                <span className="text-xs">錄影中</span>
+              <div className="flex items-center gap-1 bg-red-500/20 px-2 sm:px-4 py-1.5 rounded-lg animate-pulse">
+                <Circle className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-red-400 fill-current" />
+                <span className="font-mono text-xs font-semibold hidden sm:inline">{formatDuration(recordingDuration)}</span>
+                <span className="text-xs hidden sm:inline">錄影中</span>
               </div>
             )}
 
+            {/* 錄影按鈕 */}
             {!isRecording ? (
-              <button
-                onClick={startRecording}
-                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-all shadow-lg"
-              >
-                <Circle className="w-4 h-4 fill-current" />
-                <span className="text-sm font-semibold">開始錄影</span>
+              <button onClick={startRecording} className="bg-red-500 hover:bg-red-600 text-white px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1 transition-all shadow-lg text-xs sm:text-sm">
+                <Circle className="w-3.5 h-3.5 fill-current" />
+                <span className="hidden sm:inline font-semibold">開始錄影</span>
               </button>
             ) : (
-              <button
-                onClick={stopRecording}
-                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-all shadow-lg"
-              >
-                <Circle className="w-4 h-4" />
-                <span className="text-sm font-semibold">停止錄影</span>
+              <button onClick={stopRecording} className="bg-gray-500 hover:bg-gray-600 text-white px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1 transition-all shadow-lg text-xs sm:text-sm">
+                <Circle className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline font-semibold">停止錄影</span>
               </button>
             )}
 
+            {/* 手機：顯示/隱藏患者資訊面板 */}
             <button
-              onClick={endMeeting}
-              className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg flex items-center space-x-2 transition-all transform hover:scale-105 shadow-lg"
+              onClick={() => setShowPatientPanel(!showPatientPanel)}
+              className="lg:hidden bg-white/20 hover:bg-white/30 text-white px-2 py-1.5 rounded-lg flex items-center gap-1 text-xs transition-all"
             >
-              <PhoneOff className="w-5 h-5" />
-              <span className="font-semibold">結束看診</span>
+              <User className="w-3.5 h-3.5" />
+              <span>資訊</span>
+            </button>
+
+            {/* 結束看診 */}
+            <button onClick={endMeeting} className="bg-red-500 hover:bg-red-600 text-white px-3 sm:px-6 py-1.5 sm:py-2 rounded-lg flex items-center gap-1 sm:gap-2 transition-all shadow-lg text-xs sm:text-sm">
+              <PhoneOff className="w-4 h-4" />
+              <span className="font-semibold hidden sm:inline">結束看診</span>
+              <span className="font-semibold sm:hidden">結束</span>
             </button>
           </div>
         </div>
 
-        <div className="flex-1 flex overflow-hidden">
-          <div ref={jitsiContainerRef} className="flex-1 bg-gray-900" />
+        {/* 主體：視訊 + 側邊資訊 */}
+        <div className="flex-1 flex overflow-hidden relative">
+          {/* Jitsi 視訊區 */}
+          <div ref={jitsiContainerRef} className="flex-1 bg-gray-900 min-w-0" />
 
-          <div className="w-96 bg-white border-l border-gray-200 overflow-y-auto">
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+          {/* 患者資訊側邊欄：桌機固定顯示，手機用遮罩 */}
+          {/* 手機遮罩背景 */}
+          {showPatientPanel && (
+            <div className="fixed inset-0 bg-black/50 z-20 lg:hidden" onClick={() => setShowPatientPanel(false)} />
+          )}
+
+          <div className={`
+            bg-white border-l border-gray-200 overflow-y-auto flex-shrink-0
+            lg:relative lg:w-96 lg:block
+            fixed right-0 top-0 h-full w-80 z-30 transition-transform duration-300
+            ${showPatientPanel ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
+          `}>
+            <div className="p-4 sm:p-6">
+              {/* 手機關閉按鈕 */}
+              <div className="flex items-center justify-between mb-4 lg:hidden">
+                <h3 className="text-lg font-bold text-gray-900">患者資訊</h3>
+                <button onClick={() => setShowPatientPanel(false)} className="text-gray-500 hover:text-gray-700 p-1">✕</button>
+              </div>
+
+              <h3 className="text-xl font-bold text-gray-900 mb-6 hidden lg:flex items-center">
                 <User className="w-5 h-5 mr-2 text-emerald-600" />
                 患者資訊
               </h3>
@@ -610,15 +369,11 @@ export default function DoctorVideoConsultation() {
                 <div className="space-y-3">
                   <div>
                     <p className="text-sm text-gray-500">姓名</p>
-                    <p className="font-semibold text-gray-900">
-                      {selectedPatient?.patient_first_name} {selectedPatient?.patient_last_name}
-                    </p>
+                    <p className="font-semibold text-gray-900">{selectedPatient?.patient_first_name} {selectedPatient?.patient_last_name}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">年齡 / 性別</p>
-                    <p className="font-semibold text-gray-900">
-                      {calculateAge(selectedPatient?.patient_dob)} / {selectedPatient?.patient_gender === 'male' ? '男性' : '女性'}
-                    </p>
+                    <p className="font-semibold text-gray-900">{calculateAge(selectedPatient?.patient_dob)} / {selectedPatient?.patient_gender === 'male' ? '男性' : '女性'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">出生日期</p>
@@ -630,8 +385,7 @@ export default function DoctorVideoConsultation() {
               {selectedPatient?.symptoms && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                   <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
-                    <FileText className="w-4 h-4 mr-2 text-yellow-600" />
-                    主訴症狀
+                    <FileText className="w-4 h-4 mr-2 text-yellow-600" />主訴症狀
                   </h4>
                   <p className="text-gray-700 text-sm">{selectedPatient.symptoms}</p>
                 </div>
@@ -646,9 +400,7 @@ export default function DoctorVideoConsultation() {
                       <p className="text-xs text-red-600">時長: {formatDuration(recordingDuration)}</p>
                     </div>
                   </div>
-                  <p className="text-xs text-red-600 mt-2">
-                    ⚠️ 錄影進行中,請勿關閉頁面
-                  </p>
+                  <p className="text-xs text-red-600 mt-2">⚠️ 錄影進行中,請勿關閉頁面</p>
                 </div>
               ) : (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
@@ -664,18 +416,15 @@ export default function DoctorVideoConsultation() {
 
               <div className="mb-4">
                 <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
-                  <FileText className="w-4 h-4 mr-2 text-emerald-600" />
-                  看診記錄
+                  <FileText className="w-4 h-4 mr-2 text-emerald-600" />看診記錄
                 </h4>
                 <textarea
                   value={consultationNotes}
                   onChange={(e) => setConsultationNotes(e.target.value)}
-                  placeholder="請輸入診斷、處方建議等資訊...&#10;&#10;例如:&#10;- 診斷:上呼吸道感染&#10;- 處方:止咳糖漿、退燒藥&#10;- 建議:多休息、多喝水"
-                  className="text-gray-700 w-full h-64 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none text-sm"
+                  placeholder="請輸入診斷、處方建議等資訊..."
+                  className="text-gray-700 w-full h-48 sm:h-64 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none text-sm"
                 />
-                <p className="text-xs text-gray-500 mt-2">
-                  💡 結束看診時將自動保存記錄和錄影
-                </p>
+                <p className="text-xs text-gray-500 mt-2">💡 結束看診時將自動保存記錄和錄影</p>
               </div>
             </div>
           </div>
@@ -684,48 +433,52 @@ export default function DoctorVideoConsultation() {
     );
   }
 
+  // ── 候診清單畫面 ──────────────────────────────────────────
   return (
     <div className="relative min-h-screen bg-gray-50">
+      {/* 漢堡選單按鈕 */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
+          className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition"
+          aria-label="開啟選單"
         >
           <Menu size={24} />
         </button>
       )}
 
-        <DoctorSidebar 
-            isOpen={isOpen} 
-            setIsOpen={setIsOpen} 
-            activeTab={activeTab} 
-            setActiveTab={setActiveTab}
-            approvalStatus={approvalStatus}  
-        />
+      <DoctorSidebar
+        isOpen={isOpen}
+        setIsOpen={setIsOpen}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        approvalStatus={approvalStatus}
+      />
 
-      <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+      {/* 主內容：手機 overlay sidebar 不推移，桌機推移 */}
+      <div className={`transition-all duration-300 ${isOpen ? "md:ml-64" : "ml-0"}`}>
         <Navbar setIsSidebarOpen={setIsOpen} />
-        <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        {/* bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 */}
+        <div className="min-h-screen">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+            {/* 錯誤提示 */}
             {error && (
-              <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
+              <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <p className="text-red-800 font-medium">發生錯誤</p>
                   <p className="text-red-600 text-sm mt-1">{error}</p>
                 </div>
-                <button
-                  onClick={() => setError(null)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  ✕
-                </button>
+                <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700 flex-shrink-0">✕</button>
               </div>
             )}
 
+            {/* 視訊服務載入中提示 */}
             {!jitsiLoaded && (
-              <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start space-x-3">
-                <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5" />
+              <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
                   <p className="text-yellow-800 font-medium">視訊服務載入中...</p>
                   <p className="text-yellow-600 text-sm mt-1">請稍候,視訊功能準備中</p>
@@ -733,41 +486,40 @@ export default function DoctorVideoConsultation() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-white rounded-xl shadow-md p-6">
+            {/* 統計卡片：手機 1 欄，sm 以上 2 欄 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+              <div className="bg-white rounded-xl shadow-md p-5 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-gray-500 text-sm">今日看診</p>
                     <p className="text-3xl font-bold text-gray-900 mt-1">{appointments.length}</p>
                   </div>
-                  <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                  <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
                     <Calendar className="w-6 h-6 text-emerald-600" />
                   </div>
                 </div>
               </div>
-
-              <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="bg-white rounded-xl shadow-md p-5 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-gray-500 text-sm">視訊看診</p>
-                    <p className="text-3xl font-bold text-emerald-600 mt-1">
-                      {jitsiLoaded ? '已啟用' : '載入中'}
-                    </p>
+                    <p className="text-3xl font-bold text-emerald-600 mt-1">{jitsiLoaded ? '已啟用' : '載入中'}</p>
                   </div>
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
                     <Video className="w-6 h-6 text-green-600" />
                   </div>
                 </div>
               </div>
             </div>
 
+            {/* 候診清單 */}
             {appointments.length === 0 ? (
-              <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Users className="w-10 h-10 text-gray-400" />
+              <div className="bg-white rounded-2xl shadow-lg p-8 sm:p-12 text-center">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Users className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">目前沒有待看診患者</h2>
-                <p className="text-gray-500 mb-6">當有新預約時,將會顯示在此處</p>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">目前沒有待看診患者</h2>
+                <p className="text-gray-500 mb-6 text-sm sm:text-base">當有新預約時,將會顯示在此處</p>
                 <button
                   onClick={fetchUpcomingAppointments}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg transition-colors"
@@ -777,53 +529,51 @@ export default function DoctorVideoConsultation() {
               </div>
             ) : (
               <div className="space-y-4">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">待看診患者</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">待看診患者</h2>
                 {appointments.map((appointment, index) => (
-                  <div
-                    key={appointment.appointment_id}
-                    className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden"
-                  >
-                    <div className="flex items-center p-6">
-                      <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mr-4">
-                        <span className="text-emerald-600 font-bold text-lg">{index + 1}</span>
-                      </div>
-
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-xl font-bold text-gray-900">
-                            {appointment.patient_first_name} {appointment.patient_last_name}
-                          </h3>
-                          <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">
-                            {appointment.patient_gender === 'male' ? '男' : '女'}
-                          </span>
-                          <span className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
-                            {calculateAge(appointment.patient_dob)}
-                          </span>
+                  <div key={appointment.appointment_id} className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden">
+                    {/* 手機：垂直排列；桌機：水平排列 */}
+                    <div className="p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+                      {/* 序號 + 患者資訊 */}
+                      <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-emerald-600 font-bold">{index + 1}</span>
                         </div>
-
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
-                          <div className="flex items-center space-x-1">
-                            <Clock className="w-4 h-4" />
-                            <span>預約時間: {appointment.appointment_time}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <h3 className="text-base sm:text-xl font-bold text-gray-900">
+                              {appointment.patient_first_name} {appointment.patient_last_name}
+                            </h3>
+                            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+                              {appointment.patient_gender === 'male' ? '男' : '女'}
+                            </span>
+                            <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full">
+                              {calculateAge(appointment.patient_dob)}
+                            </span>
                           </div>
-                          {appointment.symptoms && (
-                            <div className="flex items-center space-x-1">
-                              <FileText className="w-4 h-4" />
-                              <span className="truncate max-w-md">{appointment.symptoms}</span>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-4 h-4 flex-shrink-0" />
+                              <span>{appointment.appointment_time}</span>
                             </div>
-                          )}
+                            {appointment.symptoms && (
+                              <div className="flex items-center gap-1 min-w-0">
+                                <FileText className="w-4 h-4 flex-shrink-0" />
+                                <span className="truncate max-w-xs">{appointment.symptoms}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
 
+                      {/* 開始看診按鈕：手機全寬 */}
                       <button
                         onClick={() => startMeeting(appointment)}
                         disabled={isLoading || !jitsiLoaded}
-                        className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                        className="w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                       >
                         <Video className="w-5 h-5" />
-                        <span className="font-semibold">
-                          {jitsiLoaded ? '開始看診' : '載入中...'}
-                        </span>
+                        <span className="font-semibold">{jitsiLoaded ? '開始看診' : '載入中...'}</span>
                       </button>
                     </div>
                   </div>
@@ -831,61 +581,41 @@ export default function DoctorVideoConsultation() {
               </div>
             )}
 
-            <div className="mt-8 bg-white rounded-2xl shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Monitor className="w-5 h-5 mr-2 text-emerald-600" />
-                視訊看診功能
+            {/* 功能說明卡片 */}
+            <div className="mt-6 sm:mt-8 bg-white rounded-2xl shadow-lg p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Monitor className="w-5 h-5 mr-2 text-emerald-600" />視訊看診功能
               </h3>
-              <div className="grid md:grid-cols-2 gap-4 text-gray-600">
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Video className="w-3 h-3 text-emerald-600" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-gray-600">
+                {[
+                  { icon: Video, bg: 'bg-emerald-100', color: 'text-emerald-600', title: '高清視訊通話', desc: '支援 HD 畫質,確保清晰的診療體驗' },
+                  { icon: Monitor, bg: 'bg-emerald-100', color: 'text-emerald-600', title: '螢幕共享', desc: '可分享檢查報告或醫療資料給患者' },
+                  { icon: FileText, bg: 'bg-emerald-100', color: 'text-emerald-600', title: '即時記錄', desc: '在看診過程中記錄診斷與處方建議' },
+                  { icon: Circle, bg: 'bg-red-100', color: 'text-red-600', title: '自動錄影', desc: '看診過程自動錄影,保護醫病雙方權益' },
+                ].map(({ icon: Icon, bg, color, title, desc }) => (
+                  <div key={title} className="flex items-start gap-3">
+                    <div className={`w-6 h-6 ${bg} rounded-full flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                      <Icon className={`w-3 h-3 ${color}`} />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 text-sm">{title}</p>
+                      <p className="text-sm text-gray-500">{desc}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">高清視訊通話</p>
-                    <p className="text-sm">支援 HD 畫質,確保清晰的診療體驗</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Monitor className="w-3 h-3 text-emerald-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">螢幕共享</p>
-                    <p className="text-sm">可分享檢查報告或醫療資料給患者</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <FileText className="w-3 h-3 text-emerald-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">即時記錄</p>
-                    <p className="text-sm">在看診過程中記錄診斷與處方建議</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Circle className="w-3 h-3 text-red-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">自動錄影</p>
-                    <p className="text-sm">看診過程自動錄影,保護醫病雙方權益</p>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
+
           </div>
         </div>
       </div>
-    {/* Footer */}
-        <div className="bg-gray-800 text-white py-8">
-          <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400">
-              © 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。
-            </p>
-          </div>
+
+      {/* Footer */}
+      <div className="bg-gray-800 text-white py-6 sm:py-8">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <p className="text-gray-400 text-sm sm:text-base">© 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。</p>
         </div>
+      </div>
     </div>
   );
 }

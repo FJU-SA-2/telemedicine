@@ -29,13 +29,8 @@ export default function DoctorSidebar({ isOpen, setIsOpen, approvalStatus }) {
     { id: "/patientmanage", label: "患者病歷", icon: FolderOpen, href: "/patientmanage", needsApproval: true },
     { id: "/facetime", label: "視訊看診", icon: Video, href: "/facetime", needsApproval: true },
     { id: "/docfeedback", label: "問題回報", icon: MessageCircleMore, href: "/docfeedback" },
-      ];
-  // 為了確保主色調能被正確引用 (這是從 globals.css 中取值)
-  const COLOR_AZURE = "var(--color-azure)"; 
-  const COLOR_PERIWINKLE = "var(--color-periwinkle)"; 
-  const COLOR_LIGHT_CYAN = "var(--color-light-cyan)";
+  ];
 
-  // 如果 approvalStatus 是 undefined，表示還在載入中，不顯示鎖定
   const isApproved = approvalStatus === "approved" || approvalStatus === "已核准";
   const isLoading = approvalStatus === undefined;
 
@@ -44,61 +39,80 @@ export default function DoctorSidebar({ isOpen, setIsOpen, approvalStatus }) {
       e.preventDefault();
       alert("此功能需要等待管理員核准後才能使用");
     }
+    // 手機上點選後自動關閉 sidebar
+    if (window.innerWidth < 768) {
+      setIsOpen(false);
+    }
   };
 
   return (
-    <div
-      className={`fixed top-0 left-0 h-full w-64 bg-[var(--background)]/50 text-gray-900 transform
-        ${isOpen ? "translate-x-0" : "-translate-x-full"}
-        transition-transform duration-300 ease-in-out z-40 shadow-lg`}
-    >
-      {/* 標題列 */}
-      <div className="p-4 text-xl font-bold border-b border-gray-300 flex justify-between items-center">
-        功能列表
-        <button onClick={() => setIsOpen(false)} className="hover:text-red-500">
-          <X size={24} />
-        </button>
-      </div>
-
-      {/* 核准狀態提示 */}
-      {!isApproved && !isLoading && (
-        <div className="mx-4 mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800 flex items-center gap-2">
-            <Lock size={16} />
-            {approvalStatus === "pending" && "帳號審核中，部分功能暫時無法使用"}
-            {approvalStatus === "rejected" && "帳號未通過審核，請聯繫管理員"}
-            {!approvalStatus && "帳號尚未審核"}
-          </p>
-        </div>
+    <>
+      {/* 遮罩層：手機上 sidebar 開啟時，點外部可關閉 */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30 md:hidden"
+          onClick={() => setIsOpen(false)}
+          aria-hidden="true"
+        />
       )}
 
-      {/* 選單 */}
-      <nav className="p-4 flex-1">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isLocked = item.needsApproval && !isApproved && !isLoading;
-          const isActive = pathname === item.href;
+      <div
+        className={`fixed top-0 left-0 h-full w-64 bg-[var(--background)]/50 backdrop-blur-sm text-gray-900 transform
+          ${isOpen ? "translate-x-0" : "-translate-x-full"}
+          transition-transform duration-300 ease-in-out z-40 shadow-lg flex flex-col`}
+      >
+        {/* 標題列 */}
+        <div className="p-4 text-xl font-bold border-b border-gray-300 flex justify-between items-center flex-shrink-0">
+          功能列表
+          <button
+            onClick={() => setIsOpen(false)}
+            className="hover:text-red-500 transition-colors"
+            aria-label="關閉選單"
+          >
+            <X size={24} />
+          </button>
+        </div>
 
-          return (
-            <Link
-              key={item.id}
-              href={item.href}
-              onClick={(e) => handleClick(e, item)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-all relative
-                ${isLocked 
-                  ? `bg-[var(--color-light-cyan)]/ text-gray-400 shadow-md` 
-                  : isActive
-                  ? `text-white bg-[var(--color-azure)]/80 cursor-pointer`
-                  : `text-gray-700 hover:bg-[var(--color-periwinkle)]`
-                }`}
-            >
-              <Icon size={20} />
-              <span className="font-medium">{item.label}</span>
-              {isLocked && <Lock size={14} className="ml-auto" />}
-            </Link>
-          );
-        })}
-      </nav>
-    </div>
+        {/* 核准狀態提示 */}
+        {!isApproved && !isLoading && (
+          <div className="mx-4 mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex-shrink-0">
+            <p className="text-sm text-yellow-800 flex items-center gap-2">
+              <Lock size={16} className="flex-shrink-0" />
+              {approvalStatus === "pending" && "帳號審核中，部分功能暫時無法使用"}
+              {approvalStatus === "rejected" && "帳號未通過審核，請聯繫管理員"}
+              {!approvalStatus && "帳號尚未審核"}
+            </p>
+          </div>
+        )}
+
+        {/* 選單 — overflow-y-auto 讓內容多時可捲動 */}
+        <nav className="p-4 flex-1 overflow-y-auto">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isLocked = item.needsApproval && !isApproved && !isLoading;
+            const isActive = pathname === item.href;
+
+            return (
+              <Link
+                key={item.id}
+                href={item.href}
+                onClick={(e) => handleClick(e, item)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-all relative
+                  ${isLocked 
+                    ? "bg-[var(--color-light-cyan)]/ text-gray-400 shadow-md" 
+                    : isActive
+                    ? "text-white bg-[var(--color-azure)]/80 cursor-pointer"
+                    : "text-gray-700 hover:bg-[var(--color-periwinkle)]"
+                  }`}
+              >
+                <Icon size={20} className="flex-shrink-0" />
+                <span className="font-medium">{item.label}</span>
+                {isLocked && <Lock size={14} className="ml-auto flex-shrink-0" />}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+    </>
   );
 }

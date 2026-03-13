@@ -1,7 +1,6 @@
 // app/api/doctors/patients/route.js
 import { NextResponse } from "next/server";
 import mysql from "mysql2/promise";
-import { cookies } from "next/headers";
 
 const dbConfig = {
   host: "localhost",
@@ -14,47 +13,38 @@ const dbConfig = {
 export async function GET(request) {
   let connection;
   try {
-    // 方法1: 直接從內部呼叫 /api/me 的邏輯
-    // 先取得 cookies 傳遞給內部驗證
-    const cookieStore = await cookies();
-    const allCookies = cookieStore.getAll();
-    
-    // 建立 cookie 字串
-    const cookieString = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
-    
-    // 呼叫 /api/me 來獲取當前使用者
-    const baseUrl = request.nextUrl.origin;
-    const meResponse = await fetch(`${baseUrl}/api/me`, {
-      headers: {
-        Cookie: cookieString
-      }
+    // 直接把 cookie 轉發給 Flask，不繞經 Next.js 內部
+    const cookie = request.headers.get("cookie") || "";
+
+    const meResponse = await fetch("http://127.0.0.1:5000/api/me", {
+      method: "GET",
+      headers: { Cookie: cookie },
     });
-    
+
     if (!meResponse.ok) {
       return NextResponse.json({ error: "未登入" }, { status: 401 });
     }
-    
+
     const meData = await meResponse.json();
-    
+
     if (!meData.authenticated || !meData.user) {
       return NextResponse.json({ error: "未登入" }, { status: 401 });
     }
-    
-    if (meData.user.role !== 'doctor') {
+
+    if (meData.user.role !== "doctor") {
       return NextResponse.json({ error: "您不是醫師" }, { status: 403 });
     }
-    
-    // 從 /api/me 回傳的資料取得 doctor_id
+
     const doctorId = meData.user.doctor_id;
-    
+
     if (!doctorId) {
       return NextResponse.json({ error: "找不到醫師資料" }, { status: 404 });
     }
 
     connection = await mysql.createConnection(dbConfig);
 
-    // 查詢曾經預約過該醫師的所有患者（去重）
-    const [patients] = await connection.execute(`
+    const [patients] = await connection.execute(
+      `
       SELECT DISTINCT
         p.patient_id,
         p.first_name,
@@ -75,12 +65,17 @@ export async function GET(request) {
       INNER JOIN appointments a ON p.patient_id = a.patient_id
       WHERE a.doctor_id = ?
       ORDER BY last_appointment_date DESC
-    `, [doctorId, doctorId, doctorId]);
+      `,
+      [doctorId, doctorId, doctorId]
+    );
 
     return NextResponse.json(patients);
   } catch (error) {
     console.error("獲取患者列表錯誤:", error);
-    return NextResponse.json({ error: "獲取失敗", details: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: "獲取失敗", details: error.message },
+      { status: 500 }
+    );
   } finally {
     if (connection) await connection.end();
   }
