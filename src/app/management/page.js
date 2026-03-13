@@ -26,10 +26,10 @@ export default function DoctorAppointmentManagement() {
                     credentials: 'include'
                 });
                 const data = await res.json();
-                
+
                 console.log("📡 API 回應:", data);
                 console.log("📡 approval_status:", data.user?.approval_status);
-                
+
                 if (data.authenticated && data.user && data.user.role === 'doctor') {
                     const status = data.user.approval_status;
                     setApprovalStatus(status);
@@ -50,7 +50,7 @@ export default function DoctorAppointmentManagement() {
     const fetchAppointments = async () => {
         try {
             setLoading(true);
-            
+
             const meRes = await fetch("/api/me");
             const meData = await meRes.json();
             const doctorId = meData.user?.doctor_id;
@@ -61,11 +61,11 @@ export default function DoctorAppointmentManagement() {
             }
 
             const response = await fetch(`/api/appointments?doctor_id=${doctorId}`);
-            
+
             if (!response.ok) {
                 throw new Error("獲取預約失敗");
             }
-            
+
             const data = await response.json();
             setAppointments(data);
             setLoading(false);
@@ -78,43 +78,43 @@ export default function DoctorAppointmentManagement() {
 
     // ✅ 修改:取消預約功能 - 需填寫理由
     const handleCancel = async () => {
-    if (!cancellationReason.trim()) {
-        alert("請填寫取消理由");
-        return;
-    }
-
-    if (!confirm("確定要取消此預約嗎?取消後時段將重新開放。")) return;
-
-    setProcessing(true);
-    try {
-        // ✅ 修改這裡:使用 Flask 的端點
-        const response = await fetch("/api/cancel_appointment", {
-            method: "POST",  // ← 改成 POST
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                appointment_id: selectedAppointment.appointment_id,
-                cancellation_reason: cancellationReason  // ← 改成這個欄位名
-            })
-        });
-
-        if (response.ok) {
-            const result = await response.json();
-            alert(result.message || "預約已取消,時段已釋放");
-            fetchAppointments();
-            setShowCancelModal(false);
-            setShowDetailModal(false);
-            setCancellationReason("");
-        } else {
-            const error = await response.json();
-            alert(error.message || "操作失敗,請稍後再試");
+        if (!cancellationReason.trim()) {
+            alert("請填寫取消理由");
+            return;
         }
-    } catch (error) {
-        console.error("取消預約錯誤:", error);
-        alert("操作失敗");
-    } finally {
-        setProcessing(false);
-    }
-};
+
+        if (!confirm("確定要取消此預約嗎?取消後時段將重新開放。")) return;
+
+        setProcessing(true);
+        try {
+            // ✅ 修改這裡:使用 Flask 的端點
+            const response = await fetch("/api/cancel_appointment", {
+                method: "POST",  // ← 改成 POST
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    appointment_id: selectedAppointment.appointment_id,
+                    cancellation_reason: cancellationReason  // ← 改成這個欄位名
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                alert(result.message || "預約已取消,時段已釋放");
+                fetchAppointments();
+                setShowCancelModal(false);
+                setShowDetailModal(false);
+                setCancellationReason("");
+            } else {
+                const error = await response.json();
+                alert(error.message || "操作失敗,請稍後再試");
+            }
+        } catch (error) {
+            console.error("取消預約錯誤:", error);
+            alert("操作失敗");
+        } finally {
+            setProcessing(false);
+        }
+    };
 
     const formatDate = (dateStr) => {
         const date = new Date(dateStr);
@@ -177,22 +177,23 @@ export default function DoctorAppointmentManagement() {
             {!isOpen && (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
+                    className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition "
+                    aria-label="開啟選單"
                 >
                     <Menu size={24} />
                 </button>
             )}
-
-            <DoctorSidebar 
-                isOpen={isOpen} 
-                setIsOpen={setIsOpen} 
-                activeTab={activeTab} 
+            <DoctorSidebar
+                isOpen={isOpen}
+                setIsOpen={setIsOpen}
+                activeTab={activeTab}
                 setActiveTab={setActiveTab}
-                approvalStatus={approvalStatus}  
+                approvalStatus={approvalStatus}
             />
-            
-            <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
-                <Navbar setIsSidebarOpen={setIsOpen} />
+
+
+            <div className={`transition-all duration-300 ${isOpen ? "md:ml-64" : "ml-0"}`}>
+                <Navbar sidebarOpen={isOpen} setIsSidebarOpen={setIsOpen} />
 
                 <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 md:p-6">
                     <div className="mb-6">
@@ -214,11 +215,10 @@ export default function DoctorAppointmentManagement() {
                                 <button
                                     key={item.key}
                                     onClick={() => setFilterStatus(item.key)}
-                                    className={`p-4 rounded-xl transition-all transform hover:scale-105 ${
-                                        isActive
+                                    className={`p-4 rounded-xl transition-all transform hover:scale-105 ${isActive
                                             ? `bg-${item.color}-500 text-white shadow-lg`
                                             : "bg-white text-gray-700 hover:shadow-md border-2 border-gray-200"
-                                    }`}
+                                        }`}
                                 >
                                     <Icon className={`mx-auto mb-2 ${isActive ? "text-white" : `text-${item.color}-500`}`} size={24} />
                                     <div className={`text-2xl font-bold mb-1 ${isActive ? "text-white" : "text-gray-800"}`}>
@@ -513,14 +513,14 @@ export default function DoctorAppointmentManagement() {
                     </div>
                 )}
             </div>
-        {/* Footer */}
-        <div className="bg-gray-800 text-white py-8">
-          <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400">
-              © 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。
-            </p>
-          </div>
-        </div>
+            {/* Footer */}
+            <div className="bg-gray-800 text-white py-8">
+                <div className="max-w-7xl mx-auto px-4 text-center">
+                    <p className="text-gray-400">
+                        © 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。
+                    </p>
+                </div>
+            </div>
         </div>
     );
 }

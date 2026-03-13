@@ -85,7 +85,7 @@ export default function Navbar({ sidebarOpen = false }) {
         <div className="flex justify-between items-center h-16">
 
           {/* 左側 Logo */}
-          <div className="flex items-center gap-1 flex-shrink-0 pl-10 sm:pl-0">
+          <div className="flex items-center gap-1 flex-shrink-0 pl-10 sm:pl-12">
             <img src="/images/logo.png" alt="MedonGO Logo" className="h-9 sm:h-12 flex-shrink-0" />
             {/* 文字 logo：手機隱藏，sm 以上顯示 */}
             <img src="/images/logo3.png" alt="MedonGO" className="hidden sm:block h-16 w-auto flex-shrink-0" />

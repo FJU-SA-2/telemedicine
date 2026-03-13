@@ -16,11 +16,11 @@ import {
 const StatusBadge = ({ status }) => {
   const styles = {
     approved: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
-    pending:  "bg-amber-50  text-amber-700  ring-1 ring-amber-200",
+    pending: "bg-amber-50  text-amber-700  ring-1 ring-amber-200",
     rejected: "bg-rose-50   text-rose-600   ring-1 ring-rose-200",
-    已確認:   "bg-blue-50   text-blue-700   ring-1 ring-blue-200",
-    已完成:   "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
-    已取消:   "bg-gray-100  text-gray-500   ring-1 ring-gray-200",
+    已確認: "bg-blue-50   text-blue-700   ring-1 ring-blue-200",
+    已完成: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
+    已取消: "bg-gray-100  text-gray-500   ring-1 ring-gray-200",
   };
   const labels = { approved: "審核通過", pending: "審核中", rejected: "已拒絕" };
   return (
@@ -90,17 +90,10 @@ const DoctorEditModal = ({ doctor, onClose, onSaved }) => {
   const handleSave = async () => {
     setSaving(true);
     try {
-<<<<<<< HEAD
-      await apiFetch(`/api/mechanism/doctors/${doctor.doctor_id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-=======
       await apiFetch("/api/mechanism/doctors", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, doctor_id: doctor.doctor_id }),
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
       });
       onSaved("醫師資料已更新");
     } catch (e) {
@@ -236,11 +229,7 @@ const PatientDetailModal = ({ patientId, onClose }) => {
                   {patient.last_name?.charAt(0)}
                 </div>
                 <div>
-<<<<<<< HEAD
-                  <h2 className="text-xl font-bold text-gray-800">{patient.last_name}{patient.first_name}</h2>
-=======
                   <h2 className="text-xl font-bold text-gray-800">{patient.first_name}{patient.last_name}</h2>
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
                   <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
                     <span>{patient.gender === "male" ? "男" : "女"}</span>
                     {calcAge(patient.date_of_birth) && <><span>·</span><span>{calcAge(patient.date_of_birth)} 歲</span></>}
@@ -332,29 +321,7 @@ const PatientDetailModal = ({ patientId, onClose }) => {
               )}
             </div>
 
-<<<<<<< HEAD
-            {activeTab === "info" && (
-              <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 flex-shrink-0">
-                {editing ? (
-                  <>
-                    <button onClick={() => { setEditing(false); setForm(patient); }}
-                      className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition">取消</button>
-                    <button onClick={handleSave} disabled={saving}
-                      className="px-4 py-2 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition flex items-center gap-2 disabled:opacity-60">
-                      {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}儲存
-                    </button>
-                  </>
-                ) : (
-                  <button onClick={() => setEditing(true)}
-                    className="px-4 py-2 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition flex items-center gap-2">
-                    <Edit2 size={14} /> 編輯資料
-                  </button>
-                )}
-              </div>
-            )}
-=======
-            
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
+
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center py-16 text-gray-400">載入失敗</div>
@@ -370,9 +337,6 @@ const PatientDetailModal = ({ patientId, onClose }) => {
 //  新增醫師 Modal
 // ════════════════════════════════════════════════════════════════════
 const AddDoctorModal = ({ onClose, onSaved }) => {
-<<<<<<< HEAD
-  const [form, setForm] = useState({ gender: "male", approval_status: "pending" });
-=======
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
@@ -385,19 +349,14 @@ const AddDoctorModal = ({ onClose, onSaved }) => {
     email: "",
     password: "",
   });
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSave = async () => {
     if (!form.first_name || !form.last_name) { setError("姓名為必填"); return; }
-<<<<<<< HEAD
-    if (!form.user_id) { setError("user_id 為必填"); return; }
-=======
     if (!form.email) { setError("Email 為必填"); return; }
     if (!form.password || form.password.length < 6) { setError("密碼為必填且至少 6 個字元"); return; }
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
     setSaving(true);
     setError("");
     try {
@@ -413,12 +372,9 @@ const AddDoctorModal = ({ onClose, onSaved }) => {
     }
   };
 
-<<<<<<< HEAD
-=======
-  const inputCls = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400";
-  const selectCls = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200";
+  const inputCls = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 placeholder:text-gray-800";
+  const selectCls = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 bg-white text-gray-800";
 
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
@@ -426,105 +382,50 @@ const AddDoctorModal = ({ onClose, onSaved }) => {
           <h3 className="font-semibold text-gray-800">新增醫師</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"><X size={18} /></button>
         </div>
-<<<<<<< HEAD
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-=======
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
           {error && (
             <div className="flex items-center gap-2 text-rose-600 bg-rose-50 px-3 py-2 rounded-lg text-sm">
               <AlertCircle size={14} />{error}
             </div>
           )}
-<<<<<<< HEAD
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-600 block mb-1">姓 <span className="text-rose-500">*</span></label>
-              <input type="text" value={form.last_name || ""} onChange={e => set("last_name", e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400" />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-600 block mb-1">名 <span className="text-rose-500">*</span></label>
-              <input type="text" value={form.first_name || ""} onChange={e => set("first_name", e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-600 block mb-1">性別</label>
-              <select value={form.gender} onChange={e => set("gender", e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200">
-                <option value="male">男</option>
-                <option value="female">女</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-600 block mb-1">審核狀態</label>
-              <select value={form.approval_status} onChange={e => set("approval_status", e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200">
-                <option value="pending">審核中</option>
-                <option value="approved">審核通過</option>
-                <option value="rejected">已拒絕</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-600 block mb-1">User ID <span className="text-rose-500">*</span></label>
-            <input type="number" value={form.user_id || ""} onChange={e => set("user_id", e.target.value)}
-              placeholder="對應 user 資料表的 id"
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400" />
-          </div>
-          {[
-            { key: "specialty", label: "專科" },
-            { key: "phone_number", label: "聯絡電話" },
-            { key: "practice_hospital", label: "執業院所" },
-          ].map(({ key, label }) => (
-            <div key={key}>
-              <label className="text-sm font-medium text-gray-600 block mb-1">{label}</label>
-              <input type="text" value={form[key] || ""} onChange={e => set(key, e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400" />
-            </div>
-          ))}
-        </div>
-=======
 
           {/* ── 醫師基本資料（doctor 表） ── */}
           <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium text-gray-600 block mb-1">姓 <span className="text-rose-500">*</span></label>
-                  <input type="text" value={form.last_name} onChange={e => set("last_name", e.target.value)} className={inputCls} />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-600 block mb-1">名 <span className="text-rose-500">*</span></label>
-                  <input type="text" value={form.first_name} onChange={e => set("first_name", e.target.value)} className={inputCls} />
-                </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-gray-600 block mb-1">姓 <span className="text-rose-500">*</span></label>
+                <input type="text" value={form.last_name} onChange={e => set("last_name", e.target.value)} className={inputCls} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium text-gray-600 block mb-1">性別</label>
-                  <select value={form.gender} onChange={e => set("gender", e.target.value)} className={selectCls}>
-                    <option value="male">男</option>
-                    <option value="female">女</option>
-                  </select>
-                </div>
-                <div>
-                  
-                </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600 block mb-1">名 <span className="text-rose-500">*</span></label>
+                <input type="text" value={form.first_name} onChange={e => set("first_name", e.target.value)} className={inputCls} />
               </div>
-              {[
-                { key: "specialty",         label: "專科",     placeholder: "例：內科、外科" },
-                { key: "phone_number",      label: "聯絡電話", placeholder: "09xx-xxx-xxx" },
-                { key: "practice_hospital", label: "執業院所", placeholder: "醫院名稱" },
-                { key: "certificate_path",  label: "證書路徑", placeholder: "上傳後填入路徑（選填）" },
-              ].map(({ key, label, placeholder }) => (
-                <div key={key}>
-                  <label className="text-sm font-medium text-gray-600 block mb-1">{label}</label>
-                  <input type="text" value={form[key] || ""} onChange={e => set(key, e.target.value)}
-                    placeholder={placeholder} className={inputCls} />
-                </div>
-              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-gray-600 block mb-1">性別</label>
+                <select value={form.gender} onChange={e => set("gender", e.target.value)} className={selectCls}>
+                  <option value="male" className="text-gray-800">男</option>
+                  <option value="female" className="text-gray-800">女</option>
+                </select>
+              </div>
+              <div>
+
+              </div>
+            </div>
+            {[
+              { key: "specialty", label: "專科", placeholder: "例：內科、外科" },
+              { key: "phone_number", label: "聯絡電話", placeholder: "09xx-xxx-xxx" },
+              { key: "practice_hospital", label: "執業院所", placeholder: "醫院名稱" },
+              { key: "certificate_path", label: "證書路徑", placeholder: "上傳後填入路徑（選填）" },
+            ].map(({ key, label, placeholder }) => (
+              <div key={key}>
+                <label className="text-sm font-medium text-gray-600 block mb-1">{label}</label>
+                <input type="text" value={form[key] || ""} onChange={e => set(key, e.target.value)}
+                  placeholder={placeholder} className={inputCls} />
+              </div>
+            ))}
           </div>
 
           {/* ── 帳號資訊（users 表） ── */}
@@ -543,7 +444,6 @@ const AddDoctorModal = ({ onClose, onSaved }) => {
           </div>
         </div>
 
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
         <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 flex-shrink-0">
           <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition">取消</button>
           <button onClick={handleSave} disabled={saving}
@@ -599,19 +499,20 @@ const AddPatientModal = ({ onClose, onSaved }) => {
             <div>
               <label className="text-sm font-medium text-gray-600 block mb-1">姓 <span className="text-rose-500">*</span></label>
               <input type="text" value={form.last_name || ""} onChange={e => set("last_name", e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400" />
+                className="w-full px-3 py-2 text-sm text-gray-800 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400" />
             </div>
             <div>
               <label className="text-sm font-medium text-gray-600 block mb-1">名 <span className="text-rose-500">*</span></label>
               <input type="text" value={form.first_name || ""} onChange={e => set("first_name", e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400" />
+                className="w-full px-3 py-2 text-sm text-gray-800 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400" />
             </div>
+
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-gray-600 block mb-1">性別</label>
               <select value={form.gender} onChange={e => set("gender", e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200">
+                className="w-full px-3 py-2 text-sm text-gray-800 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200">
                 <option value="male">男</option>
                 <option value="female">女</option>
               </select>
@@ -619,31 +520,31 @@ const AddPatientModal = ({ onClose, onSaved }) => {
             <div>
               <label className="text-sm font-medium text-gray-600 block mb-1">出生日期</label>
               <input type="date" value={form.date_of_birth || ""} onChange={e => set("date_of_birth", e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200" />
+                className="w-full px-3 py-2 text-sm text-gray-800 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200" />
             </div>
           </div>
           {[{ key: "phone_number", label: "電話" }, { key: "id_number", label: "身分證字號" }, { key: "address", label: "地址" }].map(({ key, label }) => (
             <div key={key}>
               <label className="text-sm font-medium text-gray-600 block mb-1">{label}</label>
               <input type="text" value={form[key] || ""} onChange={e => set(key, e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400" />
+                className="w-full px-3 py-2 text-sm text-gray-800 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400" />
             </div>
           ))}
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="text-sm font-medium text-gray-600 block mb-1">身高 (cm)</label>
               <input type="number" value={form.height || ""} onChange={e => set("height", e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200" />
+                className="w-full px-3 py-2 text-sm text-gray-800 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200" />
             </div>
             <div>
               <label className="text-sm font-medium text-gray-600 block mb-1">體重 (kg)</label>
               <input type="number" value={form.weight || ""} onChange={e => set("weight", e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200" />
+                className="w-full px-3 py-2 text-sm text-gray-800 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200" />
             </div>
             <div>
               <label className="text-sm font-medium text-gray-600 block mb-1">吸菸</label>
               <select value={form.smoking_status} onChange={e => set("smoking_status", e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200">
+                className="w-full px-3 py-2 text-sm text-gray-800 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200">
                 <option value="no">不吸菸</option>
                 <option value="yes">有吸菸</option>
                 <option value="quit">已戒菸</option>
@@ -686,10 +587,8 @@ const TelemedicineDashboard = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [approvalStatus, setApprovalStatus] = useState(null);
-<<<<<<< HEAD
-=======
   const [mechanismId, setMechanismId] = useState(null);
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
+  const [isDesktop, setIsDesktop] = useState(false);
 
   const [stats, setStats] = useState(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -715,14 +614,29 @@ const TelemedicineDashboard = () => {
     setTimeout(() => setToast(null), 3500);
   };
 
+  // 偵測螢幕寬度，桌機才用推擠式 sidebar
+  useEffect(() => {
+    const checkDesktop = () => setIsDesktop(window.innerWidth >= 1024);
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+    return () => window.removeEventListener('resize', checkDesktop);
+  }, []);
+
+  // 手機/平板開啟 sidebar 時鎖定 body 捲動
+  useEffect(() => {
+    if (sidebarOpen && !isDesktop) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [sidebarOpen, isDesktop]);
+
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch("/api/me", { credentials: "include" });
         const data = await res.json();
-<<<<<<< HEAD
-        setApprovalStatus(data.authenticated && data.user?.role === "doctor" ? data.user.approval_status : "unauthorized");
-=======
         if (data.authenticated && data.user?.role === "mech") {
           setApprovalStatus("approved");
           if (data.user?.mechanism_id) setMechanismId(data.user.mechanism_id);
@@ -731,7 +645,6 @@ const TelemedicineDashboard = () => {
         } else {
           setApprovalStatus("unauthorized");
         }
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
       } catch {
         setApprovalStatus("error");
       }
@@ -749,15 +662,6 @@ const TelemedicineDashboard = () => {
     setDoctorsLoading(true);
     try {
       const p = new URLSearchParams();
-<<<<<<< HEAD
-      if (doctorSearch) p.set("search", doctorSearch);
-      if (doctorStatus) p.set("status", doctorStatus);
-      const data = await apiFetch(`/api/mechanism/doctors?${p}`);
-      setDoctors(data.doctors);
-    } catch (e) { showToast(e.message, "error"); }
-    finally { setDoctorsLoading(false); }
-  }, [doctorSearch, doctorStatus]);
-=======
       if (mechanismId) p.set("mechanism_id", mechanismId);
       if (doctorSearch) p.set("search", doctorSearch);
       if (doctorStatus) p.set("status", doctorStatus);
@@ -766,7 +670,6 @@ const TelemedicineDashboard = () => {
     } catch (e) { showToast(e.message, "error"); }
     finally { setDoctorsLoading(false); }
   }, [mechanismId, doctorSearch, doctorStatus]);
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
 
   const fetchPatients = useCallback(async () => {
     setPatientsLoading(true);
@@ -797,52 +700,54 @@ const TelemedicineDashboard = () => {
   };
 
   return (
-    <div className="relative min-h-screen bg-slate-50 font-sans">
+    <div className="relative min-h-screen bg-slate-50 font-sans flex flex-col">
       {!sidebarOpen && (
-        <button onClick={() => setSidebarOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition">
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition "
+          aria-label="開啟選單"
+        >
           <Menu size={24} />
         </button>
       )}
 
+      {/* Sidebar 遮罩：手機/平板且 sidebar 開啟時顯示 */}
+      {sidebarOpen && !isDesktop && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 transition-opacity duration-300"
+          onClick={() => setSidebarOpen(false)}
+          aria-label="關閉選單"
+        />
+      )}
+
       <Mech_Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} activeTab={activeTab} setActiveTab={setActiveTab} approvalStatus={approvalStatus} />
 
-<<<<<<< HEAD
-      <div className={`transition-all duration-300 ${sidebarOpen ? "ml-64" : "ml-0"}`}>
+      {/* 主內容區：桌機推擠，手機/平板 overlay 不推擠 */}
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen && isDesktop ? "lg:ml-64" : "ml-0"}`}>
         <Navbar />
-        <main className="p-6 md:p-8 max-w-7xl mx-auto">
-=======
-      {/* 修改點 1：在外層容器加上 min-h-screen flex flex-col */}
-      <div className={`transition-all duration-300 min-h-screen flex flex-col ${sidebarOpen ? "ml-64" : "ml-0"}`}>
-        <Navbar />
-        
-        {/* 修改點 2：在 main 加上 flex-1 讓它撐開空間 */}
-        <main className="flex-1 p-6 md:p-8 max-w-7xl mx-auto w-full">
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
 
-          <div className="mb-8 flex items-center justify-between">
+        {/* 修改點 2：在 main 加上 flex-1 讓它撐開空間 */}
+        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full">
+
+          <div className="mb-6 sm:mb-8 flex items-center justify-between gap-3 pt-2">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">機構管理中心</h1>
-              <p className="text-gray-500 text-sm mt-1">管理本院醫師與患者的總覽資訊</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">機構管理中心</h1>
+              <p className="text-gray-500 text-xs sm:text-sm mt-1">管理本院醫師與患者的總覽資訊</p>
             </div>
             <button onClick={() => { fetchStats(); fetchDoctors(); fetchPatients(); }}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-white rounded-lg border border-gray-200 transition">
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-white rounded-lg border border-gray-200 transition shrink-0">
               <RefreshCw size={14} /> 重新整理
             </button>
           </div>
 
           {/* 統計卡片 */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-<<<<<<< HEAD
-            <StatCard icon={Stethoscope}  label="本院醫師"  value={stats?.total_doctors ?? "—"}      sub={"位醫師"} color="bg-blue-500"   loading={statsLoading} />
-=======
-            <StatCard icon={Stethoscope}  label="本院醫師"  value={stats?.total_doctors ?? "—"}      sub="位醫師"  color="bg-blue-500"   loading={statsLoading} />
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
-            <StatCard icon={HeartPulse}   label="本院患者"  value={stats?.total_patients ?? "—"}     sub="位患者"   color="bg-teal-500"   loading={statsLoading} />
-            <StatCard icon={CalendarDays} label="今日看診"  value={stats?.today_appointments ?? "—"} sub="診次"     color="bg-violet-500" loading={statsLoading} />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
+            <StatCard icon={Stethoscope} label="本院醫師" value={stats?.total_doctors ?? "—"} sub="位醫師" color="bg-blue-500" loading={statsLoading} />
+            <StatCard icon={HeartPulse} label="本院患者" value={stats?.total_patients ?? "—"} sub="位患者" color="bg-teal-500" loading={statsLoading} />
+            <StatCard icon={CalendarDays} label="今日看診" value={stats?.today_appointments ?? "—"} sub="診次" color="bg-violet-500" loading={statsLoading} />
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
 
             {/* ── 醫師管理 ── */}
             <section className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
@@ -862,17 +767,13 @@ const TelemedicineDashboard = () => {
                   <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input type="text" placeholder="搜尋醫師姓名或專科..." value={doctorSearch}
                     onChange={e => setDoctorSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition" />
+                    className="w-full pl-9 pr-4 py-2 text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition" />
                 </div>
-<<<<<<< HEAD
-                
-=======
-               
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
+
               </div>
               <div className="divide-y divide-gray-50 overflow-y-auto flex-1" style={{ maxHeight: "22rem" }}>
                 {doctorsLoading
-                  ? [0,1,2].map(i => <SkeletonRow key={i} />)
+                  ? [0, 1, 2].map(i => <SkeletonRow key={i} />)
                   : doctors.length === 0
                     ? <div className="py-12 text-center text-gray-400 text-sm">查無結果</div>
                     : doctors.map(doc => (
@@ -883,7 +784,7 @@ const TelemedicineDashboard = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="font-medium text-gray-800 text-sm">{doc.first_name}{doc.last_name}</p>
-                            
+
                           </div>
                           <p className="text-xs text-gray-400 mt-0.5">{doc.specialty || "未填專科"} ‧ 總診次 {doc.total_appointments}</p>
                         </div>
@@ -921,7 +822,7 @@ const TelemedicineDashboard = () => {
                   <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input type="text" placeholder="搜尋患者姓名..." value={patientSearch}
                     onChange={e => setPatientSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400 transition" />
+                    className="w-full pl-9 pr-4 py-2 text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-teal-200 focus:border-teal-400 transition" />
                 </div>
                 <select value={patientGender} onChange={e => setPatientGender(e.target.value)}
                   className="px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg outline-none text-gray-600">
@@ -932,7 +833,7 @@ const TelemedicineDashboard = () => {
               </div>
               <div className="divide-y divide-gray-50 overflow-y-auto flex-1" style={{ maxHeight: "22rem" }}>
                 {patientsLoading
-                  ? [0,1,2].map(i => <SkeletonRow key={i} />)
+                  ? [0, 1, 2].map(i => <SkeletonRow key={i} />)
                   : patients.length === 0
                     ? <div className="py-12 text-center text-gray-400 text-sm">查無結果</div>
                     : patients.map(pt => (
@@ -952,7 +853,6 @@ const TelemedicineDashboard = () => {
                             總診次 {pt.total_appointments}
                             {pt.chronic_disease ? ` ‧ ${pt.chronic_disease.substring(0, 12)}` : ""}
                           </p>
-<<<<<<< HEAD
                         </div>
                         <div className="text-right flex-shrink-0">
                           <div className="flex items-center gap-1 text-gray-400 justify-end">
@@ -961,16 +861,6 @@ const TelemedicineDashboard = () => {
                           </div>
                           <p className="text-xs text-gray-400">最近看診</p>
                         </div>
-=======
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <div className="flex items-center gap-1 text-gray-400 justify-end">
-                            <Clock size={11} />
-                            <p className="text-xs">{pt.last_appointment?.substring(0, 10) || "—"}</p>
-                          </div>
-                          <p className="text-xs text-gray-400">最近看診</p>
-                        </div>
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
                         <ChevronRight size={16} className="opacity-0 group-hover:opacity-100 text-gray-400 transition-all flex-shrink-0" />
                       </div>
                     ))}
@@ -979,18 +869,10 @@ const TelemedicineDashboard = () => {
 
           </div>
         </main>
-<<<<<<< HEAD
-      </div>
-
-      <div className="bg-gray-800 text-white py-8 mt-8">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-gray-400">© 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。</p>
-=======
         <div className="bg-gray-800 text-white py-8 mt-8 flex-shrink-0">
           <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400">© 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。</p>
+            <p className="text-gray-400 text-sm">© 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。</p>
           </div>
->>>>>>> 585635e4cce4d51f5773e4cb40224e2ac202ffe2
         </div>
       </div>
 

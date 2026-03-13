@@ -334,14 +334,17 @@ const handleSave = async () => {
   
     return (
     <div className="relative min-h-screen bg-gradient-to-br from-[var(--color-periwinkle)]/30 via-white to-[var(--color-light-cyan)]/30">
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
-        >
-          <Menu size={24} />
-        </button>
-      )}
+      
+            {/* Sidebar 開關按鈕（sidebar 關閉時顯示） */}
+            {!isOpen && (
+              <button
+                onClick={() => setIsOpen(true)}
+                className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition "
+                aria-label="開啟選單"
+              >
+                <Menu size={24} />
+              </button>
+            )}
 
       {isDoctor ? (
         <DoctorSidebar  
@@ -352,8 +355,17 @@ const handleSave = async () => {
       ) : (
         <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
       )}
-      {/* 主內容 */}
-      <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+
+      {/* 手機/平板 sidebar 遮罩 */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-20 md:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* 主內容：手機 overlay 不推移，桌機才推移 */}
+      <div className={`transition-all duration-300 bg-white min-h-screen ${isOpen ? "md:ml-64" : "ml-0"}`}>
         {/* 頂部導覽列 */}
         <Navbar />
       <main className="max-w-4xl mx-auto px-6 py-10">
@@ -848,61 +860,61 @@ const handleSave = async () => {
 
               {/* 醫師頭像區 */}
               <div className="mb-8 pb-6 border-b-2 border-gray-100">
-                <div className="flex items-start gap-6">
+                {/* 手機垂直排列，sm 以上水平排列 */}
+                <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                   <div className="flex-shrink-0">
                     <p className="text-sm text-gray-600 font-medium mb-3">個人頭像</p>
                     <div className="relative group">
                       <img
-                        className="h-32 w-32 object-cover rounded-2xl border-4 border-blue-200 shadow-lg group-hover:shadow-xl transition-shadow"
+                        className="h-28 w-28 sm:h-32 sm:w-32 object-cover rounded-2xl border-4 border-blue-200 shadow-lg group-hover:shadow-xl transition-shadow"
                         src={doctorForm.photo 
                           ? `/uploads/profile_pictures/${doctorForm.photo}`
-                          : "/default-doctor-photo.png"
+                          : "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' fill='%23dbeafe'/%3E%3Ccircle cx='64' cy='48' r='24' fill='%2393c5fd'/%3E%3Cellipse cx='64' cy='104' rx='36' ry='22' fill='%2393c5fd'/%3E%3C/svg%3E"
                         }
                         alt="醫師頭像"
                         onError={(e) => {
                           e.target.onerror = null;
-                          e.target.src="/default-doctor-photo.png"
+                          e.target.src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' fill='%23dbeafe'/%3E%3Ccircle cx='64' cy='48' r='24' fill='%2393c5fd'/%3E%3Cellipse cx='64' cy='104' rx='36' ry='22' fill='%2393c5fd'/%3E%3C/svg%3E"
                         }}
                       />
                       {editing && (
                         <div className="absolute inset-0 bg-black bg-opacity-40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Upload className="text-white" size={32} />
+                          <Upload className="text-white" size={28} />
                         </div>
                       )}
                     </div>
                   </div>
                   
                   {editing && (
-                    <div className="flex-grow">
+                    <div className="flex-grow min-w-0">
                       <label className="block text-sm font-semibold text-gray-700 mb-3">
                         上傳新頭像
                       </label>
                       <div className="space-y-3">
-                        <div className="flex items-center gap-3">
+                        {/* 手機：file input 和按鈕各佔一行；sm 以上水平並排 */}
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                           <input 
                             type="file" 
                             accept=".png,.jpg,.jpeg" 
                             onChange={handlePhotoFileChange}
-                            className="flex-grow text-sm file:mr-4 file:py-3 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 file:transition-all"
+                            className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 file:transition-all"
                             disabled={uploadingPhoto}
                           />
                           <button 
                             onClick={handlePhotoUpload}
                             disabled={uploadingPhoto || !selectedPhotoFile}
-                            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all shadow-md hover:shadow-lg text-sm font-medium disabled:from-gray-400 disabled:to-gray-400 whitespace-nowrap"
+                            className="w-full sm:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 transition-all shadow-md text-sm font-medium disabled:from-gray-400 disabled:to-gray-400"
                           >
-                            <Upload size={18} />
+                            <Upload size={16} />
                             {uploadingPhoto ? "上傳中..." : "儲存照片"}
                           </button>
                         </div>
                         {selectedPhotoFile && (
-                          <p className="text-sm text-gray-600 bg-blue-50 px-4 py-2 rounded-lg">
-                            已選擇檔案: <span className="font-semibold">{selectedPhotoFile.name}</span>
+                          <p className="text-sm text-gray-600 bg-blue-50 px-3 py-2 rounded-lg break-all">
+                            已選擇: <span className="font-semibold">{selectedPhotoFile.name}</span>
                           </p>
                         )}
-                        <p className="text-xs text-gray-500">
-                          請選擇檔案後點擊「儲存照片」進行上傳。支援格式: JPG, PNG
-                        </p>
+                        <p className="text-xs text-gray-500">支援格式: JPG, PNG</p>
                       </div>
                     </div>
                   )}
@@ -1095,6 +1107,14 @@ const handleSave = async () => {
           )}
         </main>
       </div>
+      {/* Footer */}
+                <div className="bg-gray-800 text-white py-6 sm:py-8">
+                    <div className="max-w-7xl mx-auto px-4 text-center">
+                        <p className="text-gray-400 text-xs sm:text-sm">
+                            © 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。
+                        </p>
+                    </div>
+                </div>
     </div>
   );
 }

@@ -20,6 +20,25 @@ export default function DoctorPatientList() {
   const [isOpen, setIsOpen] = useState(false);
   const [approvalStatus, setApprovalStatus] = useState(null);
   const [error, setError] = useState(null);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  // 偵測螢幕寬度，桌機才用推擠式 sidebar
+  useEffect(() => {
+    const checkDesktop = () => setIsDesktop(window.innerWidth >= 1024);
+    checkDesktop();
+    window.addEventListener('resize', checkDesktop);
+    return () => window.removeEventListener('resize', checkDesktop);
+  }, []);
+
+  // 手機/平板開啟 sidebar 時鎖定 body 捲動
+  useEffect(() => {
+    if (isOpen && !isDesktop) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen, isDesktop]);
 
   // 獲取醫師審核狀態
   useEffect(() => {
@@ -43,15 +62,10 @@ export default function DoctorPatientList() {
       try {
         setLoading(true);
         const res = await fetch("/api/doctors/patients", { credentials: 'include' });
-        
         if (!res.ok) {
-          if (res.status === 401) {
-            setError("請先登入");
-            return;
-          }
+          if (res.status === 401) { setError("請先登入"); return; }
           throw new Error("獲取患者列表失敗");
         }
-        
         const data = await res.json();
         setPatients(data);
       } catch (err) {
@@ -75,20 +89,14 @@ export default function DoctorPatientList() {
       if (searchTerm) {
         const name = `${patient.last_name}${patient.first_name}`.toLowerCase();
         const search = searchTerm.toLowerCase();
-        if (!name.includes(search) && !patient.patient_id.toString().includes(search)) {
-          return false;
-        }
+        if (!name.includes(search) && !patient.patient_id.toString().includes(search)) return false;
       }
       return true;
     })
     .sort((a, b) => {
-      if (sortBy === "recent") {
-        return new Date(b.last_appointment_date || 0) - new Date(a.last_appointment_date || 0);
-      } else if (sortBy === "name") {
-        return `${a.last_name}${a.first_name}`.localeCompare(`${b.last_name}${b.first_name}`);
-      } else if (sortBy === "appointments") {
-        return (b.total_appointments || 0) - (a.total_appointments || 0);
-      }
+      if (sortBy === "recent") return new Date(b.last_appointment_date || 0) - new Date(a.last_appointment_date || 0);
+      if (sortBy === "name") return `${a.last_name}${a.first_name}`.localeCompare(`${b.last_name}${b.first_name}`);
+      if (sortBy === "appointments") return (b.total_appointments || 0) - (a.total_appointments || 0);
       return 0;
     });
 
@@ -114,27 +122,54 @@ export default function DoctorPatientList() {
   }
 
   return (
-    <div className="relative min-h-screen bg-gray-50">
+    <div className="relative min-h-screen bg-gray-50 flex flex-col">
+      {/* 漢堡選單按鈕 */}
       {!isOpen && (
-        <button onClick={() => setIsOpen(true)} className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition">
-          <Menu size={24} />
-        </button>
+                <button
+                    onClick={() => setIsOpen(true)}
+                    className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition "
+                    aria-label="開啟選單"
+                >
+                    <Menu size={24} />
+                </button>
+            )}
+
+      {/* Sidebar 遮罩：手機/平板且 sidebar 開啟時顯示 */}
+      {isOpen && !isDesktop && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 transition-opacity duration-300"
+          onClick={() => setIsOpen(false)}
+          aria-label="關閉選單"
+        />
       )}
 
-      <DoctorSidebar isOpen={isOpen} setIsOpen={setIsOpen} activeTab={activeTab} setActiveTab={setActiveTab} approvalStatus={approvalStatus} />
-      
-      <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+      <DoctorSidebar
+        isOpen={isOpen}
+        setIsOpen={setIsOpen}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        approvalStatus={approvalStatus}
+      />
+
+      {/* 主內容區：桌機推擠，手機/平板 overlay 不推擠 */}
+      <div
+        className={`flex-1 flex flex-col transition-all duration-300 ${
+          isOpen && isDesktop ? "lg:ml-64" : "ml-0"
+        }`}
+      >
         <Navbar setIsSidebarOpen={setIsOpen} />
 
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 md:p-6">
-          <div className="mb-6">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2 flex items-center gap-3">
-              <User className="text-blue-600" size={36} />
+        <div className="flex-1 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 md:p-6">
+          {/* 標題 */}
+          <div className="mb-6 pt-2">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-2 flex items-center gap-3">
+              <User className="text-blue-600 shrink-0" size={32} />
               我的患者
             </h1>
-            <p className="text-gray-600">顯示曾經預約過您的所有患者</p>
+            <p className="text-gray-600 text-sm sm:text-base">顯示曾經預約過您的所有患者</p>
           </div>
 
+          {/* 統計卡片 */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
             <StatCard title="總患者數" value={patients.length} icon={User} color="blue" />
             <StatCard title="女性患者" value={patients.filter(p => p.gender === "female").length} icon={User} color="pink" />
@@ -142,13 +177,21 @@ export default function DoctorPatientList() {
             <StatCard title="總預約數" value={patients.reduce((sum, p) => sum + (p.total_appointments || 0), 0)} icon={Calendar} color="green" />
           </div>
 
-          <SearchAndFilter searchTerm={searchTerm} setSearchTerm={setSearchTerm} filterGender={filterGender} setFilterGender={setFilterGender} sortBy={sortBy} setSortBy={setSortBy} />
+          <SearchAndFilter
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            filterGender={filterGender}
+            setFilterGender={setFilterGender}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+          />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* 患者卡片 grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredAndSortedPatients.length === 0 ? (
-              <div className="col-span-full bg-white rounded-xl shadow-md p-16 text-center border border-gray-100">
-                <User size={64} className="mx-auto mb-4 text-gray-300" />
-                <p className="text-lg font-medium text-gray-500">
+              <div className="col-span-full bg-white rounded-xl shadow-md p-10 sm:p-16 text-center border border-gray-100">
+                <User size={56} className="mx-auto mb-4 text-gray-300" />
+                <p className="text-base sm:text-lg font-medium text-gray-500">
                   {patients.length === 0 ? "目前還沒有患者預約過您" : "沒有符合條件的患者"}
                 </p>
                 <p className="text-sm text-gray-400 mt-2">
@@ -166,15 +209,14 @@ export default function DoctorPatientList() {
             <PatientDetailModal patient={selectedPatient} onClose={() => setShowDetailModal(false)} />
           )}
         </div>
-      </div>
-    {/* Footer */}
-        <div className="bg-gray-800 text-white py-8">
+
+        {/* Footer */}
+        <footer className="bg-gray-800 text-white py-8">
           <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400">
-              © 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。
-            </p>
+            <p className="text-gray-400 text-sm">© 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。</p>
           </div>
-        </div>
+        </footer>
+      </div>
     </div>
   );
 }

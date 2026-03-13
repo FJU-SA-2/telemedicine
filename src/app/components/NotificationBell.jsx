@@ -39,11 +39,11 @@ export default function NotificationBell({ user }) {
 
   /* ==================== 檢查新通知 (輪詢) ==================== */
   const checkForNewNotifications = async () => {
+    // 若 user 不存在或不需要顯示鈴鐺，直接跳過
+    if (!shouldShowBell || !user) return;
+
     try {
-      // ✅ 根據角色選擇正確的 API 端點
       const endpoint = isDoctor ? "/api/doctor/notifications" : "/api/notifications";
-      
-      console.log("🔍 檢查新通知", { endpoint, isDoctor, isPatient });
       
       const res = await fetch(endpoint, { 
         credentials: "include",
@@ -52,7 +52,6 @@ export default function NotificationBell({ user }) {
       
       if (res.status === 401) {
         if (!authWarned.current) {
-          console.warn("ℹ️ 尚未登入，跳過通知輪詢");
           authWarned.current = true;
         }
         setNotifications([]);
@@ -60,44 +59,38 @@ export default function NotificationBell({ user }) {
         return;
       }
 
-      if (!res.ok) {
-        console.error("❌ 通知 API 錯誤:", res.status);
-        return;
-      }
+      if (!res.ok) return;
       
       const data = await res.json();
       const newNotificationsList = data.notifications || [];
-      
-      console.log("📬 收到通知數量:", newNotificationsList.length);
       
       setNotifications(prev => {
         const existingIds = new Set(prev.map(n => n.notification_id));
         const brandNewNotifications = newNotificationsList.filter(
           n => !existingIds.has(n.notification_id)
         );
-        
         if (brandNewNotifications.length > 0) {
-          console.log('📬 發現新通知:', brandNewNotifications.length);
           return [...brandNewNotifications, ...prev];
         }
-        
         return prev;
       });
       
       setUnreadCount(data.unread_count || 0);
       
     } catch (err) {
-      console.error("❌ 檢查新通知失敗:", err);
+      // 網路失敗時靜默處理，不噴 console error 避免干擾開發
+      if (err.name !== 'TypeError') {
+        console.error("❌ 檢查新通知失敗:", err);
+      }
     }
   };
 
   /* ==================== 獲取通知列表 ==================== */
   const fetchNotifications = async () => {
+    if (!shouldShowBell || !user) return;
+
     try {
-      // ✅ 根據角色選擇正確的 API 端點
       const endpoint = isDoctor ? "/api/doctor/notifications" : "/api/notifications";
-      
-      console.log("📥 獲取通知列表", { endpoint });
       
       const res = await fetch(endpoint, { 
         credentials: "include",
@@ -106,7 +99,6 @@ export default function NotificationBell({ user }) {
       
       if (res.status === 401) {
         if (!authWarned.current) {
-          console.warn("ℹ️ 尚未登入，跳過通知載入");
           authWarned.current = true;
         }
         setNotifications([]);
@@ -114,19 +106,16 @@ export default function NotificationBell({ user }) {
         return;
       }
 
-      if (!res.ok) {
-        console.error("❌ 獲取通知失敗:", res.status);
-        return;
-      }
+      if (!res.ok) return;
       
       const data = await res.json();
-      console.log("✅ 通知列表:", data);
-      
       setNotifications(data.notifications || []);
       setUnreadCount(data.unread_count || 0);
       
     } catch (err) {
-      console.error("❌ 載入通知失敗:", err);
+      if (err.name !== 'TypeError') {
+        console.error("❌ 載入通知失敗:", err);
+      }
     }
   };
 

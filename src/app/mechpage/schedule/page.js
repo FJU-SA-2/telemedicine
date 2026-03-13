@@ -45,6 +45,23 @@ const sessionColorMap = {
 export default function MechanismSchedulePage() {
     // Sidebar
     const [isOpen, setIsOpen] = useState(false);
+    const [isDesktop, setIsDesktop] = useState(false);
+
+    useEffect(() => {
+        const check = () => setIsDesktop(window.innerWidth >= 1024);
+        check();
+        window.addEventListener("resize", check);
+        return () => window.removeEventListener("resize", check);
+    }, []);
+
+    useEffect(() => {
+        if (isOpen && !isDesktop) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "";
+        }
+        return () => { document.body.style.overflow = ""; };
+    }, [isOpen, isDesktop]);
 
     // 醫師列表 ── 改成跟管理頁面一樣的方式
     const [doctors, setDoctors] = useState([]);
@@ -412,19 +429,27 @@ export default function MechanismSchedulePage() {
             {!isOpen && (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
+                    className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition "
+                    aria-label="開啟選單"
                 >
-                    <Menu size={22} />
+                    <Menu size={24} />
                 </button>
+            )}
+
+            {isOpen && !isDesktop && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-30 transition-opacity duration-300"
+                    onClick={() => setIsOpen(false)}
+                />
             )}
 
             <Mech_Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
-            <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+            <div className={`transition-all duration-300 ${isOpen && isDesktop ? "lg:ml-64" : "ml-0"}`}>
 
                 <Navbar sidebarOpen={isOpen} />
 
-                <div className="p-6 max-w-7xl mx-auto">
+                <div className="p-4 sm:p-6 max-w-7xl mx-auto">
 
                     {/* ── 醫師選擇（跟管理頁面一樣的顯示方式） ─────── */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-5">
@@ -488,15 +513,15 @@ export default function MechanismSchedulePage() {
                     {selectedDoctorId && (<>
 
                     {/* ── 週導覽 ────────────────────────────────────── */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 flex items-center justify-between">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 mb-4 flex items-center justify-between gap-2">
                         <button
                             onClick={() => setCurrentWeekStart(d => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; })}
-                            className="flex items-center gap-1.5 px-4 py-2 bg-[var(--color-azure)] text-white rounded-lg hover:opacity-90 text-sm"
+                            className="flex items-center gap-1 px-2 sm:px-4 py-2 bg-[var(--color-azure)] text-white rounded-lg hover:opacity-90 text-xs sm:text-sm"
                         >
                             <ChevronLeft size={16} /> 上一週
                         </button>
                         <div className="text-center">
-                            <div className="text-base font-semibold text-gray-800">{getWeekRangeText()}</div>
+                            <div className="text-xs sm:text-base font-semibold text-gray-800">{getWeekRangeText()}</div>
                             <button
                                 onClick={() => setCurrentWeekStart(toSunday(new Date()))}
                                 className="text-xs text-[var(--color-azure)] hover:opacity-80 mt-0.5"
@@ -506,7 +531,7 @@ export default function MechanismSchedulePage() {
                         </div>
                         <button
                             onClick={() => setCurrentWeekStart(d => { const n = new Date(d); n.setDate(n.getDate() + 7); return n; })}
-                            className="flex items-center gap-1.5 px-4 py-2 bg-[var(--color-azure)] text-white rounded-lg hover:opacity-90 text-sm"
+                            className="flex items-center gap-1 px-2 sm:px-4 py-2 bg-[var(--color-azure)] text-white rounded-lg hover:opacity-90 text-xs sm:text-sm"
                         >
                             下一週 <ChevronRight size={16} />
                         </button>
@@ -559,7 +584,7 @@ export default function MechanismSchedulePage() {
 
                     {/* ── 排班表（早午晚 × 7天） ─────────────────────── */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-5">
-                        <div className="flex justify-between items-center mb-5">
+                        <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
                             <div>
                                 <h2 className="text-base font-semibold text-gray-800">
                                     {selectedDoctor?.last_name}{selectedDoctor?.first_name} 醫師 — 週排班
@@ -575,8 +600,9 @@ export default function MechanismSchedulePage() {
                             </button>
                         </div>
 
-                        {/* 表頭 */}
-                        <div className="grid grid-cols-8 gap-2 mb-3">
+                        {/* 表頭 - 手機橫向捲動 */}
+                        <div className="overflow-x-auto -mx-5 px-5">
+                        <div className="grid grid-cols-8 gap-1 sm:gap-2 mb-3" style={{minWidth:"560px"}}>
                             <div className="text-xs font-semibold text-gray-400 flex items-center">時段 ╲ 日期</div>
                             {weekDates.map(d => (
                                 <div key={d.fullDate} className="text-center">
@@ -597,7 +623,7 @@ export default function MechanismSchedulePage() {
                         </div>
 
                         {/* 三節 × 七天 */}
-                        <div className="space-y-2">
+                        <div className="space-y-2" style={{minWidth:"560px"}}>
                             {SESSION_KEYS.map(sess => {
                                 const { label, icon: Icon } = SESSION_GROUPS[sess];
                                 const c = sessionColorMap[sess];
@@ -637,6 +663,7 @@ export default function MechanismSchedulePage() {
                                 );
                             })}
                         </div>
+                        </div>{/* /overflow-x-auto */}
                     </div>
 
                     {/* ── 本週開診預覽 ──────────────────────────────── */}
@@ -644,7 +671,7 @@ export default function MechanismSchedulePage() {
                         <h3 className="text-sm font-semibold text-gray-500 flex items-center gap-2 mb-4">
                             <Eye size={15} /> 本週開診預覽
                         </h3>
-                        <div className="grid grid-cols-7 gap-2">
+                        <div className="overflow-x-auto -mx-5 px-5"><div className="grid grid-cols-7 gap-1 sm:gap-2" style={{minWidth:"420px"}}>
                             {weekDates.map(d => {
                                 const daySchedule = schedules[d.fullDate] || {};
                                 const hasSessions = Object.values(daySchedule).some(Boolean);
@@ -678,7 +705,7 @@ export default function MechanismSchedulePage() {
                                 );
                             })}
                         </div>
-                    </div>
+                    </div></div>{/* /preview overflow */}
 
                     </>)}
                 </div>
