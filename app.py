@@ -1156,6 +1156,11 @@ def upload_doctor_photo():
             info_count = cursor.fetchone()[0]
 
             if info_count > 0:
+                # 先取得舊照片檔名，上傳成功後刪除舊檔
+                cursor.execute("SELECT photo FROM doctor_info WHERE doctor_id = %s", (doctor_id,))
+                old_row = cursor.fetchone()
+                old_photo = old_row[0] if old_row else None
+
                 # ⭐ UPDATE: 如果記錄存在 (count > 0)，則更新 photo 欄位
                 sql = """
                     UPDATE doctor_info
@@ -1163,6 +1168,13 @@ def upload_doctor_photo():
                     WHERE doctor_id = %s
                 """
                 cursor.execute(sql, (unique_filename, doctor_id))
+
+                # 刪除舊照片檔案（避免累積）
+                if old_photo and old_photo != unique_filename:
+                    old_filepath = os.path.join(PROFILE_PICTURE_FOLDER, old_photo)
+                    if os.path.exists(old_filepath):
+                        os.remove(old_filepath)
+                        print(f"🗑️ 已刪除舊照片: {old_filepath}")
             else:
                 # ⭐ INSERT: 如果記錄不存在 (count == 0)，則新增一條記錄
                 # 這裡假設 doctor_info 表格中的其他欄位可以為 NULL 或有預設值

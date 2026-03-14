@@ -105,27 +105,27 @@ function MechanismFeedbackFormContent() {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="bg-white rounded-2xl shadow-xl max-w-2xl mx-auto p-8">
-        <div className="flex items-center gap-3 mb-6">
-          <AlertCircle className="w-8 h-8 text-indigo-600" />
-          <h1 className="text-3xl font-bold text-gray-800">機構問題回報</h1>
+    <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
+      <div className="bg-white rounded-2xl shadow-xl max-w-2xl mx-auto p-5 sm:p-8">
+        <div className="flex items-center gap-3 mb-4 sm:mb-6">
+          <AlertCircle className="w-6 h-6 sm:w-8 sm:h-8 text-indigo-600" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">機構問題回報</h1>
         </div>
         
-        <p className="text-gray-600 mb-8">
+        <p className="text-gray-600 text-sm sm:text-base mb-5 sm:mb-8">
           請告訴我們您在使用系統時遇到的問題，我們會盡快處理並改善服務品質。
         </p>
 
         <div>
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-700 mb-4">
+          <div className="mb-5 sm:mb-8">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-700 mb-3 sm:mb-4">
               請選擇問題類別 <span className="text-red-500">*</span>
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {categories.map((category) => (
                 <label
                   key={category.id}
-                  className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                  className={`flex items-center p-3 sm:p-4 rounded-lg border-2 cursor-pointer transition-all ${
                     selectedCategories.includes(category.id)
                       ? 'border-indigo-600 bg-indigo-50'
                       : 'border-gray-200 hover:border-indigo-300 bg-white'
@@ -139,7 +139,7 @@ function MechanismFeedbackFormContent() {
                     onChange={() => toggleCategory(category.id)}
                     className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 rounded"
                   />
-                  <span className="ml-3 text-gray-700 font-medium">
+                  <span className="ml-2 sm:ml-3 text-sm sm:text-base text-gray-700 font-medium">
                     {category.label}
                   </span>
                 </label>
@@ -148,7 +148,7 @@ function MechanismFeedbackFormContent() {
           </div>
 
           <div className="mb-6">
-            <label htmlFor="feedback" className="block text-lg font-semibold text-gray-700 mb-3">
+            <label htmlFor="feedback" className="block text-base sm:text-lg font-semibold text-gray-700 mb-2 sm:mb-3">
               問題描述 <span className="text-red-500">*</span>
             </label>
             <textarea
@@ -156,8 +156,8 @@ function MechanismFeedbackFormContent() {
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               placeholder="請詳細描述您遇到的問題，例如：在哪個功能、執行什麼操作時發生、錯誤訊息內容等..."
-              rows="6"
-              className="text-gray-700 w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-indigo-600 focus:outline-none resize-none transition-colors"
+              rows="5"
+              className="text-gray-700 w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 border-gray-200 rounded-lg focus:border-indigo-600 focus:outline-none resize-none transition-colors"
               disabled={loading}
             />
             <p className="text-sm text-gray-500 mt-2">
@@ -175,7 +175,7 @@ function MechanismFeedbackFormContent() {
             type="button"
             onClick={handleSubmit}
             disabled={loading}
-            className="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-indigo-700 disabled:bg-gray-400 transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-indigo-600 text-white py-2.5 sm:py-3 px-6 rounded-lg font-semibold text-base sm:text-lg hover:bg-indigo-700 disabled:bg-gray-400 transition-colors flex items-center justify-center gap-2"
           >
             <Send className="w-5 h-5" />
             {loading ? '提交中...' : '送出回報'}
@@ -196,7 +196,24 @@ function MechanismFeedbackFormContent() {
 
 export default function MechanismFeedbackPage() {
   const [isOpen, setIsOpen] = useState(false);
-  const [approvalStatus, setApprovalStatus] = useState(null); // 🔥 添加這行
+  const [approvalStatus, setApprovalStatus] = useState(null);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 1024);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && !isDesktop) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [isOpen, isDesktop]);
 
 
   useEffect(() => {
@@ -218,14 +235,22 @@ export default function MechanismFeedbackPage() {
   }, []);
 
   return (
-    <div className="relative">
+    <div className="relative min-h-screen flex flex-col bg-gray-50">
       {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
-        >
-          <Menu size={24} />
-        </button>
+                <button
+                    onClick={() => setIsOpen(true)}
+                    className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition "
+                    aria-label="開啟選單"
+                >
+                    <Menu size={24} />
+                </button>
+            )}
+
+      {isOpen && !isDesktop && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 transition-opacity duration-300"
+          onClick={() => setIsOpen(false)}
+        />
       )}
 
       <Mech_Sidebar
@@ -235,21 +260,21 @@ export default function MechanismFeedbackPage() {
       />
 
       <div
-        className={`transition-all duration-300 ${
-          isOpen ? "ml-64" : "ml-0"
+        className={`flex-1 flex flex-col transition-all duration-300 ${
+          isOpen && isDesktop ? "lg:ml-64" : "ml-0"
         }`}
       >
         <Navbar />
         <MechanismFeedbackFormContent />
-      </div>
-    {/* Footer */}
-        <div className="bg-gray-800 text-white py-8">
+        {/* Footer */}
+        <footer className="bg-gray-800 text-white py-8 mt-auto">
           <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400">
+            <p className="text-gray-400 text-sm">
               © 2025 MedOnGo 平台. 讓醫療服務更便捷、更專業。
             </p>
           </div>
-        </div>
+        </footer>
+      </div>
     </div>
   );
 }

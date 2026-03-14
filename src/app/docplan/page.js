@@ -81,15 +81,18 @@ export default function PricingPage() {
   ];
 
   return (
-    <div className="relative min-h-screen bg-[var(--background)]/50 backdrop-blur-sm">
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
-        >
-          <Menu />
-        </button>
-      )}
+    <div className="relative min-h-screen bg-gradient-to-br from-[var(--color-periwinkle)]/30 via-white to-[var(--color-light-cyan)]/30">
+      
+            {/* Sidebar 開關按鈕（sidebar 關閉時顯示） */}
+            {!isOpen && (
+              <button
+                onClick={() => setIsOpen(true)}
+                className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition "
+                aria-label="開啟選單"
+              >
+                <Menu size={24} />
+              </button>
+            )}
 
       <DoctorSidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
@@ -224,7 +227,15 @@ export default function PricingPage() {
           </div>
         </div>
 
-        <FloatingChat />
+        
+      </div>
+      {/* Footer */}
+      <div className="bg-gray-800 text-white py-6 sm:py-8">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <p className="text-gray-400 text-sm sm:text-base">
+            © 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。
+          </p>
+        </div>
       </div>
     </div>
   );
