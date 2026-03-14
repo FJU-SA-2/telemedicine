@@ -94,100 +94,125 @@ export default function HomePage() {
         
         {/* Minimal Navbar */}
         <nav className="bg-[var(--background)]/50 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-30">
-          <div className="mx-auto">
-            
-            
-            <div className="flex items-center h-16">
-              
-              <div className="flex items-center gap-3 pl-6 lg:pl-8"> {/* 左側：菜單與標題 */}
-                <button
-                  onClick={() => setIsOpen(true)}
-                  className="p-2 hover:bg-gray-50 rounded-lg transition-all"
-                >
-                  <Menu size={22} className="text-gray-700" />
-                </button>
-                <img
-                    src="/images/logo.png"
-                    alt="New Telehealth Logo"
-                    className="h-12 w-auto"
-                  />
-                <img 
-                  src="/images/logo3.png"
-                  alt="MedonGO Logo"
-                  className="h-16 w-auto"
-                  href="/page.js"
-                />
-              </div>
-              <div className="flex-grow"></div>
-              
-              <div className="flex items-center gap-3 pr-6 lg:pr-8"> {/* 右側：連結按鈕 */}
-                {/* 1. 使用教學: 替換為引用 CSS 變數 */}
-                <Link 
-                  href="/introduction"
-                  className={`px-6 py-3 text-base bg-[var(--color-azure)] text-white rounded-lg hover:opacity-90 transition-all shadow-md hover:shadow-lg`}
-                >
-                  使用教學
-                </Link>
-                {/* 2. 訪客: 替換為引用 CSS 變數 */}
-                <Link 
-                  href="/login"
-                  className={`px-6 py-3 text-base bg-[var(--background)] text-[var(--color-azure)] border border-[var(--color-azure)] rounded-lg hover:bg-gray-50 transition-all shadow-md hover:shadow-lg`}
-                >
-                  登入
-                </Link>
-              </div>
-            </div>
-          </div>
-        </nav>
+  <div className="mx-auto">
+
+    <div className="flex items-center justify-between h-16">
+
+      {/* 左側 */}
+      <div className="flex items-center gap-2 sm:gap-3 pl-3 sm:pl-6 lg:pl-8">
+        
+        {/* menu */}
+        <button
+          onClick={() => setIsOpen(true)}
+          className="p-2 hover:bg-gray-50 rounded-lg transition-all"
+        >
+          <Menu size={22} className="text-gray-700" />
+        </button>
+
+        {/* logo icon */}
+        <img
+          src="/images/logo.png"
+          alt="New Telehealth Logo"
+          className="h-9 sm:h-12 w-auto"
+        />
+
+        {/* 文字 logo (手機隱藏) */}
+        <img 
+          src="/images/logo3.png"
+          alt="MedonGO Logo"
+          className="hidden sm:block h-16 w-auto"
+        />
+
+      </div>
+
+      {/* 右側 */}
+      <div className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-6 lg:pr-8">
+
+        {/* 使用教學 */}
+        <Link 
+          href="/introduction"
+          className="px-3 sm:px-6 py-2 sm:py-3 text-sm sm:text-base
+          bg-[var(--color-azure)] text-white rounded-lg
+          hover:opacity-90 transition-all shadow-md hover:shadow-lg"
+        >
+          <span className="hidden sm:inline">使用教學</span>
+          <span className="sm:hidden">教學</span>
+        </Link>
+
+        {/* 登入 */}
+        <Link 
+          href="/login"
+          className="px-3 sm:px-6 py-2 sm:py-3 text-sm sm:text-base
+          bg-[var(--background)] text-[var(--color-azure)]
+          border border-[var(--color-azure)] rounded-lg
+          hover:bg-gray-50 transition-all shadow-md hover:shadow-lg"
+        >
+          登入
+        </Link>
+
+      </div>
+
+    </div>
+  </div>
+</nav>
 
         
         <main>
           {/* Hero Section */}
-          <section className="py-20">
-            <div className="max-w-7xl mx-auto px-6 lg:px-8">
-              <div className="flex items-center justify-between gap-12 flex-col md:flex-row">
-                <div className="flex-1 text-center md:text-left"><br></br>
-                  <h2 className="text-5xl font-bold text-gray-900 mb-3">
-                    醫隨行 <span className={`text-[var(--color-azure)]`}>MedOnGo</span> {/* 替換主色 */}
-                  </h2>
-                  {/* 描述文字調大為 text-xl */}
-                  <p className="text-gray-500 text-xl mb-8 max-w-md mx-auto md:mx-0">
-                    走到哪， 醫師就在哪<br></br>
-                    隨時隨地，輕鬆看診
-                  </p>
-                  
-                  <Link 
-                    href="/login"
-                    // 替換主色
-                    className={`inline-flex items-center gap-2 px-10 py-3 bg-[var(--color-lime-cream)] text-white rounded-lg hover:opacity-90 transition-all shadow-md hover:shadow-lg`}
-                  >
-                    立即體驗
-                    <ChevronRight size={30} />
-                  </Link>
-                </div>
-                <div className="hidden md:block">
-                  <div className="relative">
-                    
-                    <div className="relative flex-none mt-8 md:mt-0"> 
-                  <NextImage
-                    src="/images/hero1.png"
-                    alt="遠距醫療示意圖" 
-                    width={1000} 
-                    height={700} 
-                    className="rounded-3xl shadow-lg object-cover mx-auto"
-                    priority
-                  />
-                </div>
-                  </div>
-                </div>
-              </div>
+          <section className="relative py-12 lg:py-18 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+          
+          {/* 左側文字區 */}
+          <div className="text-center md:text-left">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
+              醫隨行 <span className="text-[var(--color-azure)]">MedOnGo</span>
+            </h1>
+
+            <p className="mt-6 text-base sm:text-lg lg:text-xl text-gray-500 max-w-md mx-auto md:mx-0">
+              走到哪，醫師就在哪<br />
+              隨時隨地，輕鬆看診
+            </p>
+
+            <div className="mt-8 flex justify-center md:justify-start">
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center gap-2
+                           px-6 sm:px-8 lg:px-10
+                           py-3
+                           text-sm sm:text-base
+                           bg-[var(--color-lime-cream)]
+                           text-white rounded-xl
+                           hover:opacity-90 transition-all
+                           shadow-md hover:shadow-lg"
+              >
+                立即體驗
+                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+              </Link>
             </div>
-          </section>
+          </div>
+
+          {/* 右側圖片區 */}
+          <div className="w-full">
+            <div className="relative w-full aspect-[7/4] lg:aspect-[16/10]">
+              <NextImage
+                src="/images/hero1.png"
+                alt="遠距醫療示意圖"
+                fill
+                className="object-cover rounded-3xl shadow-xl"
+                priority
+              />
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
           <section className="py-20">
   <div className="max-w-7xl mx-auto px-6 lg:px-8">
   {/* 標題 */}
   <div className="text-center mb-12">
-    <h2 className="text-4xl font-extrabold text-gray-900">
+    <h2 className="text-3xl font-extrabold text-gray-900">
       會員方案說明
     </h2>
     <p className="mt-4 text-lg text-gray-500">
@@ -270,7 +295,7 @@ export default function HomePage() {
           <section className="py-12">
             <div className="max-w-7xl mx-auto px-6 lg:px-8">
               <div className="text-center mb-10">
-                  <h2 className="text-4xl font-extrabold text-gray-900 sm:text-5xl">
+                  <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl lg:text-5xl">
                       視訊看診，<span className={`text-[var(--color-lime-cream)]`}>清晰影像</span> {/* 替換主色 */}
                   </h2>
                   <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500">
@@ -324,7 +349,7 @@ export default function HomePage() {
           <section className="py-12">
             <div className="max-w-7xl mx-auto px-6 lg:px-8">
               <div className="text-center mb-10">
-                  <h2 className="text-4xl font-extrabold text-gray-900 sm:text-5xl">
+                  <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl lg:text-5xl">
                       <span className={`text-[var(--color-lime-cream)]`}>專業醫師</span>進駐 {/* 替換主色 */}
                   </h2>
                   <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500">

@@ -62,9 +62,14 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   return (
     <div
       // 背景使用全域背景變數
-      className={`fixed top-0 left-0 h-full w-64 bg-[var(--background)]/50 backdrop-blur-sm text-gray-900 transform
-        ${isOpen ? "translate-x-0" : "-translate-x-full"}
-        transition-transform duration-300 ease-in-out z-40 shadow-lg`}
+      className={`fixed top-0 left-0 h-full
+                  w-64
+                  bg-[var(--background)]
+                  sm:bg-[var(--background)]/50 sm:backdrop-blur-sm
+                  text-gray-900 transform
+                  ${isOpen ? "translate-x-0" : "-translate-x-full"}
+                  transition-transform duration-300 ease-in-out
+                  z-40 shadow-lg`}
     >
       <div className="p-4 text-xl font-bold border-b border-gray-300 flex justify-between items-center">
         功能列表

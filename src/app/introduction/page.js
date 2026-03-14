@@ -276,7 +276,7 @@ const steps = [
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
       {/* 主要內容區域 */}
-      <div className={`transition-all duration-300 ${isOpen ? 'ml-64' : 'ml-0'}`}>
+      <div className={`transition-all duration-300 ${isOpen ? 'md:ml-64' : 'ml-0'}`}>
         {/* 使用你自己的 Navbar 組件 */}
         <Navbar />
 

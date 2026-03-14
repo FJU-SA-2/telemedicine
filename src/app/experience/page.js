@@ -146,7 +146,7 @@ const COLOR_LIGHT_CYAN = "var(--color-light-cyan)";
 
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
-      <div className={`transition-all duration-300 flex-1 flex flex-col ${isOpen ? "ml-64" : "ml-0"}`}>
+      <div className={`transition-all duration-300 flex-1 flex flex-col ${isOpen ? "md:ml-64" : "ml-0"}`}>
         <Navbar />
         
         <div className="py-8 flex-1">

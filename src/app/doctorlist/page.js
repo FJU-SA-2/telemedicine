@@ -327,66 +327,70 @@ function DoctorListPage({ onSelectDoctor, user }) {
         />
       )}
 
-      <div className="mb-6 p-6 ">
-        <div className="flex items-center gap-2 w-full">
-        <div className="flex items-center gap-2 ">
-          <Filter size={20} className="text-blue-600" />
-          <h3 className="text-lg font-semibold text-gray-800">篩選條件</h3>
-        </div>
+<div className="mb-4 px-4 md:px-6 max-w-6xl mx-auto">
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <select
-              value={selectedSpecialty}
-              onChange={(e) => setSelectedSpecialty(e.target.value)}
-              className="w-50 px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700"
-            >
-              <option value="">所有科別</option>
-              {specialties
-                .filter((s) => s !== "所有科別")
-                .map((specialty) => (
-                  <option key={specialty} value={specialty}>
-                    {specialty}
-                  </option>
-                ))}
-            </select>
-            </div>
-            <div>
-            <select
-              value={selectedHospital}
-              onChange={(e) => setSelectedHospital(e.target.value)}
-              className="w-50 px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700"
-            >
-              <option value="">任職院所</option>
-              {hospitals
-                .filter((h) => h !== "所有院所")
-                .map((hospital) => (
-                  <option key={hospital} value={hospital}>
-                    {hospital}
-                  </option>
-                ))}
-            </select>
-          </div>
-          <div>
-          <input
-            type="text"
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            placeholder="搜尋醫師姓名、付費模式等"
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-          </div>
-        </div>
-      </div>
+  {/* 篩選標題 */}
+  <div className="flex items-center gap-1 mb-2">
+    <Filter size={18} className="text-blue-600" />
+    <h3 className="text-base md:text-lg font-semibold text-gray-800">
+      篩選條件
+    </h3>
+  </div>
 
-      <div className="mb-4">
+  {/* 篩選欄位 */}
+  <div className="flex flex-col gap-2 md:grid md:grid-cols-3 md:gap-4">
+
+    {/* 科別 */}
+    <select
+      value={selectedSpecialty}
+      onChange={(e) => setSelectedSpecialty(e.target.value)}
+      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 text-sm"
+    >
+      <option value="">所有科別</option>
+      {specialties
+        .filter((s) => s !== "所有科別")
+        .map((specialty) => (
+          <option key={specialty} value={specialty}>
+            {specialty}
+          </option>
+        ))}
+    </select>
+
+    {/* 院所 */}
+    <select
+      value={selectedHospital}
+      onChange={(e) => setSelectedHospital(e.target.value)}
+      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 text-sm"
+    >
+      <option value="">任職院所</option>
+      {hospitals
+        .filter((h) => h !== "所有院所")
+        .map((hospital) => (
+          <option key={hospital} value={hospital}>
+            {hospital}
+          </option>
+        ))}
+    </select>
+
+    {/* 搜尋 */}
+    <input
+      type="text"
+      value={keyword}
+      onChange={(e) => setKeyword(e.target.value)}
+      placeholder="搜尋醫師"
+      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 text-sm focus:ring-2 focus:ring-blue-500"
+    />
+
+  </div>
+</div>
+
+      <div className="max-w-6xl mx-auto ">
         <h2 className="text-xl font-bold text-gray-800">
           搜尋結果 ({filteredDoctors.length} 位醫師)
         </h2>
-      </div>
+      </div><br></br>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-gray-800">
+      <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
         {filteredDoctors.map((doctor) => {
           const fullName = `${doctor.first_name}${doctor.last_name}`;
           const isFavorited = favorites.includes(doctor.doctor_id);
@@ -399,54 +403,59 @@ function DoctorListPage({ onSelectDoctor, user }) {
               {/* 收藏按鈕 - 改為愛心 */}
 <div
   key={doctor.doctor_id}
-  className="bg-white rounded-2xl shadow-md transition p-6 flex flex-col items-center text-center relative"
+  className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 p-4 md:p-6 flex flex-col items-center text-center relative"
 >
+  
   {/* 收藏愛心 */}
   <div
     onClick={() => toggleFavorite(doctor.doctor_id)}
-    className="absolute top-4 right-4 cursor-pointer"
+    className="absolute top-3 right-3 cursor-pointer"
   >
     <Heart
-      size={24}
-      className={isFavorited ? "text-red-500 fill-red-500" : "text-gray-300 hover:text-red-400"}
+      size={22}
+      className={
+        isFavorited
+          ? "text-red-500 fill-red-500"
+          : "text-gray-300 hover:text-red-400"
+      }
       fill={isFavorited ? "currentColor" : "none"}
     />
   </div>
 
-  {/* 大頭像 */}
-  <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-blue-100 shadow mb-4">
+  {/* 醫師頭像 */}
+  <div className="w-16 h-16 md:w-24 md:h-24 rounded-full overflow-hidden border-4 border-blue-100 shadow mb-3">
     <img
       src={doctor.photo || "/default-doctor.png"}
-      onError={(e) => e.target.src = "/default-doctor.png"}
+      onError={(e) => (e.target.src = "/default-doctor.png")}
       className="w-full h-full object-cover"
     />
   </div>
 
-  {/* 姓名 */}
-  <h3 className="text-xl font-bold text-gray-800">
+  {/* 醫師姓名 */}
+  <h3 className="text-base md:text-lg font-bold text-gray-800">
     {doctor.first_name}{doctor.last_name}
   </h3>
 
-  {/* 科別 badge */}
-  <span className="mt-1 px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">
+  {/* 科別 */}
+  <span className="mt-1 px-2 py-0.5 md:px-3 md:py-1 bg-blue-100 text-blue-700 text-xs md:text-sm rounded-full">
     {doctor.specialty}
   </span>
 
   {/* 院所 */}
-  <p className="text-gray-500 text-sm mt-1">
+  <p className="text-gray-500 text-xs md:text-sm mt-1">
     {doctor.practice_hospital}
   </p>
 
   {/* 費用 */}
-  <p className="mt-2 text-lg font-semibold text-blue-600">
+  <p className="mt-1 md:mt-2 text-sm md:text-lg font-semibold text-blue-600">
     NT$ {doctor.consultation_fee || "—"}
   </p>
 
   {/* Divider */}
-  <div className="w-full border-t my-4"></div>
+  <div className="hidden md:block w-full border-t my-4"></div>
 
-  {/* 專業資訊 Grid */}
-  <div className="grid grid-cols-1 gap-3 w-full text-left text-sm">
+  {/* 專業資訊（手機隱藏） */}
+  <div className="hidden md:grid grid-cols-1 gap-3 w-full text-left text-sm">
 
     <div className="flex gap-2 items-start">
       <span className="text-blue-500 font-bold">🎓</span>
@@ -476,11 +485,14 @@ function DoctorListPage({ onSelectDoctor, user }) {
 
   {/* 預約按鈕 */}
   <button
-    onClick={() => window.location.href = `/reserve?doctor=${doctor.doctor_id}`}
-    className="mt-4 w-full bg-green-600 text-white py-2.5 rounded-xl font-medium hover:bg-green-700 transition"
+    onClick={() =>
+      (window.location.href = `/reserve?doctor=${doctor.doctor_id}`)
+    }
+    className="mt-3 md:mt-4 w-full bg-green-600 text-white py-2 md:py-2.5 rounded-lg md:rounded-xl text-sm md:text-base font-medium hover:bg-green-700 transition"
   >
     立即預約
   </button>
+
 </div>
             </div>
           );
@@ -613,7 +625,7 @@ export default function App() {
 
       <div
         className={`transition-all duration-300 ${
-          isOpen ? "ml-64" : "ml-0"
+          isOpen ? "md:ml-64" : "ml-0"
         }`}
       >
         <Navbar />
@@ -640,7 +652,7 @@ export default function App() {
         )}
         {/* Footer */}
         <div className="bg-gray-800 text-white py-8">
-          <div className="max-w-7xl mx-auto px-4 text-center">
+          <div className="w-full text-center">
             <p className="text-gray-400">
               © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
             </p>
