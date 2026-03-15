@@ -394,7 +394,7 @@ export default function HomePage() {
   // ✅ 修改：只在認證檢查時顯示載入
   if (authLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">載入中...</p>
@@ -404,7 +404,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-gray-50">
+    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}

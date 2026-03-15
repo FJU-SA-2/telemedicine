@@ -1,11 +1,11 @@
 'use client';
 import React, { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, UserCheck, ArrowLeft, Mail, Lock, Phone, Calendar, MapPin, House, Shield } from 'lucide-react';
+import { User, UserCheck, ArrowLeft, Mail, Lock, Phone, Calendar, MapPin, House, Shield, Building2 } from 'lucide-react';
 
 export default function TelemedicineAuth() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState('role'); // 'role', 'auth', 'register', 'verify'  const [selectedRole, setSelectedRole] = useState(''); // 'patient', 'doctor'
+  const [currentStep, setCurrentStep] = useState('role'); // 'role', 'auth', 'register', 'verify'
   const [selectedRole, setSelectedRole] = useState('');
   const [authMode, setAuthMode] = useState('login'); // 'login', 'register'
   const [isAnimating, setIsAnimating] = useState(false);
@@ -13,193 +13,216 @@ export default function TelemedicineAuth() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [birthDate, setBirthDate] = useState(''); // 只有病患需要
+  const [birthDate, setBirthDate] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [gender, setGender] = useState(''); // 新增性別狀態
-  const [specialty, setSpecialty] = useState(''); // 只有醫生需要
-  const [clinic, setClinic] = useState(''); // 只有醫生需要
-  const [address, setAddress] = useState(''); // 住家地址
+  const [gender, setGender] = useState('');
+  const [specialty, setSpecialty] = useState('');
+  const [clinic, setClinic] = useState('');
+  const [address, setAddress] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [certificate, setCertificate] = useState(null);
   const [certificatePreview, setCertificatePreview] = useState('');
 
+  // 依角色取得主題色
+  const roleTheme = {
+    patient: {
+      badge: 'bg-blue-100 text-blue-700',
+      btn: 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700',
+    },
+    doctor: {
+      badge: 'bg-green-100 text-green-700',
+      btn: 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700',
+    },
+    mech: {
+      badge: 'bg-purple-100 text-purple-700',
+      btn: 'bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700',
+    },
+  };
+  const theme = roleTheme[selectedRole] || roleTheme.patient;
 
-  const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  if (password !== confirmPassword) {
-    alert("密碼與確認密碼不一致");
-    return;
-  }
-
-  if (selectedRole === 'doctor' && !certificate) {
-  alert("請上傳執業證明");
-  return;
-  }
-  setIsLoading(true);
-
-  const bodyData = {
-    first_name: firstName,
-    last_name: lastName,
-    email,
-    password,
-    phone_number: phone,
-    date_of_birth: birthDate,
-    role: selectedRole,
-    gender,
-    specialty: selectedRole === 'doctor' ? specialty : null,
-    practice_hospital: selectedRole === 'doctor' ? clinic : null,
-    address
+  const roleLabel = { patient: '病患', doctor: '醫生', mech: '機構' };
+  const roleIcon = {
+    patient: <User size={16} />,
+    doctor: <UserCheck size={16} />,
+    mech: <Building2 size={16} />,
   };
 
-  try {
-    const res = await fetch('/api/send-verification', {  // ⚠️ 改這裡
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',  // ⚠️ 確保有這行
-      body: JSON.stringify(bodyData),
-    });
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-    const data = await res.json();
-
-    if (res.ok) {
-      alert(data.message);
-      setCurrentStep('verify');  // ⚠️ 跳轉到驗證頁面
-    } else {
-      alert(data.message);
+    if (password !== confirmPassword) {
+      alert("密碼與確認密碼不一致");
+      return;
     }
-  } catch (err) {
-    console.error(err);
-    alert("發生錯誤,請稍後再試。");
-  } finally {
-    setIsLoading(false);
-  }
-};
 
- const handleLogin = async (e) => {
-  e.preventDefault();
+    if (selectedRole === 'doctor' && !certificate) {
+      alert("請上傳執業證明");
+      return;
+    }
 
-  if (!email || !password) {
-    alert("請輸入帳號與密碼");
-    return;
-  }
+    if (selectedRole === 'mech' && !certificate) {
+      alert("請上傳機構證明文件");
+      return;
+    }
 
-  setIsLoading(true);
+    setIsLoading(true);
 
-  // ⭐ 新增：檢查是否為管理者帳號
-  if (email === 'admin@mog.com' && password === 'admin123') {
+    const bodyData = {
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      password,
+      phone_number: phone,
+      date_of_birth: birthDate,
+      role: selectedRole,
+      gender,
+      specialty: (selectedRole === 'doctor' || selectedRole === 'mech') ? specialty : null,
+      practice_hospital: (selectedRole === 'doctor' || selectedRole === 'mech') ? clinic : null,
+      address
+    };
+
     try {
-      const res = await fetch('/api/admin/login', {
+      const res = await fetch('/api/send-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        body: JSON.stringify(bodyData),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert(data.message);
+        setCurrentStep('verify');
+      } else {
+        alert(data.message);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("發生錯誤,請稍後再試。");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
+    if (!email || !password) {
+      alert("請輸入帳號與密碼");
+      return;
+    }
+
+    setIsLoading(true);
+
+    // 檢查是否為管理者帳號
+    if (email === 'admin@mog.com' && password === 'admin123') {
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email, password }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          alert('管理者登入成功!');
+          router.push('/admin/dashboard');
+        } else {
+          alert(data.message || '管理者登入失敗');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('管理者登入失敗,請稍後再試');
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
 
-      if (res.ok && data.success) {
-        alert('管理者登入成功!');
-        router.push('/admin/dashboard');
-      } else {
-        alert(data.message || '管理者登入失敗');
+      if (!res.ok || data.success === false) {
+        alert(data.message || "登入失敗,請檢查帳密");
+        return;
       }
+
+      const { user } = data;
+      if (user) {
+        localStorage.setItem('user_id', user.user_id);
+        localStorage.setItem('user_type', user.role);
+        localStorage.setItem('email', user.email);
+        console.log('✅ 已儲存登入使用者資訊:', user);
+      }
+
+      const role = data.user?.role;
+      if (role === 'doctor') {
+        router.push('/doctorpage');
+      } else if (role === 'patient') {
+        router.push('/PatientPage');
+      } else if (role === 'mech') {
+        router.push('/mechpage');
+      } else {
+        router.push('/admin');
+      }
+
     } catch (err) {
       console.error(err);
-      alert('管理者登入失敗,請稍後再試');
+      alert("登入失敗,請稍後再試");
     } finally {
       setIsLoading(false);
     }
-    return;  // 重要：管理者登入後直接返回
-  }
+  };
 
+  const handleVerifyCode = async (e) => {
+    e.preventDefault();
 
-  try {
-    const res = await fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ email, password }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || data.success === false) {
-      alert(data.message || "登入失敗,請檢查帳密");
+    if (!verificationCode || verificationCode.length !== 6) {
+      alert("請輸入6位數驗證碼");
       return;
     }
 
-    const { user } = data;
-    if (user) {
-      localStorage.setItem('user_id', user.user_id);
-      localStorage.setItem('user_type', user.role);  // 'doctor' or 'patient'
-      localStorage.setItem('email', user.email);
-      console.log('✅ 已儲存登入使用者資訊:', user);
-    }
-    // 登入成功，依照角色導向不同頁面
-    const role = data.user?.role; // 後端需回傳 user.role
-    if (role === 'doctor') {
-      router.push('/doctorpage');
-    } else if (role === 'patient') {
-      router.push('/PatientPage');
-    } else if (role === 'mech') {
-      router.push('/mechpage');
-    } else {
-      router.push('/admin'); // fallback
-    }
-    
+    setIsLoading(true);
 
-  } catch (err) {
-    console.error(err);
-    alert("登入失敗,請稍後再試");
-  } finally {
-    setIsLoading(false);
-  }
-};
+    try {
+      const res = await fetch('/api/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ code: verificationCode }),
+      });
 
+      const data = await res.json();
 
-
-const handleVerifyCode = async (e) => {
-  e.preventDefault();
-
-  if (!verificationCode || verificationCode.length !== 6) {
-    alert("請輸入6位數驗證碼");
-    return;
-  }
-
-  setIsLoading(true);
-
-  try {
-    const res = await fetch('/api/verify-code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',  // ⭐ 確保有這行
-      body: JSON.stringify({ code: verificationCode }),
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      // ⭐ 根據角色顯示不同訊息
-      if (data.role === 'doctor') {
-        alert("註冊成功！您的資料已送出，我們將在 1-3 個工作天內完成審核，審核結果將以郵件通知。");
+      if (res.ok) {
+        if (data.role === 'doctor' || data.role === 'mech') {
+          alert("註冊成功！您的資料已送出，我們將在 1-3 個工作天內完成審核，審核結果將以郵件通知。");
+        } else {
+          alert("註冊成功！");
+        }
+        switchToLogin();
       } else {
-        alert("註冊成功！");
+        alert(data.message);
       }
-      switchToLogin();
-    } else {
-      alert(data.message);
+    } catch (err) {
+      console.error(err);
+      alert("驗證失敗,請稍後再試");
+    } finally {
+      setIsLoading(false);
     }
-  } catch (err) {
-    console.error(err);
-    alert("驗證失敗,請稍後再試");
-  } finally {
-    setIsLoading(false);
-  }
-};
-
+  };
 
   const handleRoleSelect = (role) => {
     if (isAnimating) return;
@@ -217,7 +240,7 @@ const handleVerifyCode = async (e) => {
     setIsAnimating(true);
 
     setTimeout(() => {
-      if (currentStep === 'verify') {  // ⚠️ 新增這段
+      if (currentStep === 'verify') {
         setCurrentStep('register');
         setVerificationCode('');
       } else if (currentStep === 'register') {
@@ -234,22 +257,13 @@ const handleVerifyCode = async (e) => {
   const switchToRegister = () => {
     if (isAnimating) return;
     setIsAnimating(true);
-
-    setTimeout(() => {
-      setCurrentStep('register');
-      setIsAnimating(false);
-    }, 300);
+    setTimeout(() => { setCurrentStep('register'); setIsAnimating(false); }, 300);
   };
 
   const switchToLogin = () => {
     if (isAnimating) return;
     setIsAnimating(true);
-
-    setTimeout(() => {
-      setCurrentStep('auth');
-      setAuthMode('login');
-      setIsAnimating(false);
-    }, 300);
+    setTimeout(() => { setCurrentStep('auth'); setAuthMode('login'); setIsAnimating(false); }, 300);
   };
 
   return (
@@ -271,24 +285,25 @@ const handleVerifyCode = async (e) => {
 
             {/* Back Button */}
             <button
-            onClick={() => {
-              if (currentStep === 'role') {
-                router.push('/');  // 在選擇身份階段返回首頁
-              } else {
-                handleBack();  // 其他階段用原本的邏輯
-              }
-            }}
-            className="absolute -left-5 p-2 text-gray-500 hover:text-gray-700 transition-colors rounded-full hover:bg-gray-200 active:bg-gray-300 flex items-center justify-center"
-          >
-            <ArrowLeft size={20} />
-          </button>
+              onClick={() => {
+                if (currentStep === 'role') {
+                  router.push('/');
+                } else {
+                  handleBack();
+                }
+              }}
+              className="absolute -left-5 p-2 text-gray-500 hover:text-gray-700 transition-colors rounded-full hover:bg-gray-200 active:bg-gray-300 flex items-center justify-center"
+            >
+              <ArrowLeft size={20} />
+            </button>
 
-            {/* Role Selection */}
+            {/* ── Role Selection ── */}
             {currentStep === 'role' && (
               <div className={`transition-all duration-500 ${isAnimating ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'}`}>
                 <h2 className="text-2xl font-bold text-center text-gray-800 mb-8">請選擇您的身份</h2>
-              
+
                 <div className="space-y-4">
+                  {/* 我是患者 */}
                   <button
                     onClick={() => handleRoleSelect('patient')}
                     className="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-300 group transform hover:scale-105"
@@ -304,6 +319,7 @@ const handleVerifyCode = async (e) => {
                     </div>
                   </button>
 
+                  {/* 我是醫生 */}
                   <button
                     onClick={() => handleRoleSelect('doctor')}
                     className="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all duration-300 group transform hover:scale-105"
@@ -318,17 +334,33 @@ const handleVerifyCode = async (e) => {
                       </div>
                     </div>
                   </button>
+
+                  {/* 我是機構 */}
+                  <button
+                    onClick={() => handleRoleSelect('mech')}
+                    className="w-full p-6 border-2 border-gray-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all duration-300 group transform hover:scale-105"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                        <Building2 className="text-purple-600" size={24} />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="text-lg font-semibold text-gray-800">我是機構</h3>
+                        <p className="text-gray-600 text-sm">醫療機構或合作單位管理</p>
+                      </div>
+                    </div>
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* Login Form */}
+            {/* ── Login Form ── */}
             {currentStep === 'auth' && authMode === 'login' && (
               <div className={`transition-all duration-500 ${isAnimating ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'}`}>
                 <div className="text-center mb-6">
-                  <div className={`inline-flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium ${selectedRole === 'patient' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                    {selectedRole === 'patient' ? <User size={16} /> : <UserCheck size={16} />}
-                    <span>{selectedRole === 'patient' ? '病患登入' : '醫生登入'}</span>
+                  <div className={`inline-flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium ${theme.badge}`}>
+                    {roleIcon[selectedRole]}
+                    <span>{roleLabel[selectedRole]}登入</span>
                   </div>
                 </div>
 
@@ -371,10 +403,7 @@ const handleVerifyCode = async (e) => {
 
                   <button
                     type="submit"
-                    className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-all transform hover:scale-105 ${selectedRole === 'patient'
-                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
-                      : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
-                      }`}
+                    className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-all transform hover:scale-105 ${theme.btn}`}
                   >
                     立即登入
                   </button>
@@ -382,30 +411,27 @@ const handleVerifyCode = async (e) => {
 
                 <div className="mt-6 text-center">
                   <span className="text-gray-600">還沒有帳號？ </span>
-                  <button
-                    onClick={switchToRegister}
-                    className="text-blue-600 hover:text-blue-700 font-medium"
-                  >
+                  <button onClick={switchToRegister} className="text-blue-600 hover:text-blue-700 font-medium">
                     立即註冊
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Register Form */}
+            {/* ── Register Form ── */}
             {currentStep === 'register' && (
               <div className={`transition-all duration-500 ${isAnimating ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'}`}>
                 <div className="text-center mb-6">
-                  <div className={`inline-flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium ${selectedRole === 'patient' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                    {selectedRole === 'patient' ? <User size={16} /> : <UserCheck size={16} />}
-                    <span>{selectedRole === 'patient' ? '患者註冊' : '醫生註冊'}</span>
+                  <div className={`inline-flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium ${theme.badge}`}>
+                    {roleIcon[selectedRole]}
+                    <span>{roleLabel[selectedRole]}註冊</span>
                   </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2 ">姓氏</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">姓氏</label>
                       <input
                         value={firstName} onChange={(e) => setFirstName(e.target.value)}
                         type="text"
@@ -423,19 +449,19 @@ const handleVerifyCode = async (e) => {
                       />
                     </div>
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">生理性別</label>
-
                     <select value={gender} onChange={(e) => setGender(e.target.value)}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black">
                       <option value="">請選擇</option>
                       <option value="male">男性</option>
                       <option value="female">女性</option>
                     </select>
-
                   </div>
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2 ">電子信箱</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">電子信箱</label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 text-gray-400" size={20} />
                       <input
@@ -459,6 +485,8 @@ const handleVerifyCode = async (e) => {
                       />
                     </div>
                   </div>
+
+                  {/* 病患專屬欄位 */}
                   {selectedRole === 'patient' && (
                     <>
                       <div>
@@ -472,7 +500,6 @@ const handleVerifyCode = async (e) => {
                           />
                         </div>
                       </div>
-
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">住家地址</label>
                         <div className="relative">
@@ -488,6 +515,7 @@ const handleVerifyCode = async (e) => {
                     </>
                   )}
 
+                  {/* 醫生專屬欄位 */}
                   {selectedRole === 'doctor' && (
                     <>
                       <div>
@@ -501,81 +529,45 @@ const handleVerifyCode = async (e) => {
                           <option value="營養科">營養科</option>
                         </select>
                       </div>
-
-                    {/* 在表單中 specialty 和 clinic 之間加入 */}
-                      {selectedRole === 'doctor' && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            請上傳有效執業證明 <span className="text-red-500">*</span>
-                          </label>
-                          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
-                            {certificatePreview ? (
-                              <div className="space-y-4">
-                                <img src={certificatePreview} alt="證照預覽" className="max-h-40 mx-auto rounded" />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setCertificate(null);
-                                    setCertificatePreview('');
-                                  }}
-                                  className="text-red-600 text-sm hover:text-red-700"
-                                >
-                                  移除檔案
-                                </button>
-                              </div>
-                            ) : (
-                              <div>
-                                <input
-                                  type="file"
-                                  accept=".pdf,.png,.jpg,.jpeg"
-                                  onChange={async (e) => {
-                                    const file = e.target.files[0];
-                                    if (file) {
-                                      setCertificate(file);
-                                      if (file.type.startsWith('image/')) {
-                                        setCertificatePreview(URL.createObjectURL(file));
-                                      }
-                                      
-                                      // 立即上傳
-                                      const formData = new FormData();
-                                      formData.append('file', file);
-                                      
-                                      try {
-                                        const res = await fetch('/api/upload-certificate', {
-                                          method: 'POST',
-                                          credentials: 'include',
-                                          body: formData,
-                                        });
-                                        
-                                        const data = await res.json();
-
-                                        if (!res.ok) {
-                                          alert('檔案上傳失敗');
-                                          setCertificate(null);
-                                          setCertificatePreview('');
-                                        } else {
-                                          console.log('✅ 檔案上傳成功:', data);  // ⭐ 加這行除錯
-                                        }
-                                      } catch (err) {
-                                        console.error(err);
-                                        alert('檔案上傳失敗');
-                                      }
-                                    }
-                                  }}
-                                  className="hidden"
-                                  id="certificate-upload"
-                                />
-                                <label htmlFor="certificate-upload" className="cursor-pointer">
-                                  <div className="text-gray-600">
-                                    <p className="mb-2">點擊上傳或拖曳檔案至此</p>
-                                    <p className="text-xs text-gray-500">支援 PDF, PNG, JPG (最大 16MB)</p>
-                                  </div>
-                                </label>
-                              </div>
-                            )}
-                          </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          請上傳有效執業證明 <span className="text-red-500">*</span>
+                        </label>
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-500 transition-colors">
+                          {certificatePreview ? (
+                            <div className="space-y-4">
+                              <img src={certificatePreview} alt="證照預覽" className="max-h-40 mx-auto rounded" />
+                              <button type="button" onClick={() => { setCertificate(null); setCertificatePreview(''); }} className="text-red-600 text-sm hover:text-red-700">移除檔案</button>
+                            </div>
+                          ) : (
+                            <div>
+                              <input type="file" accept=".pdf,.png,.jpg,.jpeg"
+                                onChange={async (e) => {
+                                  const file = e.target.files[0];
+                                  if (file) {
+                                    setCertificate(file);
+                                    if (file.type.startsWith('image/')) setCertificatePreview(URL.createObjectURL(file));
+                                    const formData = new FormData();
+                                    formData.append('file', file);
+                                    try {
+                                      const res = await fetch('/api/upload-certificate', { method: 'POST', credentials: 'include', body: formData });
+                                      const data = await res.json();
+                                      if (!res.ok) { alert('檔案上傳失敗'); setCertificate(null); setCertificatePreview(''); }
+                                      else console.log('✅ 檔案上傳成功:', data);
+                                    } catch (err) { console.error(err); alert('檔案上傳失敗'); }
+                                  }
+                                }}
+                                className="hidden" id="certificate-upload" />
+                              <label htmlFor="certificate-upload" className="cursor-pointer">
+                                <div className="text-gray-600">
+                                  <p className="mb-2">點擊上傳或拖曳檔案至此</p>
+                                  <p className="text-xs text-gray-500">支援 PDF, PNG, JPG (最大 16MB)</p>
+                                </div>
+                              </label>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">執業地點</label>
                         <div className="relative">
@@ -585,6 +577,63 @@ const handleVerifyCode = async (e) => {
                             type="text"
                             className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
                             placeholder="請輸入執業醫院或診所"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* 機構專屬欄位 */}
+                  {selectedRole === 'mech' && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          請上傳機構證明文件 <span className="text-red-500">*</span>
+                        </label>
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-purple-500 transition-colors">
+                          {certificatePreview ? (
+                            <div className="space-y-4">
+                              <img src={certificatePreview} alt="證明預覽" className="max-h-40 mx-auto rounded" />
+                              <button type="button" onClick={() => { setCertificate(null); setCertificatePreview(''); }} className="text-red-600 text-sm hover:text-red-700">移除檔案</button>
+                            </div>
+                          ) : (
+                            <div>
+                              <input type="file" accept=".pdf,.png,.jpg,.jpeg"
+                                onChange={async (e) => {
+                                  const file = e.target.files[0];
+                                  if (file) {
+                                    setCertificate(file);
+                                    if (file.type.startsWith('image/')) setCertificatePreview(URL.createObjectURL(file));
+                                    const formData = new FormData();
+                                    formData.append('file', file);
+                                    try {
+                                      const res = await fetch('/api/upload-certificate', { method: 'POST', credentials: 'include', body: formData });
+                                      const data = await res.json();
+                                      if (!res.ok) { alert('檔案上傳失敗'); setCertificate(null); setCertificatePreview(''); }
+                                      else console.log('✅ 檔案上傳成功:', data);
+                                    } catch (err) { console.error(err); alert('檔案上傳失敗'); }
+                                  }
+                                }}
+                                className="hidden" id="certificate-upload-mech" />
+                              <label htmlFor="certificate-upload-mech" className="cursor-pointer">
+                                <div className="text-gray-600">
+                                  <p className="mb-2">點擊上傳或拖曳檔案至此</p>
+                                  <p className="text-xs text-gray-500">支援 PDF, PNG, JPG (最大 16MB)</p>
+                                </div>
+                              </label>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">機構地點</label>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-3 text-gray-400" size={20} />
+                          <input
+                            value={clinic} onChange={(e) => setClinic(e.target.value)}
+                            type="text"
+                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-black"
+                            placeholder="請輸入機構地址"
                           />
                         </div>
                       </div>
@@ -629,32 +678,26 @@ const handleVerifyCode = async (e) => {
                   </div>
 
                   <button
-                  type="submit"
-                  disabled={isLoading}  // ⚠️ 新增
-                  className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-all transform hover:scale-105 ${
-                    isLoading ? 'bg-gray-400 cursor-not-allowed' :  // ⚠️ 新增
-                    selectedRole === 'patient'
-                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
-                    : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
-                  }`}
-                >
-                  {isLoading ? '發送中...' : '發送驗證碼'}  {/* ⚠️ 改這裡 */}
-                </button>
+                    type="submit"
+                    disabled={isLoading}
+                    className={`w-full py-3 px-4 rounded-lg text-white font-medium transition-all transform hover:scale-105 ${
+                      isLoading ? 'bg-gray-400 cursor-not-allowed' : theme.btn
+                    }`}
+                  >
+                    {isLoading ? '發送中...' : '發送驗證碼'}
+                  </button>
                 </form>
 
                 <div className="mt-6 text-center">
                   <span className="text-gray-600">已經有帳號？ </span>
-                  <button
-                    onClick={switchToLogin}
-                    className="text-blue-600 hover:text-blue-700 font-medium"
-                  >
+                  <button onClick={switchToLogin} className="text-blue-600 hover:text-blue-700 font-medium">
                     立即登入
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Verification Code Form */}
+            {/* ── Verification Code Form ── */}
             {currentStep === 'verify' && (
               <div className={`transition-all duration-500 ${isAnimating ? 'opacity-0 transform scale-95' : 'opacity-100 transform scale-100'}`}>
                 <div className="text-center mb-6">
@@ -711,7 +754,7 @@ const handleVerifyCode = async (e) => {
                   </div>
                 </form>
               </div>
-      )}
+            )}
 
           </div>
         </div>

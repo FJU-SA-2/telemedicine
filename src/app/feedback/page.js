@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import { Menu, AlertCircle, Send } from 'lucide-react';
-import LockedPageOverlay from "../components/LockedPageOverlay"; // ✅ 新增
+import LockedPageOverlay from "../components/LockedPageOverlay";
 import FloatingChat from "../components/FloatingChat";
 
 function FeedbackFormContent() {
@@ -35,7 +35,7 @@ function FeedbackFormContent() {
 
   try {
     const user_id = localStorage.getItem('user_id');
-    const user_type = localStorage.getItem('user_type'); // ✅ 新增：取得用戶類型
+    const user_type = localStorage.getItem('user_type');
 
     if (!user_id) {
       setError('請先登入後再提交回報');
@@ -52,12 +52,12 @@ function FeedbackFormContent() {
     const userIdNumber = parseInt(user_id, 10);
     
     console.log('user_id from localStorage:', user_id);
-    console.log('user_type from localStorage:', user_type); // ✅ 新增日誌
+    console.log('user_type from localStorage:', user_type);
     console.log('user_id as number:', userIdNumber);
     console.log('發送請求到:', '/api/feedback');
     console.log('提交數據:', {
       user_id: userIdNumber,
-      user_type: user_type, // ✅ 新增
+      user_type: user_type,
       categories: selectedCategories,
       feedback_text: feedback,
     });
@@ -69,7 +69,7 @@ function FeedbackFormContent() {
       },
       body: JSON.stringify({
         user_id: userIdNumber,
-        user_type: user_type, // ✅ 新增：傳送用戶類型
+        user_type: user_type,
         categories: selectedCategories,
         feedback_text: feedback,
       }),
@@ -97,7 +97,7 @@ function FeedbackFormContent() {
 };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen">
       <div className="bg-white rounded-2xl shadow-xl max-w-2xl mx-auto p-8">
         <div className="flex items-center gap-3 mb-6">
           <AlertCircle className="w-8 h-8 text-indigo-600" />
@@ -190,11 +190,9 @@ export default function FeedbackPage() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("feedback");
   
-  // ✅ 新增：登入狀態管理
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // ✅ 新增：檢查登入狀態
   useEffect(() => {
     async function checkAuth() {
       try {
@@ -212,10 +210,9 @@ export default function FeedbackPage() {
     checkAuth();
   }, []);
 
-  // ✅ 只在認證檢查時顯示載入
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
         <p className="text-gray-600">載入中...</p>
       </div>
     );
@@ -246,11 +243,9 @@ export default function FeedbackPage() {
       >
         <Navbar />
         
-        {/* ✅ 主內容區域 */}
         <div className="relative min-h-screen">
           <FeedbackFormContent />
           
-          {/* ✅ 未登入時顯示鎖定覆蓋層 */}
           {!user && <LockedPageOverlay pageName="問題回報" icon={AlertCircle} />}
         </div>
       </div>
