@@ -368,8 +368,8 @@ const handleSave = async () => {
       <div className={`transition-all duration-300 bg-white min-h-screen ${isOpen ? "md:ml-64" : "ml-0"}`}>
         {/* 頂部導覽列 */}
         <Navbar />
-      <main className="max-w-4xl mx-auto px-6 py-10">
-      <h1 className="text-3xl font-semibold text-gray-800 mb-6">個人檔案</h1>
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <h1 className="text-2xl sm:text-3xl font-semibold text-gray-800 mb-6">個人檔案</h1>
       {/* <div className="mt-8">
       <Link 
         href={user.role === "doctor" ? "/doctorpage" : "/PatientPage"} 
@@ -385,7 +385,7 @@ const handleSave = async () => {
           登出
         </button>
           </div><br></br> */}
-      <div className="p-5 rounded-xl border border-indigo-300 bg-indigo-50 mb-6">
+      <div className="p-4 sm:p-5 rounded-xl border border-indigo-300 bg-indigo-50 mb-6">
   <h2 className="font-bold text-indigo-700 text-lg flex items-center gap-2">
     🚀 免費試用期
   </h2>
@@ -418,36 +418,36 @@ const handleSave = async () => {
       
 
       {/* 基本資料 */}
-      <div className="bg-white shadow-xl rounded-2xl p-8 mb-8 border border-gray-100 hover:shadow-2xl transition-shadow">
-            <div className="flex items-center gap-3 mb-6 pb-4 border-b-2 border-gray-100">
+      <div className="bg-white shadow-xl rounded-2xl p-5 sm:p-6 mb-6 border border-gray-100 hover:shadow-2xl transition-shadow">
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
               <User className="text-blue-600" size={28} />
               <h2 className="text-2xl font-bold text-gray-800">基本資料</h2>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="p-4 bg-gradient-to-br rounded-xl hover:bg-gray-100 transition-colors">
-                <p className="text-sm text-[var(--color-mahogany)] font-medium mb-1">姓名</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+              <div className="p-3 sm:p-4 bg-gradient-to-br rounded-xl hover:bg-gray-100 transition-colors">
+                <p className="text-xs sm:text-sm text-[var(--color-mahogany)] font-medium mb-1">姓名</p>
                 <p className="text-lg font-semibold text-gray-800">
                   {user.first_name}{user.last_name} 
                 </p>
               </div>
 
               <div className="p-4 bg-gradient-to-br rounded-xl hover:bg-gray-100 transition-colors">
-                <p className="text-sm text-[var(--color-mahogany)] font-medium mb-1">電子郵件</p>
+                <p className="text-xs sm:text-sm text-[var(--color-mahogany)] font-medium mb-1">電子郵件</p>
                 <p className="text-lg font-semibold text-gray-800 break-all">{user.email}</p>
               </div>
 
-              <div className="p-4 bg-gradient-to-br rounded-xl hover:bg-gray-100 transition-colors">
-                <p className="text-sm text-[var(--color-mahogany)] font-medium mb-1">身份</p>
+              <div className="p-3 sm:p-4 bg-gradient-to-br rounded-xl hover:bg-gray-100 transition-colors">
+                <p className="text-xs sm:text-sm text-[var(--color-mahogany)] font-medium mb-1">身份</p>
                 <p className="text-lg font-semibold text-gray-800">
                   {user.role === "patient" ? "病患" : user.role === "doctor" ? "醫生" : user.role}
                 </p>
               </div>
 
-              <div className="p-4 bg-gradient-to-br rounded-xl hover:bg-gray-100 transition-colors">
+              <div className="p-3 sm:p-4 bg-gradient-to-br rounded-xl hover:bg-gray-100 transition-colors">
                 {user.role === "patient" ? (
                   <>
-                    <p className="text-sm text-[var(--color-mahogany)] font-medium mb-1">生日 / 年齡</p>
+                    <p className="text-xs sm:text-sm text-[var(--color-mahogany)] font-medium mb-1">生日 / 年齡</p>
                     <p className="text-lg font-semibold text-gray-800">
                       {user.patientProfile?.date_of_birth
                         ? `${user.patientProfile.date_of_birth}(${user.age} 歲)`
@@ -490,7 +490,7 @@ const handleSave = async () => {
 
           {/* 病患健康資料 */}
           {isPatient && (
-            <div className="bg-white shadow-xl rounded-2xl p-8 border border-gray-100 hover:shadow-2xl transition-shadow">
+            <div className="bg-white shadow-xl rounded-2xl p-5 sm:p-8 border border-gray-100 hover:shadow-2xl transition-shadow">
               <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-100">
                 <div className="flex items-center gap-3">
                   <Heart className="text-red-600" size={28} />
@@ -508,8 +508,8 @@ const handleSave = async () => {
               </div>
 
               {!editing ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="p-3 sm:p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
                     <p className="text-sm text-gray-600 font-medium mb-2">身分證字號</p>
                     <p className="text-lg font-semibold text-gray-800">
                       {profile.id_number || "未填寫"}
@@ -582,7 +582,7 @@ const handleSave = async () => {
                       <Phone size={22} />
                       緊急聯絡人
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       <div>
                         <p className="text-sm text-purple-700 font-medium mb-1">姓名</p>
                         <p className="text-lg font-semibold text-gray-800">
@@ -600,7 +600,7 @@ const handleSave = async () => {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         身分證字號
@@ -786,7 +786,7 @@ const handleSave = async () => {
                       <Phone size={22} />
                       緊急聯絡人
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       <div>
                         <label className="block text-sm font-semibold text-purple-700 mb-2">
                           姓名
@@ -816,7 +816,7 @@ const handleSave = async () => {
                     </div>
                   </div>
 
-                  <div className="flex gap-4 pt-6">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-6">
                     <button
                       onClick={handleSave}
                       disabled={saving}
@@ -841,7 +841,7 @@ const handleSave = async () => {
 
           {/* 醫師專業資料 */}
           {isDoctor && (
-            <div className="bg-white shadow-xl rounded-2xl p-8 border border-gray-100 hover:shadow-2xl transition-shadow">
+            <div className="bg-white shadow-xl rounded-2xl p-5 sm:p-8 border border-gray-100 hover:shadow-2xl transition-shadow">
               <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-100">
                 <div className="flex items-center gap-3">
                   <Stethoscope className="text-blue-600" size={28} />
@@ -861,7 +861,7 @@ const handleSave = async () => {
               {/* 醫師頭像區 */}
               <div className="mb-8 pb-6 border-b-2 border-gray-100">
                 {/* 手機垂直排列，sm 以上水平排列 */}
-                <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
                   <div className="flex-shrink-0">
                     <p className="text-sm text-gray-600 font-medium mb-3">個人頭像</p>
                     <div className="relative group">
@@ -892,7 +892,7 @@ const handleSave = async () => {
                       </label>
                       <div className="space-y-3">
                         {/* 手機：file input 和按鈕各佔一行；sm 以上水平並排 */}
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                           <input 
                             type="file" 
                             accept=".png,.jpg,.jpeg" 
@@ -922,7 +922,7 @@ const handleSave = async () => {
               </div>
 
               {!editing ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
                     <div className="flex items-center gap-2 mb-2">
                       <Stethoscope className="text-blue-600" size={20} />
@@ -985,7 +985,7 @@ const handleSave = async () => {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-2">
                         主治科別
@@ -1083,7 +1083,7 @@ const handleSave = async () => {
                     />
                   </div>
 
-                  <div className="flex gap-4 pt-6">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-6">
                     <button
                       onClick={handleSave}
                       disabled={saving}

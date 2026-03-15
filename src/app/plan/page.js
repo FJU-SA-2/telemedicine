@@ -141,28 +141,30 @@ export default function PricingPage() {
         />
       )}
 
-      <div className={`min-h-screen bg-gradient-to-br from-[var(--color-light-cyan)] via-white to-[var(--color-periwinkle)]/30 transition-all duration-300 ${isOpen ? 'lg:ml-64' : 'ml-0'}`}>
+      <div className={`min-h-screen bg-gradient-to-br from-[var(--color-light-cyan)] via-white to-[var(--color-periwinkle)]/30 transition-all duration-300 transition-all duration-300 md:ml-0
+${isOpen ? 'md:ml-64' : ''}`}>
         <Navbar />
         
         <div className="p-6 max-w-7xl mx-auto">
           {/* 頁面標題 */}
-          <div className="text-center mb-16">
-            <h1 className="text-5xl font-extrabold text-gray-900 mb-4">
+          <div className="text-center mb-10 md:mb-16">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
               會員方案說明
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               本平台為付費制服務，新會員註冊即啟用會員版完整功能試用 6 個月。
             </p>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
               訂閱後即能享受透過平台看診的所有便利功能,讓您的醫療體驗更順暢。
             </p>
           </div>
 
           {/* 方案卡片 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {plans.map((plan, index) => {
               const Icon = plan.icon;
               return (
+
                 <div 
                   key={index}
                   className={`relative bg-white rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300 overflow-hidden ${
@@ -177,22 +179,22 @@ export default function PricingPage() {
 
                   {/* 方案圖示 */}
                   <div className={`h-32 bg-gradient-to-br ${plan.color} flex items-center justify-center`}>
-                    <Icon size={64} className={plan.textColor} />
+                    <Icon cclassName="w-12 h-12 md:w-16 md:h-16" />
                   </div>
 
                   {/* 方案內容 */}
-                  <div className="p-8">
+                  <div className="p-6 md:p-8">
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h2>
                     <p className="text-gray-600 text-sm mb-4 min-h-[40px]">{plan.description}</p>
                     
                     {/* 價格 */}
                     <div className="mb-6">
-                      <span className="text-4xl font-extrabold text-gray-900">{plan.price}</span>
+                      <span className="text-3xl md:text-4xl font-extrabold text-gray-900">{plan.price}</span>
                       <span className="text-gray-600 ml-2">/ {plan.period}</span>
                     </div>
 
                     {/* 功能列表 */}
-                    <ul className="space-y-3 mb-8">
+                    <ul className="space-y-2 md:space-y-3 mb-8">
                       {plan.features.map((feature, idx) => (
                         <li key={idx} className="flex items-start">
                           <Check size={20} className="text-green-500 mr-3 mt-0.5 flex-shrink-0" />
@@ -203,7 +205,7 @@ export default function PricingPage() {
 
                     <button
                       disabled={plan.disabled}
-                      className={`w-full ${plan.buttonColor} text-white font-semibold py-4 rounded-xl transition-all shadow-lg ${
+                      className={`w-full ${plan.buttonColor} text-white font-semibold py-3 md:py-4 rounded-xl transition-all shadow-lg ${
                         plan.disabled ? "opacity-70 cursor-not-allowed" : "hover:shadow-xl"
                       }`}
                     >
@@ -217,7 +219,7 @@ export default function PricingPage() {
           </div>
 
          {/* FAQ 區塊 */}
-<div className="bg-white rounded-3xl shadow-xl p-8 md:p-12 mb-16">
+<div className="bg-white rounded-3xl shadow-xl p-6 md:p-10 mb-16">
   <h2 className="text-3xl font-bold text-gray-900 mb-10 text-center">
     常見問題
   </h2>
@@ -275,7 +277,7 @@ function FaqItem({ question, answer }) {
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between text-left"
       >
-        <span className="text-lg font-semibold text-gray-900">
+        <span className="text-base md:text-lg font-semibold text-gray-900">
           {question}
         </span>
 

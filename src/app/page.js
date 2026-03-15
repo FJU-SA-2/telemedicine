@@ -287,6 +287,9 @@ export default function HomePage() {
   <p className="mt-6 text-sm text-gray-400 text-center">
     試用期結束後，需選擇月訂或年費方案以繼續使用會員服務。
   </p>
+  <p className="mt-6 text-sm text-center">
+    機構。
+  </p>
 </div>
 </section>
 

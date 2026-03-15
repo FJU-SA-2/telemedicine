@@ -14,21 +14,28 @@ const COLOR_LIGHT_CYAN = "var(--color-light-cyan)";
 
 // --- Dashboard Header ---
 const DashboardHeader = ({ userName, onAddAppointment }) => (
-  <div className="flex justify-between items-center mb-10 pb-4 border-b border-gray-100">
-    <div>
-      <h1 className="text-4xl font-extrabold text-[var(--color-azure)] mb-2">👋 Hello {userName}!</h1>
-      <p className="text-xl text-gray-500">今天感覺怎麼樣?</p>
-    </div>
-    <div className="flex items-center space-x-4">
-      <button 
-        onClick={onAddAppointment}
-        className="flex items-center bg-[var(--color-lime-cream)] hover:bg-[var(--color-azure)] text-white font-semibold px-6 py-3 rounded-xl shadow-md hover:shadow-lg"
-      >
-        <Calendar size={20} className="mr-2" />
-        新增預約
-      </button>
-    </div>
+  <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-10 md:mb-12">
+  
+  <div>
+    <h1 className="text-2xl md:text-4xl font-extrabold text-[var(--color-azure)] mb-1">
+      👋 Hello {userName}!
+    </h1>
+    <p className="text-base md:text-xl text-gray-500">
+      今天感覺怎麼樣?
+    </p>
   </div>
+
+  <div className="flex justify-end w-full md:w-auto">
+    <button
+      onClick={onAddAppointment}
+      className="flex items-center bg-[var(--color-lime-cream)] hover:bg-[var(--color-azure)] text-white font-semibold px-4 md:px-6 py-2 md:py-3 rounded-xl shadow-md hover:shadow-lg transition"
+    >
+      <Calendar size={20} className="mr-2" />
+      新增預約
+    </button>
+  </div>
+
+</div>
 );
 
 // --- Appointment Card ---
@@ -48,7 +55,7 @@ const AppointmentCard = ({ appointment, onJoinMeeting }) => {
   
   return (
     <div className="bg-[var(--color-lime-cream)]/30 p-6 rounded-2xl shadow-xl mb-10">
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
         <div className="flex-1">
           <h3 className="text-2xl font-bold text-gray-900 mb-2">最近預約</h3>
           <p className="text-sm text-gray-500 mb-4">{appointment.date}</p>
@@ -72,7 +79,7 @@ const AppointmentCard = ({ appointment, onJoinMeeting }) => {
           )}
         </div>
 
-        <div className="text-right ml-4">
+        <div className="md:text-right md:ml-4 w-full md:w-auto">
           <span className={`inline-block font-bold px-4 py-1 rounded-full text-sm mb-3 ${
             appointment.status === '已確認' ? 'bg-green-100 text-green-700' :
             appointment.status === '已完成' ? 'bg-blue-100 text-blue-700' :
@@ -376,7 +383,7 @@ export default function Page() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
+          className="p-3 fixed top-3 left-3 md:left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
         >
           <Menu size={24} />
         </button>
@@ -387,10 +394,10 @@ export default function Page() {
       {/* 主內容區: 內縮效果 */}
       <div className={`min-h-screen bg-gradient-to-br from-[${COLOR_PERIWINKLE}]/30 via-white to-[${COLOR_LIGHT_CYAN}]/30 transition-all duration-300 ${isOpen ? 'lg:ml-64' : 'ml-0'}`}>
         <Navbar />
-        <div className="p-6 max-w-7xl mx-auto">
+        <div className="px-4 py-6 md:p-6 max-w-7xl mx-auto">
           <DashboardHeader userName={userName} onAddAppointment={handleAddAppointment} />
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
             {/* 左側 */}
             <div className="lg:col-span-2">
               <AppointmentCard appointment={upcomingAppointment} onJoinMeeting={handleJoinMeeting} />
@@ -398,7 +405,7 @@ export default function Page() {
               <h2 className="text-3xl font-bold text-gray-800 mb-6">健康衛教</h2>
               <div className="relative">
                 {/* 輪播區 */}
-                <div className="relative h-80 md:h-96 rounded-3xl overflow-hidden shadow-2xl">
+                <div className="relative h-64 sm:h-72 md:h-96 rounded-3xl overflow-hidden shadow-2xl">
                   {featuredItems.map((item, idx) => (
                     <div
                       key={item.id}
@@ -406,14 +413,14 @@ export default function Page() {
                         idx === currentSlide ? "opacity-100 translate-x-0" : "opacity-0 translate-x-full"
                       }`}
                     >
-                      <div className={`h-full bg-gradient-to-br ${softColors[idx % colors.length]} p-8 md:p-12 flex flex-col justify-between`}>
+                      <div className={`h-full bg-gradient-to-br ${softColors[idx % colors.length]} p-5 sm:p-6 md:p-12 flex flex-col justify-between`}>
                         <div>
                           {item.department_name && (
                             <span className="inline-block bg-white bg-opacity-30 backdrop-blur-sm px-4 py-2 rounded-full text-sm font-semibold text-black mb-4">
                               {item.department_name}
                             </span>
                           )}
-                          <h3 className="text-3xl md:text-4xl font-bold text-black mb-4 drop-shadow-sm"> 
+                          <h3 className="text-xl sm:text-2xl md:text-4xl font-bold text-black mb-4 drop-shadow-sm"> 
                            {item.title}
                           </h3>
                           <p className="text-gray-700 text-lg mb-6 line-clamp-3 drop-shadow"> 
@@ -540,7 +547,7 @@ export default function Page() {
             </div>
 
             {/* 文章內容 */}
-            <div className="p-8 md:p-12">
+            <div className="p-5 sm:p-6 md:p-12">
               <div className="prose prose-lg max-w-none">
                 {selectedItem.content.split('\n').map((paragraph, idx) => {
                   if (paragraph.startsWith('## ')) {
@@ -581,9 +588,9 @@ export default function Page() {
         </div>
       )}
       {/* Footer */}
-        <div className="bg-[var(--color-azure)]/20 text-[var(--color-mahogany)] py-8">
-          <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-[var(--color-mahogany)]/80">
+        <div className="bg-gray-800 text-white py-8">
+          <div className="w-full text-center">
+            <p className="text-gray-400">
               © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
             </p>
           </div>

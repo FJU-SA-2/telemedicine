@@ -14,65 +14,71 @@ const COLOR_LIGHT_CYAN = "var(--color-light-cyan)";
 // ✅ 新增：登入提示彈窗組件
 function LoginRequiredModal({ onClose, onLogin, onRegister }) {
   return (
-    <div className="fixed inset-0 backdrop-blur-sm bg-[var(--color-periwinkle)]/20 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative">
+    <div className="fixed inset-0 backdrop-blur-sm bg-[var(--color-periwinkle)]/20 flex items-center justify-center z-50 p-3 sm:p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-sm sm:max-w-md w-full p-5 sm:p-8 relative">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition"
+          className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-gray-600 transition"
         >
-          <X size={24} />
+          <X size={22} />
         </button>
 
-        <div className="flex flex-col items-center mb-6">
-          <div className="w-24 h-24 rounded-full flex items-center justify-center mb-4 relative">
-            <Heart size={48} className="text-gray-300" />
-            <div className="absolute bottom-0 right-0 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
-              <CircleAlert size={18} className="text-white" />
+        <div className="flex flex-col items-center mb-5 sm:mb-6">
+          <div className="w-16 h-16 sm:w-24 sm:h-24 rounded-full flex items-center justify-center mb-3 sm:mb-4 relative">
+            <Heart size={36} className="text-gray-300 sm:w-12 sm:h-12" />
+            <div className="absolute bottom-0 right-0 w-6 h-6 sm:w-8 sm:h-8 bg-red-500 rounded-full flex items-center justify-center">
+              <CircleAlert size={14} className="text-white sm:w-[18px] sm:h-[18px]" />
             </div>
           </div>
           
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">需要登入才能使用</h2>
-          <p className="text-gray-600 text-center text-sm leading-relaxed">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">
+            需要登入才能使用
+          </h2>
+
+          <p className="text-gray-600 text-center text-xs sm:text-sm leading-relaxed">
             「收藏列表」功能需要登入後才能使用。<br />
             請先登入或註冊您的帳號。
           </p>
         </div>
 
-        <div className="space-y-3 mb-6">
+        <div className="space-y-3 mb-5 sm:mb-6">
           <button
             onClick={onLogin}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition flex items-center justify-center gap-2"
+            className="w-full bg-blue-600 text-white py-2.5 sm:py-3 rounded-lg font-medium hover:bg-blue-700 transition flex items-center justify-center gap-2"
           >
-            <LogIn size={20} />
+            <LogIn size={18} />
             立即登入
           </button>
           
           <button
             onClick={onRegister}
-            className="w-full bg-white text-gray-700 py-3 rounded-lg font-medium border-2 border-gray-300 hover:border-blue-500 hover:text-blue-600 transition flex items-center justify-center gap-2"
+            className="w-full bg-white text-gray-700 py-2.5 sm:py-3 rounded-lg font-medium border-2 border-gray-300 hover:border-blue-500 hover:text-blue-600 transition flex items-center justify-center gap-2"
           >
-            <UserPlus size={20} />
+            <UserPlus size={18} />
             註冊新帳號
           </button>
         </div>
 
-        <div className="border-t border-gray-200 pt-4">
-          <p className="text-sm text-gray-500 text-center mb-3">登入後您可以：</p>
-          <div className="space-y-2 text-sm text-gray-600">
+        <div className="border-t border-gray-200 pt-3 sm:pt-4">
+          <p className="text-xs sm:text-sm text-gray-500 text-center mb-3">
+            登入後您可以：
+          </p>
+
+          <div className="space-y-2 text-xs sm:text-sm text-gray-600">
             <div className="flex items-center gap-2">
-              <CheckCircle size={16} className="text-green-500" />
+              <CheckCircle size={14} className="text-green-500" />
               <span>預約線上視訊看診</span>
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle size={16} className="text-green-500" />
+              <CheckCircle size={14} className="text-green-500" />
               <span>查看預約記錄</span>
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle size={16} className="text-green-500" />
+              <CheckCircle size={14} className="text-green-500" />
               <span>收藏喜歡的醫師</span>
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle size={16} className="text-green-500" />
+              <CheckCircle size={14} className="text-green-500" />
               <span>回報問題與建議</span>
             </div>
           </div>
