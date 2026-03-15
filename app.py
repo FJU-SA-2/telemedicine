@@ -27,7 +27,6 @@ from linebot.models import (
     TemplateSendMessage, ButtonsTemplate, URIAction,
     FlexSendMessage
 )
-from line_notifier import generate_bind_code, verify_and_bind, start_scheduler
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -1156,11 +1155,6 @@ def upload_doctor_photo():
             info_count = cursor.fetchone()[0]
 
             if info_count > 0:
-                # 先取得舊照片檔名，上傳成功後刪除舊檔
-                cursor.execute("SELECT photo FROM doctor_info WHERE doctor_id = %s", (doctor_id,))
-                old_row = cursor.fetchone()
-                old_photo = old_row[0] if old_row else None
-
                 # ⭐ UPDATE: 如果記錄存在 (count > 0)，則更新 photo 欄位
                 sql = """
                     UPDATE doctor_info
@@ -1168,13 +1162,6 @@ def upload_doctor_photo():
                     WHERE doctor_id = %s
                 """
                 cursor.execute(sql, (unique_filename, doctor_id))
-
-                # 刪除舊照片檔案（避免累積）
-                if old_photo and old_photo != unique_filename:
-                    old_filepath = os.path.join(PROFILE_PICTURE_FOLDER, old_photo)
-                    if os.path.exists(old_filepath):
-                        os.remove(old_filepath)
-                        print(f"🗑️ 已刪除舊照片: {old_filepath}")
             else:
                 # ⭐ INSERT: 如果記錄不存在 (count == 0)，則新增一條記錄
                 # 這裡假設 doctor_info 表格中的其他欄位可以為 NULL 或有預設值
@@ -1905,7 +1892,7 @@ def get_doctor_profile():
         cursor.execute("""
             SELECT doctor_id, user_id, first_name, last_name, 
                    gender, phone_number, specialty, practice_hospital, 
-                   approval_status, mechanism_id
+                   approval_status
             FROM doctor 
             WHERE user_id = %s
         """, (user_id,))
@@ -4419,9 +4406,6 @@ def get_doctor_appointments_range(doctor_id):
 def require_mechanism(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        print(f"=== require_mechanism 被呼叫 ===")
-        print(f"session user_id = {session.get('user_id')}")
-        print(f"session role = {session.get('role')}")
         if 'user_id' not in session:
             return jsonify({'error': '請先登入'}), 401
         db = get_db()
@@ -4429,7 +4413,6 @@ def require_mechanism(f):
         try:
             cursor.execute("SELECT mechanism_id FROM mechanism WHERE user_id = %s", (session['user_id'],))
             mech = cursor.fetchone()
-            print(f"查詢結果 mech = {mech}")
             if not mech:
                 return jsonify({'error': '權限不足'}), 403
             request.mechanism_id = mech['mechanism_id']
@@ -4451,26 +4434,14 @@ def webhook():
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    line_user_id = event.source.user_id
     user_message = event.message.text.strip()
-
-    # ── 綁定碼判斷 ──────────────────────────
-    if user_message.isdigit() and len(user_message) == 6:
-        success = verify_and_bind(line_user_id, user_message)
-        if success:
-            reply = '✅ 綁定成功！\n\n之後看診前 5 分鐘，\n我會自動在這裡提醒您 🎉'
-        else:
-            reply = '❌ 綁定碼無效或已過期\n\n請至系統個人設定頁面重新產生綁定碼'
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
-        return
-    # ────────────────────────────────────────
-
+    
     if '預約' in user_message:
-        reply = '📅 請點選下方選單中的「立即預約」\n進行線上預約'
+        reply = '📅 請點選連結進行線上預約：\nhttps://your-medonco-url.com/booking'
     elif '視訊' in user_message or '看診' in user_message:
-        reply = '🎥 請點選下方選單中的「視訊看診」\n開始進行視訊看診'
+        reply = '🎥 請登入平台開始視訊看診：\nhttps://your-medonco-url.com/video'
     elif '紀錄' in user_message or '記錄' in user_message:
-        reply = '📋 請點選下方選單中的「就診紀錄」\n查看您的就診紀錄'
+        reply = '📋 請登入查看您的就診紀錄：\nhttps://your-medonco-url.com/records'
     else:
         reply = '您好！我是醫隨行小幫手 👋\n請問有什麼可以協助您？\n\n📅 預約\n🎥 視訊看診\n📋 就診紀錄'
 
@@ -4478,15 +4449,6 @@ def handle_message(event):
         event.reply_token,
         TextSendMessage(text=reply)
     )
-
-@app.route("/api/generate-bind-code", methods=["POST"])
-def api_generate_bind_code():
-    data = request.get_json()
-    user_id = data.get("user_id")
-    if not user_id:
-        return jsonify({"error": "缺少 user_id"}), 400
-    code = generate_bind_code(user_id)
-    return jsonify({"code": code, "expires_in": "10 分鐘內有效"})
 
 
 # ── 統計 ─────────────────────────────────────────────────────────────
@@ -4533,7 +4495,6 @@ def get_mechanism_stats():
 @app.route('/api/mechanism/doctors', methods=['GET'])
 @require_mechanism
 def get_mechanism_doctors():
-    print(f"🔍 mechanism_id = {request.mechanism_id}") 
     search = request.args.get('search', '').strip()
     status_filter = request.args.get('status', '')
 
@@ -4741,168 +4702,60 @@ def get_mechanism_patient_appointments(patient_id):
         db.close()
 
 @app.route("/api/mechanism/doctors", methods=["POST"])
-@require_mechanism
 def add_doctor():
     try:
         data = request.get_json()
+
         first_name = data.get("first_name")
         last_name = data.get("last_name")
-        gender = data.get("gender", "male")
-        specialty = data.get("specialty", "")
-        practice_hospital = data.get("practice_hospital", "")
-        phone_number = data.get("phone_number", "")
-        email = data.get("email")
-        password = data.get("password")
+        gender = data.get("gender")
+        specialty = data.get("specialty")
+        practice_hospital = data.get("practice_hospital")
+        phone_number = data.get("phone_number")
+        approval_status = data.get("approval_status")
+        certificate_path = data.get("certificate_path")
 
+        # 基本驗證
         if not first_name or not last_name:
             return jsonify({"error": "姓名為必填"}), 400
-        if not email:
-            return jsonify({"error": "Email 為必填"}), 400
-        if not password or len(password) < 6:
-            return jsonify({"error": "密碼至少 6 個字元"}), 400
 
-        db = get_db()
-        cursor = db.cursor(dictionary=True)
+        conn = get_db()
+        cursor = conn.cursor()
+        sql = """
+        INSERT INTO doctor_info
+        (first_name, last_name, gender, specialty,
+         practice_hospital, phone_number,
+         approval_status, certificate_path)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
 
-        cursor.execute("SELECT user_id FROM users WHERE email = %s", (email,))
-        if cursor.fetchone():
-            return jsonify({"error": "此 Email 已被使用"}), 400
-
-        # 1. 建立 users 帳號
-        cursor.execute(
-            "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, 'doctor')",
-            (last_name + first_name, email, password)
+        values = (
+            first_name,
+            last_name,
+            gender,
+            specialty,
+            practice_hospital,
+            phone_number,
+            approval_status,
+            certificate_path
         )
-        user_id = cursor.lastrowid
 
-        # 2. 建立 doctor 記錄，綁定 mechanism_id
-        cursor.execute("""
-            INSERT INTO doctor
-                (user_id, first_name, last_name, gender, phone_number,
-                 specialty, practice_hospital, mechanism_id, approval_status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'approved')
-        """, (user_id, first_name, last_name, gender, phone_number,
-              specialty, practice_hospital, request.mechanism_id))
+        cursor.execute(sql, values)
+        conn.commit()
+
         doctor_id = cursor.lastrowid
 
-        # 3. 建立 doctor_info 補充資料
-        cursor.execute("""
-            INSERT INTO doctor_info
-                (doctor_id, first_name, last_name, specialty, practice_hospital, phone_number)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (doctor_id, first_name, last_name, specialty, practice_hospital, phone_number))
-
-    
-        db.commit()
         cursor.close()
-        db.close()
+        conn.close()
 
-        return jsonify({"message": "醫師新增成功", "doctor_id": doctor_id}), 201
-
-    except Exception as e:
-        if 'db' in locals():
-            db.rollback()
-        print("新增醫師錯誤:", e)
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/mechanism/schedules', methods=['POST'])
-@require_mechanism
-def mechanism_save_schedules():
-    data = request.get_json() or {}
-    doctor_id  = data.get('doctor_id')
-    schedules  = data.get('schedules', [])
-    week_start = data.get('week_start')
-    week_end   = data.get('week_end')
-
-    if not doctor_id or not week_start or not week_end:
-        return jsonify({'error': '缺少必要欄位'}), 400
-
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    try:
-        # ✅ 確認醫師屬於本機構
-        cursor.execute(
-            "SELECT doctor_id FROM doctor WHERE doctor_id = %s AND mechanism_id = %s",
-            (doctor_id, request.mechanism_id)
-        )
-        if not cursor.fetchone():
-            return jsonify({'error': '醫師不存在或無權限'}), 403
-
-        # ✅ 清理過期排班
-        cursor.execute("""
-            DELETE FROM schedules
-            WHERE doctor_id = %s
-            AND TIMESTAMP(schedule_date, time_slot) < NOW()
-        """, (doctor_id,))
-
-        # ✅ 刪除該週舊排班
-        cursor.execute("""
-            DELETE FROM schedules
-            WHERE doctor_id = %s
-            AND schedule_date BETWEEN %s AND %s
-        """, (doctor_id, week_start, week_end))
-
-        # ✅ 只寫入開診時段
-        success_count = 0
-        for s in schedules:
-            if not s.get('date') or not s.get('time_slot'):
-                continue
-            if s.get('is_available') != 1:
-                continue
-            cursor.execute("""
-                INSERT INTO schedules (doctor_id, schedule_date, time_slot, is_available)
-                VALUES (%s, %s, %s, 1)
-            """, (doctor_id, s['date'], s['time_slot']))
-            success_count += 1
-
-        db.commit()
-        return jsonify({'success': True, 'message': f'成功儲存 {success_count} 個開診時段'})
-    except Exception as e:
-        db.rollback()
-        import traceback; traceback.print_exc()
-        return jsonify({'error': '伺服器錯誤'}), 500
-    finally:
-        cursor.close()
-        db.close()
-
-
-# ─── 醫師查詢自己是否有所屬院所 ──────────────────────────────────────
-
-@app.route('/api/doctor/has-mechanism', methods=['GET'])
-def doctor_has_mechanism():
-    """
-    回傳目前登入醫師是否有所屬機構。
-    Response: { has_mechanism: bool, mechanism_name: str|null }
-    """
-    if 'user_id' not in session:
-        return jsonify({'error': '未登入'}), 401
-
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    try:
-        cursor.execute(
-            """
-            SELECT d.mechanism_id, m.name AS mechanism_name
-            FROM doctor d
-            LEFT JOIN mechanism m ON d.mechanism_id = m.mechanism_id
-            WHERE d.user_id = %s
-            """,
-            (session['user_id'],)
-        )
-        row = cursor.fetchone()
-        if not row:
-            return jsonify({'has_mechanism': False, 'mechanism_name': None})
-
-        has = row['mechanism_id'] is not None
         return jsonify({
-            'has_mechanism': has,
-            'mechanism_name': row['mechanism_name'] if has else None
-        })
-    finally:
-        cursor.close()
-        db.close()
+            "message": "醫師新增成功",
+            "doctor_id": doctor_id
+        }), 201
 
+    except Exception as e:
+        print("新增醫師錯誤:", e)
+        return jsonify({"error": "伺服器錯誤"}), 500
 if __name__ == "__main__":
     start_background_tasks()
-    start_scheduler()
     app.run(debug=True)
