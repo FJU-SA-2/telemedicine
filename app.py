@@ -4700,6 +4700,7 @@ def get_mechanism_patient_appointments(patient_id):
         db.close()
 
 @app.route("/api/mechanism/doctors", methods=["POST"])
+@require_mechanism
 def add_doctor():
     try:
         data = request.get_json()
@@ -4710,50 +4711,66 @@ def add_doctor():
         specialty = data.get("specialty")
         practice_hospital = data.get("practice_hospital")
         phone_number = data.get("phone_number")
-        approval_status = data.get("approval_status")
+        approval_status = data.get("approval_status", "pending")
         certificate_path = data.get("certificate_path")
+        email = data.get("email")
+        password = data.get("password")
 
-        # 基本驗證
         if not first_name or not last_name:
             return jsonify({"error": "姓名為必填"}), 400
+        if not email:
+            return jsonify({"error": "Email 為必填"}), 400
+        if not password or len(password) < 6:
+            return jsonify({"error": "密碼至少 6 個字元"}), 400
 
-        conn = get_db()
-        cursor = conn.cursor()
-        sql = """
-        INSERT INTO doctor_info
-        (first_name, last_name, gender, specialty,
-         practice_hospital, phone_number,
-         approval_status, certificate_path)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """
+        from werkzeug.security import generate_password_hash
+        hashed_pw = generate_password_hash(password)
+        # username 用 email 前綴，例如 "john@example.com" → "john"
+        username = email.split("@")[0]
 
-        values = (
-            first_name,
-            last_name,
-            gender,
-            specialty,
-            practice_hospital,
-            phone_number,
-            approval_status,
-            certificate_path
-        )
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        try:
+            # 檢查 email 是否已存在
+            cursor.execute("SELECT user_id FROM users WHERE email = %s", (email,))
+            if cursor.fetchone():
+                return jsonify({"error": "此 Email 已被註冊"}), 409
 
-        cursor.execute(sql, values)
-        conn.commit()
+            # 1️⃣ 建立 users 帳號
+            cursor.execute(
+                "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, 'doctor')",
+                (username, email, hashed_pw)
+            )
+            user_id = cursor.lastrowid
 
-        doctor_id = cursor.lastrowid
+            # 2️⃣ 建立 doctor 記錄，綁定機構
+            cursor.execute("""
+                INSERT INTO doctor
+                (user_id, first_name, last_name, gender, specialty,
+                 practice_hospital, phone_number,
+                 approval_status, certificate_path, mechanism_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                user_id, first_name, last_name, gender, specialty,
+                practice_hospital, phone_number,
+                approval_status, certificate_path,
+                request.mechanism_id
+            ))
+            doctor_id = cursor.lastrowid
+            db.commit()
 
-        cursor.close()
-        conn.close()
+            return jsonify({"message": "醫師新增成功", "doctor_id": doctor_id}), 201
 
-        return jsonify({
-            "message": "醫師新增成功",
-            "doctor_id": doctor_id
-        }), 201
+        except Exception as e:
+            db.rollback()
+            raise e
+        finally:
+            cursor.close()
+            db.close()
 
     except Exception as e:
         print("新增醫師錯誤:", e)
-        return jsonify({"error": "伺服器錯誤"}), 500
+        return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
     start_background_tasks()
     app.run(debug=True)
