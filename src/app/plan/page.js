@@ -179,7 +179,7 @@ ${isOpen ? 'md:ml-64' : ''}`}>
 
                   {/* 方案圖示 */}
                   <div className={`h-32 bg-gradient-to-br ${plan.color} flex items-center justify-center`}>
-                    <Icon cclassName="w-12 h-12 md:w-16 md:h-16" />
+                    <Icon className="w-12 h-12 md:w-16 md:h-16" />
                   </div>
 
                   {/* 方案內容 */}
