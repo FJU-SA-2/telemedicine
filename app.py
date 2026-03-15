@@ -3368,7 +3368,7 @@ def get_notifications():
     cursor = db.cursor(dictionary=True)
     
     try:
-        # 獲取通知列表(最近30天)
+        # 獲取通知列表(全部)
         cursor.execute("""
             SELECT 
                 notification_id,
@@ -3380,9 +3380,8 @@ def get_notifications():
                 created_at
             FROM notifications
             WHERE patient_id = %s
-            AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
             ORDER BY created_at DESC
-            LIMIT 50
+            LIMIT 200
         """, (patient_id,))
         
         notifications = cursor.fetchall()
@@ -3829,7 +3828,7 @@ def get_doctor_notifications():
     cursor = db.cursor(dictionary=True)
     
     try:
-        # 獲取通知列表(最近30天)
+        # 獲取通知列表(全部)
         query = """
             SELECT 
                 notification_id,
@@ -3841,9 +3840,8 @@ def get_doctor_notifications():
                 created_at
             FROM doctor_notifications
             WHERE doctor_id = %s
-            AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
             ORDER BY created_at DESC
-            LIMIT 50
+            LIMIT 200
         """
         
         cursor.execute(query, (doctor_id,))
