@@ -265,12 +265,27 @@ export default function NotificationBell({ user }) {
 
   /* ==================== 計算面板位置 ==================== */
   const getDropdownPosition = () => {
-    if (!buttonRef.current) return { top: '64px', right: '16px' };
+    if (!buttonRef.current) return { top: '64px', left: '8px', right: '8px' };
     
     const rect = buttonRef.current.getBoundingClientRect();
+    const isMobile = window.innerWidth < 640;
+
+    if (isMobile) {
+      // 手機：固定左右各留 8px，不依賴鈴鐺位置
+      return {
+        top: `${rect.bottom + 8}px`,
+        left: '8px',
+        right: '8px',
+        width: 'auto',
+      };
+    }
+
+    // 桌機：對齊鈴鐺右側
+    const rightOffset = window.innerWidth - rect.right;
     return {
       top: `${rect.bottom + 8}px`,
-      right: `${window.innerWidth - rect.right}px`
+      right: `${rightOffset}px`,
+      width: '384px',
     };
   };
 
@@ -286,10 +301,12 @@ export default function NotificationBell({ user }) {
     return createPortal(
       <div 
         ref={dropdownRef}
-        className="fixed w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-[9999] overflow-hidden animate-slideDown"
+        className="fixed bg-white rounded-xl shadow-2xl border border-gray-200 z-[9999] overflow-hidden animate-slideDown"
         style={{
           top: position.top,
+          left: position.left || 'auto',
           right: position.right,
+          width: position.width || 'auto',
           maxHeight: 'calc(100vh - 80px)'
         }}
       >
