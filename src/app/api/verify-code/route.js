@@ -5,7 +5,7 @@ export async function POST(request) {
     // ⚠️ 重要：轉發前端的 cookies
     const cookies = request.headers.get('cookie');
     
-    const res = await fetch(`${process.env.BACKEND_URL || 'http://127.0.0.1:5000'}/api/verify-code`, {
+    const res = await fetch(`http://127.0.0.1:5000/api/verify-code`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -1,4 +1,4 @@
-const FLASK = "${process.env.BACKEND_URL || 'http://127.0.0.1:5000'}";
+const FLASK = "http://127.0.0.1:5000";
 
 // 轉發 cookie（讓 Flask 能讀到 session）
 function forwardHeaders(request) {

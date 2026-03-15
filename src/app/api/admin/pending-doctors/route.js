@@ -2,7 +2,7 @@ export async function GET(request) {
   try {
     const cookies = request.headers.get('cookie');
     
-    const res = await fetch(`${process.env.BACKEND_URL || 'http://127.0.0.1:5000'}/api/admin/pending-doctors`, {
+    const res = await fetch(`http://127.0.0.1:5000/api/admin/pending-doctors`, {
       method: 'GET',
       headers: {
         ...(cookies && { 'Cookie': cookies })

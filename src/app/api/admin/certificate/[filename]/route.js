@@ -6,7 +6,7 @@ export async function GET(request, { params }) {
     console.log('📂 Next.js 代理請求證明:', filename);
     console.log('🍪 轉發 Cookies:', cookies);
     
-    const res = await fetch(`${process.env.BACKEND_URL || 'http://127.0.0.1:5000'}/api/admin/certificate/${filename}`, {
+    const res = await fetch(`http://127.0.0.1:5000/api/admin/certificate/${filename}`, {
       method: 'GET',
       headers: {
         ...(cookies && { 'Cookie': cookies })
