@@ -4,7 +4,7 @@ export async function POST(request, { params }) {
     const body = await request.json();
     const cookies = request.headers.get('cookie');
     
-    const res = await fetch(`http://127.0.0.1:5000/api/admin/reject-doctor/${doctor_id}`, {
+    const res = await fetch(`${process.env.BACKEND_URL || 'http://127.0.0.1:5000'}/api/admin/reject-doctor/${doctor_id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

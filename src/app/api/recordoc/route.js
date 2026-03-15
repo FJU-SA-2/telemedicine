@@ -14,7 +14,7 @@ export async function GET(request) {
   try {
     // 從 Flask 後端獲取用戶信息
     const cookie = request.headers.get('cookie');
-    const meRes = await fetch('http://127.0.0.1:5000/api/me', {
+    const meRes = await fetch(`${process.env.BACKEND_URL || 'http://127.0.0.1:5000'}/api/me`, {
       method: 'GET',
       headers: {
         'Cookie': cookie || '',

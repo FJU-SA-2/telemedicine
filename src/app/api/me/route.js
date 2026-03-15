@@ -3,7 +3,7 @@ export async function GET(request) {
     // 取得前端的 cookie 並轉發給 Flask
     const cookie = request.headers.get('cookie');
     
-    const res = await fetch('http://127.0.0.1:5000/api/me', {
+    const res = await fetch(`${process.env.BACKEND_URL || 'http://127.0.0.1:5000'}/api/me`, {
       method: 'GET',
       headers: {
         'Cookie': cookie || '',

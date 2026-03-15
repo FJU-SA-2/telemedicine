@@ -2,7 +2,7 @@ export async function POST(request) {
   try {
     const body = await request.json();
     
-    const res = await fetch('http://127.0.0.1:5000/api/admin/login', {
+    const res = await fetch(`${process.env.BACKEND_URL || 'http://127.0.0.1:5000'}/api/admin/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

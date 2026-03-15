@@ -3,7 +3,7 @@ export async function POST(request) {
     const formData = await request.formData();
     const cookies = request.headers.get('cookie');
     
-    const res = await fetch('http://127.0.0.1:5000/api/upload-certificate', {
+    const res = await fetch(`${process.env.BACKEND_URL || 'http://127.0.0.1:5000'}/api/upload-certificate`, {
       method: 'POST',
       headers: {
         ...(cookies && { 'Cookie': cookies })
