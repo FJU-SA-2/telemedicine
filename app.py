@@ -42,7 +42,7 @@ app.secret_key = "your-very-secret-key-change-this"  # ⚠️ 改成更安全的
 # ⚠️ 重要：CORS 設定要放在最前面
 CORS(app, 
      supports_credentials=True,
-     origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+     origins=["http://localhost:3000", "http://127.0.0.1:3000", "https://*.vercel.app"],
      allow_headers=["Content-Type"],
      expose_headers=["Set-Cookie"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
