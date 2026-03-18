@@ -22,12 +22,8 @@ export default function DoctorSidebar({ isOpen, setIsOpen, approvalStatus }) {
 
   const menuItems = [
     { id: "/mechpage", label: "首頁", icon: House, href: "/mechpage" },
-    { id: "/dintroduction", label: "使用流程介紹", icon: FileText, href: "/dintroduction", requiresAuth: false },
     { id: "/schedules", label: "排班管理", icon: CalendarClock, href: "/mechpage/schedule", },
-    { id: "/management", label: "預約管理", icon: UserRoundCheck, href: "/management",},
     { id: "/record", label: "預約紀錄", icon: ClipboardList, href: "/recordmech",},
-    { id: "/patientmanage", label: "患者病歷", icon: FolderOpen, href: "/patientmanage",  },
-   
     { id: "/mechfeedback", label: "問題回報", icon: MessageCircleMore, href: "/mechfeedback" },
       ];
   // 為了確保主色調能被正確引用 (這是從 globals.css 中取值)
