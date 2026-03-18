@@ -6,6 +6,7 @@ import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import { Menu , User, Heart, Stethoscope, Award, BookOpen, Building2, Phone, Calendar, Clock, Save, X, Edit2, Upload, CheckCircle, AlertCircle } from "lucide-react";
 import DoctorSidebar from "../components/DoctorSidebar";
+import Mech_Sidebar from "../components/Mech_Sidebar";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -329,6 +330,7 @@ const handleSave = async () => {
   }
   const isPatient = user.role === "patient";
   const isDoctor = user.role === "doctor";
+  const isMech = user.role === "mech";
   const profile = user.patientProfile || {};
   const doctorProfile = user.doctorProfile || {};
   
@@ -346,7 +348,13 @@ const handleSave = async () => {
               </button>
             )}
 
-      {isDoctor ? (
+      {isMech ? (
+        <Mech_Sidebar
+          isOpen={isOpen}
+          setIsOpen={setIsOpen}
+          approvalStatus="approved"
+        />
+      ) : isDoctor ? (
         <DoctorSidebar  
           isOpen={isOpen} 
           setIsOpen={setIsOpen}
