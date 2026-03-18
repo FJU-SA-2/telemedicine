@@ -428,7 +428,7 @@ const handleSave = async () => {
               <div className="p-3 sm:p-4 bg-gradient-to-br rounded-xl hover:bg-gray-100 transition-colors">
                 <p className="text-xs sm:text-sm text-[var(--color-mahogany)] font-medium mb-1">姓名</p>
                 <p className="text-lg font-semibold text-gray-800">
-                  {user.first_name}{user.last_name} 
+                  {user.role === "mech" ? (user.mechanism_name || user.username) : `${user.first_name || ""}${user.last_name || ""}`}
                 </p>
               </div>
 
