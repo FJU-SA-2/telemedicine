@@ -838,6 +838,8 @@ def login_user():
 @app.route("/api/me", methods=["GET"])
 def get_current_user():
     """取得當前登入使用者資訊"""
+    print(f"🔍 /api/me session 內容: {dict(session)}")
+    print(f"🔍 /api/me 收到的 Cookie header: {request.headers.get('Cookie', 'NONE')[:80]}")
     if 'user_id' not in session:
         return jsonify({"authenticated": False}), 401
     user_id = session.get('user_id')
@@ -915,8 +917,6 @@ def get_current_user():
             if mech_data:
                 user_data["mechanism_id"] = mech_data["mechanism_id"]
                 user_data["mechanism_name"] = mech_data["mechanism_name"]
-
-    # 新增：如果是醫師，取得完整專業資料
         elif role == "doctor":
             cursor.execute("""
                 SELECT  d.doctor_id, d.first_name, d.last_name, d.gender, d.phone_number, 
