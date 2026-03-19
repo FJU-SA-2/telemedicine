@@ -5,11 +5,14 @@ import mysql.connector
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ─────────────────────────────────────────
 # 設定區
 # ─────────────────────────────────────────
-LINE_CHANNEL_ACCESS_TOKEN = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", "你的_Channel_Access_Token")
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNESS_TOKEN")
 
 DB_CONFIG = {
     "host":     os.environ.get("DB_HOST",     "localhost"),
@@ -31,13 +34,8 @@ def get_db():
 # 綁定碼：產生
 # ─────────────────────────────────────────
 def generate_bind_code(user_id: int) -> str:
-    """
-    為指定的系統帳號產生一組 6 位數綁定碼，有效期 10 分鐘。
-    同一個 user_id 重複產生會覆蓋舊的碼。
-    """
     code = ''.join(random.choices(string.digits, k=6))
     expires_at = datetime.now() + timedelta(minutes=10)
-
     db = get_db()
     cursor = db.cursor()
     cursor.execute("""
@@ -55,31 +53,21 @@ def generate_bind_code(user_id: int) -> str:
 # 綁定碼：驗證並完成綁定
 # ─────────────────────────────────────────
 def verify_and_bind(line_user_id: str, code: str) -> bool:
-    """
-    用戶在 Line Bot 傳入綁定碼時呼叫。
-    驗證成功則把 line_user_id 寫入 users 表，並刪除綁定碼。
-    回傳 True 表示綁定成功，False 表示碼無效或已過期。
-    """
     db = get_db()
     cursor = db.cursor(dictionary=True)
-
     cursor.execute("""
         SELECT user_id FROM bind_codes
         WHERE code = %s AND expires_at > NOW()
     """, (code,))
     row = cursor.fetchone()
-
     if not row:
         cursor.close()
         db.close()
         return False
-
-    # 寫入 line_user_id
     cursor.execute(
         "UPDATE users SET line_user_id = %s WHERE user_id = %s",
         (line_user_id, row["user_id"])
     )
-    # 刪除已使用的綁定碼
     cursor.execute("DELETE FROM bind_codes WHERE code = %s", (code,))
     db.commit()
     cursor.close()
@@ -88,7 +76,7 @@ def verify_and_bind(line_user_id: str, code: str) -> bool:
 
 
 # ─────────────────────────────────────────
-# Line 推播
+# LINE 推播
 # ─────────────────────────────────────────
 def push_line_message(line_user_id: str, message: str) -> bool:
     url = "https://api.line.me/v2/bot/message/push"
@@ -107,78 +95,161 @@ def push_line_message(line_user_id: str, message: str) -> bool:
 
 
 # ─────────────────────────────────────────
-# 排程：查詢 5 分鐘內即將開始的預約
+# 通知一：預約成功通知
+# 掃描新建立但尚未發送 LINE 通知的預約
 # ─────────────────────────────────────────
-def get_upcoming_appointments():
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
+def notify_new_appointments():
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT
+                a.appointment_id,
+                a.appointment_date,
+                a.appointment_time,
+                a.status,
+                u.line_user_id,
+                CONCAT(p.last_name, p.first_name) AS patient_name,
+                CONCAT(d.last_name, d.first_name) AS doctor_name,
+                d.specialty
+            FROM appointments a
+            JOIN patient p ON a.patient_id = p.patient_id
+            JOIN users   u ON p.user_id    = u.user_id
+            JOIN doctor  d ON a.doctor_id  = d.doctor_id
+            WHERE a.line_booked_notified_at IS NULL
+              AND u.line_user_id IS NOT NULL
+              AND a.status IN ('待確認', '已確認')
+        """)
+        rows = cursor.fetchall()
+        cursor.close()
+        db.close()
 
-    now = datetime.now()
-    window_start = now + timedelta(minutes=5)
-    window_end   = now + timedelta(minutes=6)  # 每分鐘跑一次，取 1 分鐘視窗
+        for appt in rows:
+            date_str = str(appt['appointment_date'])
+            time_str = str(appt['appointment_time'])[:5]
+            status_text = "✅ 已確認" if appt['status'] == '已確認' else "⏳ 待確認（等候醫師確認）"
 
-    cursor.execute("""
-        SELECT
-            a.appointment_id,
-            a.appointment_date,
-            a.appointment_time,
-            u.line_user_id,
-            CONCAT(p.last_name, p.first_name) AS patient_name,
-            CONCAT(d.last_name, d.first_name) AS doctor_name,
-            d.specialty
-        FROM appointments a
-        JOIN patient p ON a.patient_id = p.patient_id
-        JOIN users   u ON p.user_id    = u.user_id
-        JOIN doctor  d ON a.doctor_id  = d.doctor_id
-        WHERE a.status = '已確認'
-          AND a.notified_at IS NULL
-          AND u.line_user_id IS NOT NULL
-          AND TIMESTAMP(a.appointment_date, a.appointment_time)
-              BETWEEN %s AND %s
-    """, (window_start, window_end))
+            message = (
+                f"📅 預約成功通知\n\n"
+                f"您好，{appt['patient_name']}！\n"
+                f"您的預約已建立。\n\n"
+                f"👨‍⚕️ 醫師：{appt['doctor_name']}（{appt['specialty']}）\n"
+                f"🗓 日期：{date_str}\n"
+                f"⏰ 時間：{time_str}\n"
+                f"📋 狀態：{status_text}\n\n"
+                f"請準時登入系統進行視訊看診 🎥"
+            )
 
-    rows = cursor.fetchall()
-    cursor.close()
-    db.close()
-    return rows
+            success = push_line_message(appt["line_user_id"], message)
+            if success:
+                db2 = get_db()
+                cur2 = db2.cursor()
+                cur2.execute(
+                    "UPDATE appointments SET line_booked_notified_at = NOW() WHERE appointment_id = %s",
+                    (appt["appointment_id"],)
+                )
+                db2.commit()
+                cur2.close()
+                db2.close()
+                print(f"[預約通知] appointment_id={appt['appointment_id']}, patient={appt['patient_name']}")
 
-
-def mark_as_notified(appointment_id: int):
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute(
-        "UPDATE appointments SET notified_at = NOW() WHERE appointment_id = %s",
-        (appointment_id,)
-    )
-    db.commit()
-    cursor.close()
-    db.close()
+    except Exception as e:
+        print(f"[預約通知錯誤] {e}")
 
 
+# ─────────────────────────────────────────
+# 通知二：看診提醒（開始前 5 分鐘）
+# ─────────────────────────────────────────
 def notify_upcoming_appointments():
-    """排程任務主體，每分鐘執行一次。"""
-    appointments = get_upcoming_appointments()
-    for appt in appointments:
-        appt_time = f"{appt['appointment_date']} {str(appt['appointment_time'])[:5]}"
-        message = (
-            f"⏰ 看診提醒\n\n"
-            f"您好，{appt['patient_name']}！\n"
-            f"您與 {appt['doctor_name']} 醫師（{appt['specialty']}）的視訊看診\n"
-            f"將於 5 分鐘後（{appt_time}）開始。\n\n"
-            f"請點選下方選單中的「視訊看診」準時上線 🎥"
-        )
-        success = push_line_message(appt["line_user_id"], message)
-        if success:
-            mark_as_notified(appt["appointment_id"])
-            print(f"[通知成功] appointment_id={appt['appointment_id']}, patient={appt['patient_name']}")
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        now          = datetime.now()
+        window_start = now + timedelta(minutes=4)
+        window_end   = now + timedelta(minutes=6)
+
+        cursor.execute("""
+            SELECT
+                a.appointment_id,
+                a.appointment_date,
+                a.appointment_time,
+                u.line_user_id,
+                CONCAT(p.first_name, p.last_name) AS patient_name,
+                CONCAT(d.first_name, d.last_name) AS doctor_name,
+                d.specialty
+            FROM appointments a
+            JOIN patient p ON a.patient_id = p.patient_id
+            JOIN users   u ON p.user_id    = u.user_id
+            JOIN doctor  d ON a.doctor_id  = d.doctor_id
+            WHERE a.status = '已確認'
+              AND a.notified_at IS NULL
+              AND u.line_user_id IS NOT NULL
+              AND TIMESTAMP(a.appointment_date, a.appointment_time)
+                  BETWEEN %s AND %s
+        """, (window_start, window_end))
+
+        rows = cursor.fetchall()
+        cursor.close()
+        db.close()
+
+        for appt in rows:
+            date_str = str(appt['appointment_date'])
+            time_str = str(appt['appointment_time'])[:5]
+            message = (
+                f"⏰ 看診提醒\n\n"
+                f"您好，{appt['patient_name']}！\n"
+                f"您與 {appt['doctor_name']} 醫師（{appt['specialty']}）的視訊看診\n"
+                f"將於 5 分鐘後（{date_str} {time_str}）開始。\n\n"
+                f"請點選下方選單中的「視訊看診」準時上線 🎥"
+            )
+            success = push_line_message(appt["line_user_id"], message)
+            if success:
+                db2 = get_db()
+                cur2 = db2.cursor()
+                cur2.execute(
+                    "UPDATE appointments SET notified_at = NOW() WHERE appointment_id = %s",
+                    (appt["appointment_id"],)
+                )
+                db2.commit()
+                cur2.close()
+                db2.close()
+                print(f"[看診提醒] appointment_id={appt['appointment_id']}, patient={appt['patient_name']}")
+
+    except Exception as e:
+        print(f"[看診提醒錯誤] {e}")
 
 
 # ─────────────────────────────────────────
-# 啟動排程器（在 Flask app 啟動時呼叫）
+# 排程任務：同時執行兩種通知
+# ─────────────────────────────────────────
+def run_all_notifications():
+    print(f"[LINE排程] 掃描中... {datetime.now().strftime('%H:%M:%S')}")
+    notify_new_appointments()
+    notify_upcoming_appointments()
+
+
+# ─────────────────────────────────────────
+# 啟動排程器
 # ─────────────────────────────────────────
 def start_scheduler():
     scheduler = BackgroundScheduler(timezone="Asia/Taipei")
-    scheduler.add_job(notify_upcoming_appointments, "interval", minutes=1)
+    scheduler.add_job(run_all_notifications, "interval", minutes=1)
     scheduler.start()
-    print("[排程器啟動] 每分鐘檢查一次即將到來的預約")
+    print("[排程器啟動] 每分鐘檢查預約通知與看診提醒")
     return scheduler
+
+
+# ─────────────────────────────────────────
+# 主程式入口
+# ─────────────────────────────────────────
+if __name__ == "__main__":
+    import time
+    print(f"🔑 TOKEN: '{LINE_CHANNEL_ACCESS_TOKEN}'")
+    start_scheduler()
+    print("✅ 排程器運行中，按 Ctrl+C 停止...")
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("🛑 排程器已停止")
