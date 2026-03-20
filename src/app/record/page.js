@@ -194,11 +194,11 @@ export default function AppointmentRecords() {
   }
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="relative flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
+          className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition"
         >
           <Menu size={24} />
         </button>
@@ -206,29 +206,29 @@ export default function AppointmentRecords() {
 
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
-      <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+      <div className={`flex-1 min-w-0 overflow-x-hidden transition-all duration-300 ${isOpen ? "md:ml-64" : "ml-0"}`}>
         <Navbar />
 
-        <div className="relative min-h-screen p-6">
+        <div className="relative min-h-screen p-3 sm:p-6">
           {loading ? (
-            <div className="flex items-center justify-center min-h-screen">
+            <div className="flex items-center justify-center min-h-[50vh]">
               <div className="text-center">
-                <RefreshCw className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-                <p className="text-gray-600 text-lg">載入預約紀錄中...</p>
+                <RefreshCw className="w-10 h-10 text-blue-600 animate-spin mx-auto mb-4" />
+                <p className="text-gray-600">載入預約紀錄中...</p>
               </div>
             </div>
           ) : (
             <>
               {/* 篩選器與視圖切換 */}
-              <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-                <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-4 mb-4 sm:mb-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   {/* 狀態篩選 */}
                   <div className="flex flex-wrap gap-2">
                     {["all", "已確認", "已完成", "已取消"].map((status) => (
                       <button
                         key={status}
                         onClick={() => setFilter(status)}
-                        className={`px-4 py-2 rounded-full font-medium transition-all ${
+                        className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all ${
                           filter === status
                             ? "bg-blue-600 text-white shadow-md"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -240,27 +240,27 @@ export default function AppointmentRecords() {
                   </div>
 
                   {/* 視圖切換按鈕 */}
-                  <div className="flex gap-2 bg-gray-100 rounded-lg p-1">
+                  <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
                     <button
                       onClick={() => setViewMode("card")}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all ${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                         viewMode === "card"
                           ? "bg-white text-blue-600 shadow-sm"
                           : "text-gray-600 hover:text-gray-800"
                       }`}
                     >
-                      <LayoutGrid size={18} />
+                      <LayoutGrid size={16} />
                       <span className="hidden sm:inline">卡片式</span>
                     </button>
                     <button
                       onClick={() => setViewMode("table")}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all ${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                         viewMode === "table"
                           ? "bg-white text-blue-600 shadow-sm"
                           : "text-gray-600 hover:text-gray-800"
                       }`}
                     >
-                      <List size={18} />
+                      <List size={16} />
                       <span className="hidden sm:inline">橫列式</span>
                     </button>
                   </div>
@@ -268,83 +268,77 @@ export default function AppointmentRecords() {
               </div>
 
               {filteredAppointments.length === 0 ? (
-                <div className="bg-white rounded-lg shadow-md p-12 text-center">
-                  <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500 text-lg">目前沒有符合條件的預約紀錄</p>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
+                  <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">目前沒有符合條件的預約紀錄</p>
                 </div>
               ) : viewMode === "card" ? (
                 /* 卡片式視圖 */
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+                <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
                   {filteredAppointments.map((appointment) => (
                     <div
                       key={appointment.appointment_id}
-                      className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
+                      className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 overflow-hidden"
                     >
-                      <div className="p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <span
-                            className={`px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(
-                              appointment.status
-                            )}`}
-                          >
+                      <div className="p-4 sm:p-5">
+                        {/* 狀態 badge */}
+                        <div className="flex justify-between items-start mb-3">
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(appointment.status)}`}>
                             {appointment.status}
                           </span>
                         </div>
 
-                        <div className="flex items-center mb-4">
-                          <div className="bg-blue-100 rounded-full p-3 mr-4">
-                            <User className="w-6 h-6 text-blue-600" />
+                        {/* 醫師資訊 */}
+                        <div className="flex items-center mb-3">
+                          <div className="bg-blue-100 rounded-full p-2.5 mr-3 flex-shrink-0">
+                            <User className="w-5 h-5 text-blue-600" />
                           </div>
-                          <div>
-                            <h3 className="text-xl font-bold text-gray-800">
-                              {appointment.doctor.first_name}
-                              {appointment.doctor.last_name} 醫師
+                          <div className="min-w-0">
+                            <h3 className="text-base sm:text-lg font-bold text-gray-800 leading-tight">
+                              {appointment.doctor.first_name}{appointment.doctor.last_name} 醫師
                             </h3>
-                            <div className="flex items-center text-gray-600 mt-1">
-                              <Stethoscope className="w-4 h-4 mr-1" />
-                              <span className="text-sm">{appointment.doctor.specialty}</span>
+                            <div className="flex items-center text-gray-500 mt-0.5">
+                              <Stethoscope className="w-3.5 h-3.5 mr-1 flex-shrink-0" />
+                              <span className="text-xs sm:text-sm">{appointment.doctor.specialty}</span>
                             </div>
                           </div>
                         </div>
 
-                        <div className="space-y-2 bg-gray-50 rounded-lg p-4 mb-4">
+                        {/* 日期時間 */}
+                        <div className="bg-gray-50 rounded-xl p-3 mb-3 space-y-1.5">
                           <div className="flex items-center text-gray-700">
-                            <Calendar className="w-5 h-5 mr-3 text-blue-600" />
-                            <span className="font-medium">
-                              {formatDate(appointment.appointment_date)}
-                            </span>
+                            <Calendar className="w-4 h-4 mr-2 text-blue-500 flex-shrink-0" />
+                            <span className="text-xs sm:text-sm font-medium">{formatDate(appointment.appointment_date)}</span>
                           </div>
                           <div className="flex items-center text-gray-700">
-                            <Clock className="w-5 h-5 mr-3 text-blue-600" />
-                            <span className="font-medium">
-                              {formatTime(appointment.appointment_time)}
-                            </span>
+                            <Clock className="w-4 h-4 mr-2 text-blue-500 flex-shrink-0" />
+                            <span className="text-xs sm:text-sm font-medium">{formatTime(appointment.appointment_time)}</span>
                           </div>
                         </div>
 
                         {appointment.status === "已確認" && (
                           <button
                             onClick={() => handleCancelClick(appointment)}
-                            className="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-2 rounded-lg transition"
+                            className="w-full bg-red-500 hover:bg-red-600 text-white text-sm font-medium py-2 rounded-xl transition"
                           >
                             取消預約
                           </button>
                         )}
 
                         {appointment.status === "已取消" && appointment.cancellation_reason && (
-                          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-4">
-                            <p className="text-sm text-red-800 mb-1">
+                          <div className="bg-red-50 border border-red-200 rounded-xl p-3 mt-2">
+                            <p className="text-xs text-red-800">
                               <span className="font-semibold">取消原因：</span>
-                              <span className="text-red-700 font-normal">{appointment.cancellation_reason}</span>
+                              {appointment.cancellation_reason}
                             </p>
                           </div>
                         )}
 
                         {appointment.status === "已完成" && appointment.doctor_advice && (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-                            <p className="text-sm text-blue-800 mb-1">
-                              <span className="font-semibold">醫生建議與處方：</span>
-                              <span className="text-blue-700 font-normal">{appointment.doctor_advice}</span>
+                          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mt-2">
+                            <p className="text-xs text-blue-800">
+                              <span className="font-semibold">醫生建議：</span>
+                              {appointment.doctor_advice}
                             </p>
                           </div>
                         )}
@@ -353,65 +347,52 @@ export default function AppointmentRecords() {
                   ))}
                 </div>
               ) : (
-                /* 表格式視圖 */
-                <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                /* 橫列式視圖 — 手機可橫向捲動 */
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50 border-b-2 border-gray-200">
+                    <table className="w-full min-w-[600px]">
+                      <thead className="bg-gray-50 border-b border-gray-200">
                         <tr>
-                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">狀態</th>
-                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">醫師</th>
-                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">科別</th>
-                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">日期</th>
-                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">時間</th>
-                          <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                            <span className="text-blue-600">醫生建議</span>
-                            <span className="text-gray-400 mx-1">/</span>
-                            <span className="text-red-600">取消原因</span>
-                          </th>
-                          <th className="px-6 py-4 text-center text-sm font-semibold text-gray-700">操作</th>
+                          {["狀態", "醫師", "科別", "日期", "時間", "備註", "操作"].map(h => (
+                            <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 whitespace-nowrap">{h}</th>
+                          ))}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200">
+                      <tbody className="divide-y divide-gray-100">
                         {filteredAppointments.map((appointment) => (
                           <tr key={appointment.appointment_id} className="hover:bg-gray-50 transition">
-                            <td className="px-6 py-4">
-                              <span
-                                className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(
-                                  appointment.status
-                                )}`}
-                              >
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(appointment.status)}`}>
                                 {appointment.status}
                               </span>
                             </td>
-                            <td className="px-6 py-4">
-                              <div className="font-medium text-gray-800">
-                                {appointment.doctor.first_name}
-                                {appointment.doctor.last_name} 
-                              </div>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className="text-sm font-medium text-gray-800">
+                                {appointment.doctor.first_name}{appointment.doctor.last_name}
+                              </span>
                             </td>
-                            <td className="px-6 py-4 text-gray-600 text-sm">
+                            <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-600">
                               {appointment.doctor.specialty}
                             </td>
-                            <td className="px-6 py-4 text-gray-700 text-sm">
+                            <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-700">
                               {formatDate(appointment.appointment_date)}
                             </td>
-                            <td className="px-6 py-4 text-gray-700 text-sm font-medium">
+                            <td className="px-4 py-3 whitespace-nowrap text-xs font-medium text-gray-700">
                               {formatTime(appointment.appointment_time)}
                             </td>
-                            <td className="px-6 py-4 text-sm">
+                            <td className="px-4 py-3 text-xs max-w-[160px]">
                               {appointment.status === "已取消" && appointment.cancellation_reason && (
-                                <span className="text-red-600">{appointment.cancellation_reason}</span>
+                                <span className="text-red-600 line-clamp-2">{appointment.cancellation_reason}</span>
                               )}
                               {appointment.status === "已完成" && appointment.doctor_advice && (
-                                <span className="text-blue-600">{appointment.doctor_advice}</span>
+                                <span className="text-blue-600 line-clamp-2">{appointment.doctor_advice}</span>
                               )}
                             </td>
-                            <td className="px-6 py-4 text-center">
+                            <td className="px-4 py-3 whitespace-nowrap">
                               {appointment.status === "已確認" && (
                                 <button
                                   onClick={() => handleCancelClick(appointment)}
-                                  className="bg-red-500 hover:bg-red-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition"
+                                  className="bg-red-500 hover:bg-red-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition"
                                 >
                                   取消
                                 </button>
@@ -432,58 +413,47 @@ export default function AppointmentRecords() {
       </div>
 
       {showCancelModal && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 border border-gray-200">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-5 sm:p-6 w-full max-w-md border border-gray-200">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-800">請說明取消原因</h3>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-800">請說明取消原因</h3>
               <button
-                onClick={() => {
-                  setShowCancelModal(false);
-                  setCancelReason("");
-                }}
-                className="text-gray-500 hover:text-gray-700 transition"
+                onClick={() => { setShowCancelModal(false); setCancelReason(""); }}
+                className="text-gray-400 hover:text-gray-600 transition"
               >
-                <X size={24} />
+                <X size={22} />
               </button>
             </div>
-
-            <div className="mb-4">
-              <p className="text-sm text-blue-600 font-medium mb-3">{refundInfo.message}</p>
-              <textarea
-                value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="請輸入取消原因..."
-                className="text-gray-700 w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                rows="4"
-              />
-            </div>
-
+            <p className="text-sm text-blue-600 font-medium mb-3">{refundInfo.message}</p>
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="請輸入取消原因..."
+              className="text-gray-700 w-full border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm mb-4"
+              rows="4"
+            />
             <div className="flex gap-3">
               <button
-                onClick={() => {
-                  setShowCancelModal(false);
-                  setCancelReason("");
-                }}
-                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2.5 rounded-lg transition"
+                onClick={() => { setShowCancelModal(false); setCancelReason(""); }}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium py-2.5 rounded-xl transition"
               >
-                取消
+                返回
               </button>
               <button
                 onClick={handleSubmitCancel}
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 rounded-lg transition"
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white text-sm font-medium py-2.5 rounded-xl transition"
               >
-                確定取消預約
+                確定取消
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="bg-gray-800 text-white py-8">
+      {/* Footer */}
+      <div className={`transition-all duration-300 ${isOpen ? "md:ml-64" : "ml-0"} bg-gray-800 text-white py-8`}>
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-gray-400">
-            © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
-          </p>
+          <p className="text-gray-400 text-sm">© 2025 MedOnGo. 讓醫療服務更便捷、更貼心。</p>
         </div>
       </div>
       <FloatingChat />

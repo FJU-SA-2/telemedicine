@@ -60,12 +60,21 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   ];
 
   return (
-    <div
+    <>
+      {/* 遮罩層：手機上 sidebar 開啟時，點外部可關閉 */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30 md:hidden"
+          onClick={() => setIsOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <div
       // 背景使用全域背景變數
       className={`fixed top-0 left-0 h-full
                   w-64
-                  bg-[var(--background)]
-                  sm:bg-[var(--background)]/50 sm:backdrop-blur-sm
+                  bg-[var(--background)]/50 backdrop-blur-sm
                   text-gray-900 transform
                   ${isOpen ? "translate-x-0" : "-translate-x-full"}
                   transition-transform duration-300 ease-in-out
@@ -113,5 +122,6 @@ export default function Sidebar({ isOpen, setIsOpen }) {
         )}
       </nav>
     </div>
+    </>
   );
 }

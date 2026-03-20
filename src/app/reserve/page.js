@@ -147,73 +147,91 @@ function BookingPage({ doctors, schedules, setSchedules }) {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
-        <h2 className="text-lg font-bold text-gray-800 mb-4">篩選條件</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+
+        {/* 搜尋欄 */}
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <input
+            type="text"
+            value={searchName}
+            onChange={e => setSearchName(e.target.value)}
+            placeholder="搜尋醫師姓名..."
+            className="w-full pl-9 pr-8 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition"
+          />
+          {searchName && (
+            <button onClick={() => setSearchName("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
+        {/* 科別 + 院所 */}
+        <div className="grid grid-cols-2 gap-2 mb-2">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">選擇科別</label>
+            <label className="block text-xs text-gray-500 mb-1 ml-0.5">科別</label>
             <select
               value={selectedSpecialty}
               onChange={e => setSelectedSpecialty(e.target.value)}
-              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-800 font-medium"
+              className={`w-full px-3 py-2 border rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition ${
+                selectedSpecialty !== "all" ? "border-blue-400 bg-blue-50 text-blue-700 font-medium" : "border-gray-200 bg-gray-50 text-gray-600"
+              }`}
             >
-              <option value="all">所有科別 ({availableSpecialties.length})</option>
-              {availableSpecialties.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
+              <option value="all">所有科別</option>
+              {availableSpecialties.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">選擇日期(選填)</label>
+            <label className="block text-xs text-gray-500 mb-1 ml-0.5">院所</label>
+            <select
+              value={selectedHospital}
+              onChange={e => setSelectedHospital(e.target.value)}
+              className={`w-full px-3 py-2 border rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition ${
+                selectedHospital !== "all" ? "border-blue-400 bg-blue-50 text-blue-700 font-medium" : "border-gray-200 bg-gray-50 text-gray-600"
+              }`}
+            >
+              <option value="all">所有院所</option>
+              {availableHospitals.map(h => <option key={h} value={h}>{h}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* 日期 + 自費健保 */}
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1 ml-0.5">日期(選填)</label>
             <input
               type="date"
               value={selectedDate}
               onChange={e => setSelectedDate(e.target.value)}
               min={new Date().toISOString().split('T')[0]}
-              className="w-full px-4 py-2.5 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-800"
+              className="w-full px-3 py-2 border border-gray-200 bg-gray-50 rounded-xl text-xs sm:text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition"
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">搜尋醫師姓名</label>
-            <div className="relative">
-              <input
-                type="text"
-                value={searchName}
-                onChange={e => setSearchName(e.target.value)}
-                placeholder="輸入醫師姓名"
-                className="w-full px-4 py-2.5 pl-10 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-800"
-              />
-              <Search className="absolute left-3 top-3 text-gray-400" size={20} />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold mb-2">任職院所</label>
-            <select
-              value={selectedHospital}
-              onChange={e => setSelectedHospital(e.target.value)}
-              className="w-full px-4 py-2.5 pl-10 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-800"
-            >
-              <option value="all">所有院所</option>
-              {availableHospitals.map(h => (
-                <option key={h} value={h}>{h}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold mb-2">自費/健保</label>
+            <label className="block text-xs text-gray-500 mb-1 ml-0.5">自費/健保</label>
             <select
               value={selectedPaymentType}
               onChange={e => setSelectedPaymentType(e.target.value)}
-              className="w-full px-4 py-2.5 pl-10 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-gray-800"
+              className={`w-full px-3 py-2 border rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition ${
+                selectedPaymentType !== "all" ? "border-blue-400 bg-blue-50 text-blue-700 font-medium" : "border-gray-200 bg-gray-50 text-gray-600"
+              }`}
             >
               <option value="all">全部</option>
-              {paymentTypes.map(p => (
-                <option key={p} value={p}>{p}</option>
-              ))}
+              {paymentTypes.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
         </div>
+
+        {/* 清除篩選 */}
+        {(selectedSpecialty !== "all" || selectedDate || searchName || selectedHospital !== "all" || selectedPaymentType !== "all") && (
+          <button
+            onClick={() => { setSelectedSpecialty("all"); setSelectedDate(""); setSearchName(""); setSelectedHospital("all"); setSelectedPaymentType("all"); }}
+            className="mt-3 flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition"
+          >
+            <X size={12} /> 清除所有篩選
+          </button>
+        )}
       </div>
       
       {showAlert && (
@@ -404,11 +422,12 @@ export default function HomePage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <div className="relative flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
+          className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition "
+          aria-label="開啟選單"
         >
           <Menu size={24} />
         </button>
@@ -416,10 +435,9 @@ export default function HomePage() {
 
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
-      <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+      <div className={`flex-1 min-w-0 overflow-x-hidden transition-all duration-300 ${isOpen ? "md:ml-64" : "ml-0"}`}>
         <Navbar />
         
-        {/* ✅ 主內容區域 */}
         <div className="relative min-h-screen">
           {loading ? (
             <div className="flex items-center justify-center min-h-screen">
@@ -432,16 +450,16 @@ export default function HomePage() {
             <BookingPage doctors={doctors} schedules={schedules} setSchedules={setSchedules} />
           )}
           
-          {/* ✅ 未登入時顯示鎖定覆蓋層 */}
           {!user && <LockedPageOverlay pageName="線上預約" icon={Calendar} />}
         </div>
-        {/* Footer */}
-        <div className="bg-gray-800 text-white py-8">
-          <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400">
-              © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
-            </p>
-          </div>
+      </div>
+
+      {/* Footer */}
+      <div className={`transition-all duration-300 ${isOpen ? "md:ml-64" : "ml-0"} bg-gray-800 text-white py-8`}>
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <p className="text-gray-400">
+            © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
+          </p>
         </div>
       </div>
       <FloatingChat />
