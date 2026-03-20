@@ -696,32 +696,32 @@ def verify_code():
         
         elif role == "doctor":
             # ⭐ 修改這裡:加入 certificate_path 和 approval_status
-           sql_doctor = """
+            sql_doctor = """
                 INSERT INTO doctor (user_id, first_name, last_name, gender, phone_number, 
                                     specialty, practice_hospital, certificate_path, approval_status)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'pending')
             """
-        cursor.execute(sql_doctor, (
+            cursor.execute(sql_doctor, (
                 user_id, first_name, last_name, gender, phone_number, 
                 specialty, practice_hospital, certificate_filename  # ⭐ 這裡
             ))
             # ⭐ 取得剛插入的 doctor_id
-        doctor_id = cursor.lastrowid
+            doctor_id = cursor.lastrowid
 
-        # ⭐ 同步新增 doctor_info 資料表中的對應紀錄
-        sql_doctor_info = """
+            # ⭐ 同步新增 doctor_info 資料表中的對應紀錄
+            sql_doctor_info = """
                 INSERT INTO doctor_info (
                     doctor_id, first_name, last_name, specialty, practice_hospital, phone_number
                 )
                 VALUES (%s, %s, %s, %s, %s, %s)
             """
-        cursor.execute(sql_doctor_info, (
+            cursor.execute(sql_doctor_info, (
                 doctor_id, first_name, last_name, specialty, practice_hospital, phone_number
             ))
            
             # ⭐ 發送醫師註冊收到通知郵件
-        doctor_name = first_name + last_name
-        send_registration_received_email(email, doctor_name)
+            doctor_name = first_name + last_name
+            send_registration_received_email(email, doctor_name)
         
         db.commit()
         

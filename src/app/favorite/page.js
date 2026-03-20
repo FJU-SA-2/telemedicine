@@ -109,8 +109,6 @@ export default function FavoritesPage() {
   // 新增：登入狀態管理
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const userId = 1; // 模擬登入使用者 ID
-
   // 新增：檢查登入狀態
   useEffect(() => {
     async function checkAuth() {
@@ -132,7 +130,7 @@ export default function FavoritesPage() {
   useEffect(() => {
     // 修改：只有登入時才載入資料
     if (user) {
-      fetchFavorites();
+      fetchFavorites(user);
       fetchSchedules();
     } else if (!authLoading) {
       // 如果未登入且認證檢查完成，停止載入
@@ -140,11 +138,11 @@ export default function FavoritesPage() {
     }
   }, [user, authLoading]);
 
-  const fetchFavorites = async () => {
+  const fetchFavorites = async (currentUser) => {
     try {
       setLoading(true);
 
-      const favRes = await fetch(`/api/favorites?user_id=${userId}`);
+      const favRes = await fetch(`/api/favorites?user_id=${currentUser.user_id}`);
       const favoriteIds = await favRes.json();
 
       if (!Array.isArray(favoriteIds) || favoriteIds.length === 0) {
@@ -193,7 +191,7 @@ export default function FavoritesPage() {
       const res = await fetch("/api/favorites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, doctor_id: doctorId }),
+        body: JSON.stringify({ user_id: user.user_id, doctor_id: doctorId }),
       });
 
       const data = await res.json();

@@ -176,7 +176,6 @@ function DoctorListPage({ onSelectDoctor, user }) {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [selectedHospital, setSelectedHospital] = useState("");
   const [keyword, setKeyword] = useState("");
-  const userId = 1; // 模拟登入使用者 ID
 
   useEffect(() => {
     async function fetchDoctors() {
@@ -201,7 +200,7 @@ function DoctorListPage({ onSelectDoctor, user }) {
       }
 
       try {
-        const res = await fetch(`/api/favorites?user_id=${userId}`);
+        const res = await fetch(`/api/favorites?user_id=${user.user_id}`);
 
         if (!res.ok) {
           console.error(`取得最愛醫生失敗,狀態碼: ${res.status} ${res.statusText}`);
@@ -267,7 +266,7 @@ function DoctorListPage({ onSelectDoctor, user }) {
       const res = await fetch("/api/favorites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, doctor_id: doctorId }),
+        body: JSON.stringify({ user_id: user.user_id, doctor_id: doctorId }),
       });
 
       let data = null;
@@ -430,11 +429,23 @@ function DoctorListPage({ onSelectDoctor, user }) {
 
   {/* 醫師頭像 */}
   <div className="w-16 h-16 md:w-24 md:h-24 rounded-full overflow-hidden border-4 border-blue-100 shadow mb-3">
-    <img
-      src={doctor.photo || "/default-doctor.png"}
-      onError={(e) => (e.target.src = "/default-doctor.png")}
-      className="w-full h-full object-cover"
-    />
+    {doctor.photo ? (
+      <img
+        src={`http://localhost:5000/uploads/profile_pictures/${doctor.photo}`}
+        onError={(e) => {
+          e.target.style.display = 'none';
+          e.target.nextSibling.style.display = 'flex';
+        }}
+        className="w-full h-full object-cover"
+        alt={`${doctor.first_name}${doctor.last_name}`}
+      />
+    ) : null}
+    <div
+      style={{ display: doctor.photo ? 'none' : 'flex' }}
+      className="w-full h-full bg-blue-500 items-center justify-center text-white font-bold text-xl"
+    >
+      {doctor.first_name?.charAt(0) || "醫"}
+    </div>
   </div>
 
   {/* 醫師姓名 */}
