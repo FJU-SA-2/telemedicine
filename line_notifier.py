@@ -9,10 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ─────────────────────────────────────────
-# 設定區
-# ─────────────────────────────────────────
-LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNESS_TOKEN")
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
 
 DB_CONFIG = {
     "host":     os.environ.get("DB_HOST",     "localhost"),
@@ -23,9 +20,6 @@ DB_CONFIG = {
 }
 
 
-# ─────────────────────────────────────────
-# 資料庫連線
-# ─────────────────────────────────────────
 def get_db():
     return mysql.connector.connect(**DB_CONFIG)
 
@@ -64,10 +58,8 @@ def verify_and_bind(line_user_id: str, code: str) -> bool:
         cursor.close()
         db.close()
         return False
-    cursor.execute(
-        "UPDATE users SET line_user_id = %s WHERE user_id = %s",
-        (line_user_id, row["user_id"])
-    )
+    cursor.execute("UPDATE users SET line_user_id = %s WHERE user_id = %s",
+                   (line_user_id, row["user_id"]))
     cursor.execute("DELETE FROM bind_codes WHERE code = %s", (code,))
     db.commit()
     cursor.close()
@@ -76,7 +68,7 @@ def verify_and_bind(line_user_id: str, code: str) -> bool:
 
 
 # ─────────────────────────────────────────
-# LINE 推播
+# LINE 推播（底層）
 # ─────────────────────────────────────────
 def push_line_message(line_user_id: str, message: str) -> bool:
     url = "https://api.line.me/v2/bot/message/push"
@@ -95,70 +87,122 @@ def push_line_message(line_user_id: str, message: str) -> bool:
 
 
 # ─────────────────────────────────────────
-# 通知一：預約成功通知
-# 掃描新建立但尚未發送 LINE 通知的預約
+# 取得患者的 LINE user id
 # ─────────────────────────────────────────
-def notify_new_appointments():
+def get_patient_line_id(patient_id: int):
     try:
         db = get_db()
         cursor = db.cursor(dictionary=True)
         cursor.execute("""
-            SELECT
-                a.appointment_id,
-                a.appointment_date,
-                a.appointment_time,
-                a.status,
-                u.line_user_id,
-                CONCAT(p.last_name, p.first_name) AS patient_name,
-                CONCAT(d.last_name, d.first_name) AS doctor_name,
-                d.specialty
-            FROM appointments a
-            JOIN patient p ON a.patient_id = p.patient_id
-            JOIN users   u ON p.user_id    = u.user_id
-            JOIN doctor  d ON a.doctor_id  = d.doctor_id
-            WHERE a.line_booked_notified_at IS NULL
-              AND u.line_user_id IS NOT NULL
-              AND a.status IN ('待確認', '已確認')
-        """)
-        rows = cursor.fetchall()
+            SELECT u.line_user_id
+            FROM users u
+            JOIN patient p ON u.user_id = p.user_id
+            WHERE p.patient_id = %s
+        """, (patient_id,))
+        row = cursor.fetchone()
         cursor.close()
         db.close()
-
-        for appt in rows:
-            date_str = str(appt['appointment_date'])
-            time_str = str(appt['appointment_time'])[:5]
-            status_text = "✅ 已確認" if appt['status'] == '已確認' else "⏳ 待確認（等候醫師確認）"
-
-            message = (
-                f"📅 預約成功通知\n\n"
-                f"您好，{appt['patient_name']}！\n"
-                f"您的預約已建立。\n\n"
-                f"👨‍⚕️ 醫師：{appt['doctor_name']}（{appt['specialty']}）\n"
-                f"🗓 日期：{date_str}\n"
-                f"⏰ 時間：{time_str}\n"
-                f"📋 狀態：{status_text}\n\n"
-                f"請準時登入系統進行視訊看診 🎥"
-            )
-
-            success = push_line_message(appt["line_user_id"], message)
-            if success:
-                db2 = get_db()
-                cur2 = db2.cursor()
-                cur2.execute(
-                    "UPDATE appointments SET line_booked_notified_at = NOW() WHERE appointment_id = %s",
-                    (appt["appointment_id"],)
-                )
-                db2.commit()
-                cur2.close()
-                db2.close()
-                print(f"[預約通知] appointment_id={appt['appointment_id']}, patient={appt['patient_name']}")
-
+        return row["line_user_id"] if row else None
     except Exception as e:
-        print(f"[預約通知錯誤] {e}")
+        print(f"[get_patient_line_id 錯誤] {e}")
+        return None
+
+
+# ═══════════════════════════════════════════
+# 即時通知函式（在各 API route 結尾直接呼叫）
+# ═══════════════════════════════════════════
+
+# ─────────────────────────────────────────
+# 即時通知一：預約成功
+# 使用方式（在建立預約的 route 成功後呼叫）：
+#   from line_notifier import notify_booking_success
+#   notify_booking_success(patient_id, doctor_name, specialty, date_str, time_str)
+# ─────────────────────────────────────────
+def notify_booking_success(patient_id: int, patient_name: str, doctor_name: str,
+                           specialty: str, date_str: str, time_str: str) -> bool:
+    line_id = get_patient_line_id(patient_id)
+    if not line_id:
+        return False
+    message = (
+        f"📅 預約成功通知\n\n"
+        f"您好，{patient_name}！\n"
+        f"您的預約已建立。\n\n"
+        f"👨‍⚕️ 醫師：{doctor_name}（{specialty}）\n"
+        f"🗓 日期：{date_str}\n"
+        f"⏰ 時間：{time_str}\n"
+        f"📋 狀態：✅ 已確認\n\n"
+        f"請準時登入系統進行視訊看診 🎥"
+    )
+    ok = push_line_message(line_id, message)
+    if ok:
+        print(f"[即時-預約成功] patient_id={patient_id}, {patient_name}")
+    return ok
 
 
 # ─────────────────────────────────────────
-# 通知二：看診提醒（開始前 5 分鐘）
+# 即時通知二：預約取消
+# 使用方式（在 cancel_appointment route 成功後呼叫）：
+#   from line_notifier import notify_booking_cancelled
+#   notify_booking_cancelled(patient_id, patient_name, doctor_name, specialty,
+#                            date_str, time_str, cancel_reason, refund_message)
+# ─────────────────────────────────────────
+def notify_booking_cancelled(patient_id: int, patient_name: str, doctor_name: str,
+                              specialty: str, date_str: str, time_str: str,
+                              cancel_reason: str, refund_message: str) -> bool:
+    line_id = get_patient_line_id(patient_id)
+    if not line_id:
+        return False
+    message = (
+        f"🚫 預約取消通知\n\n"
+        f"您好，{patient_name}！\n"
+        f"您的預約已取消。\n\n"
+        f"👨‍⚕️ 醫師：{doctor_name}（{specialty}）\n"
+        f"🗓 原預約日期：{date_str}\n"
+        f"⏰ 原預約時間：{time_str}\n"
+        f"📝 取消原因：{cancel_reason or '未填寫'}\n"
+        f"💰 退款說明：{refund_message}\n\n"
+        f"如需重新預約，請登入平台操作。"
+    )
+    ok = push_line_message(line_id, message)
+    if ok:
+        print(f"[即時-預約取消] patient_id={patient_id}, {patient_name}")
+    return ok
+
+
+# ─────────────────────────────────────────
+# 即時通知三：問題回報確認
+# 使用方式（在 feedback 提交 route 成功後呼叫）：
+#   from line_notifier import notify_feedback_received
+#   notify_feedback_received(patient_id, patient_name, categories_str, feedback_text)
+# ─────────────────────────────────────────
+def notify_feedback_received(patient_id: int, patient_name: str,
+                              categories_str: str, feedback_text: str) -> bool:
+    line_id = get_patient_line_id(patient_id)
+    if not line_id:
+        return False
+    preview = (feedback_text or '')[:50]
+    if len(feedback_text or '') > 50:
+        preview += '...'
+    message = (
+        f"📬 問題回報已收到\n\n"
+        f"您好，{patient_name}！\n"
+        f"感謝您的回報，我們已收到您的意見。\n\n"
+        f"🏷 問題類別：{categories_str or '未分類'}\n"
+        f"📝 內容摘要：{preview}\n\n"
+        f"我們將盡快審閱並處理，感謝您幫助我們改善服務 🙏"
+    )
+    ok = push_line_message(line_id, message)
+    if ok:
+        print(f"[即時-問題回報] patient_id={patient_id}, {patient_name}")
+    return ok
+
+
+# ═══════════════════════════════════════════
+# 排程通知（只保留看診提醒，5分鐘前無法即時）
+# ═══════════════════════════════════════════
+
+# ─────────────────────────────────────────
+# 排程通知：看診提醒（開始前 5 分鐘）
 # ─────────────────────────────────────────
 def notify_upcoming_appointments():
     try:
@@ -221,28 +265,16 @@ def notify_upcoming_appointments():
 
 
 # ─────────────────────────────────────────
-# 排程任務：同時執行兩種通知
-# ─────────────────────────────────────────
-def run_all_notifications():
-    print(f"[LINE排程] 掃描中... {datetime.now().strftime('%H:%M:%S')}")
-    notify_new_appointments()
-    notify_upcoming_appointments()
-
-
-# ─────────────────────────────────────────
-# 啟動排程器
+# 排程器：只跑看診提醒
 # ─────────────────────────────────────────
 def start_scheduler():
     scheduler = BackgroundScheduler(timezone="Asia/Taipei")
-    scheduler.add_job(run_all_notifications, "interval", minutes=1)
+    scheduler.add_job(notify_upcoming_appointments, "interval", minutes=1)
     scheduler.start()
-    print("[排程器啟動] 每分鐘檢查預約通知與看診提醒")
+    print("[排程器啟動] 每分鐘檢查看診提醒（開始前 5 分鐘）")
     return scheduler
 
 
-# ─────────────────────────────────────────
-# 主程式入口
-# ─────────────────────────────────────────
 if __name__ == "__main__":
     import time
     print(f"🔑 TOKEN: '{LINE_CHANNEL_ACCESS_TOKEN}'")

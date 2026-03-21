@@ -4206,6 +4206,22 @@ def cancel_appointment():
 
         print("=" * 60)
 
+        # ✅ 即時 LINE 推播給患者
+        try:
+            from line_notifier import notify_booking_cancelled
+            notify_booking_cancelled(
+                patient_id     = appt["patient_id"],
+                patient_name   = patient_name,
+                doctor_name    = doctor_name,
+                specialty      = appt["specialty"],
+                date_str       = appointment_date.strftime('%Y年%m月%d日'),
+                time_str       = str(appointment_time)[:5],
+                cancel_reason  = cancel_reason,
+                refund_message = refund_message,
+            )
+        except Exception as line_err:
+            print(f"⚠️ LINE 取消通知推播失敗: {line_err}")
+
         return jsonify({
             "success": True, 
             "message": refund_message,
@@ -5226,7 +5242,7 @@ def handle_message(event):
 您現在可以透過 LINE 接收:
 • 📅 預約確認通知
 • ⏰ 看診提醒 (開始前 5 分鐘)
-• 📝 醫囑填寫提醒 (醫師)
+• 📝 預約取消通知
 • 💬 問題回報狀態更新
 
 💡 提示:
@@ -5269,6 +5285,70 @@ def handle_message(event):
 # ═════════════════════════════════════════════════════════════════
 # END OF LINE BOT WEBHOOK
 # ═════════════════════════════════════════════════════════════════
+
+
+# ═════════════════════════════════════════════════════════════════
+# 內部 LINE 即時推播 API（供 Next.js route.js 呼叫）
+# ═════════════════════════════════════════════════════════════════
+
+@app.route("/api/internal/line/booking-success", methods=["POST"])
+def internal_line_booking_success():
+    """預約成功即時推播（由 Next.js appointments route.js 呼叫）"""
+    try:
+        data = request.get_json()
+        from line_notifier import notify_booking_success
+        notify_booking_success(
+            patient_id   = data["patient_id"],
+            patient_name = data["patient_name"],
+            doctor_name  = data["doctor_name"],
+            specialty    = data["specialty"],
+            date_str     = data["date_str"],
+            time_str     = data["time_str"],
+        )
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        print(f"⚠️ 預約成功推播失敗: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/internal/line/booking-cancelled", methods=["POST"])
+def internal_line_booking_cancelled():
+    """預約取消即時推播（由 Next.js appointments route.js 呼叫）"""
+    try:
+        data = request.get_json()
+        from line_notifier import notify_booking_cancelled
+        notify_booking_cancelled(
+            patient_id     = data["patient_id"],
+            patient_name   = data["patient_name"],
+            doctor_name    = data["doctor_name"],
+            specialty      = data["specialty"],
+            date_str       = data["date_str"],
+            time_str       = data["time_str"],
+            cancel_reason  = data["cancel_reason"],
+            refund_message = data["refund_message"],
+        )
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        print(f"⚠️ 預約取消推播失敗: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/internal/line/feedback-received", methods=["POST"])
+def internal_line_feedback_received():
+    """問題回報確認即時推播（由 Next.js feedback route.js 呼叫）"""
+    try:
+        data = request.get_json()
+        from line_notifier import notify_feedback_received
+        notify_feedback_received(
+            patient_id     = data["patient_id"],
+            patient_name   = data["patient_name"],
+            categories_str = data["categories_str"],
+            feedback_text  = data["feedback_text"],
+        )
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        print(f"⚠️ 回報通知推播失敗: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 if __name__ == "__main__":
