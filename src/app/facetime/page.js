@@ -30,6 +30,7 @@ export default function DoctorVideoConsultation() {
   const recordedChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
   const recordingStartTimeRef = useRef(null);
+  const currentMeetingRef = useRef(null); // 避免 async callback stale closure
 
   useEffect(() => {
     async function fetchApprovalStatus() {
@@ -117,7 +118,9 @@ export default function DoctorVideoConsultation() {
       });
       if (!response.ok) throw new Error('無法創建會議室');
       const data = await response.json();
-      setCurrentMeeting({ ...appointment, meeting_room_id: data.meeting_room_id });
+      const meetingData = { ...appointment, meeting_room_id: data.meeting_room_id };
+      setCurrentMeeting(meetingData);
+      currentMeetingRef.current = meetingData;
       setIsMeetingActive(true);
       setTimeout(() => { initJitsi(data.meeting_room_id, appointment); }, 100);
     } catch (err) {
@@ -165,7 +168,7 @@ export default function DoctorVideoConsultation() {
       };
       const api = new window.JitsiMeetExternalAPI(domain, options);
       jitsiApiRef.current = api;
-      api.addEventListener('videoConferenceJoined', () => { setTimeout(() => startRecording(), 2000); });
+      api.addEventListener('videoConferenceJoined', () => { console.log('✅ 已加入會議'); });
       api.addEventListener('audioMuteStatusChanged', ({ muted }) => setIsMuted(muted));
       api.addEventListener('videoMuteStatusChanged', ({ muted }) => setIsVideoOff(muted));
       api.addEventListener('videoConferenceLeft', () => handleMeetingEnd());
@@ -178,14 +181,46 @@ export default function DoctorVideoConsultation() {
 
   const startRecording = async () => {
     try {
-      const userStream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000 }
-      });
+      // 嘗試直接抓取 Jitsi iframe 內的 video 元素串流
+      let stream = null;
+
+      // 方法1: 從 Jitsi iframe 內抓取所有 video 串流並合併
+      const iframe = jitsiContainerRef.current?.querySelector('iframe');
+      if (iframe) {
+        try {
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+          const videos = iframeDoc?.querySelectorAll('video');
+          const videoStreams = [];
+          videos?.forEach(video => {
+            if (video.srcObject instanceof MediaStream) {
+              videoStreams.push(video.srcObject);
+            }
+          });
+
+          if (videoStreams.length > 0) {
+            // 合併所有視訊/音訊軌道
+            const allTracks = videoStreams.flatMap(s => s.getTracks());
+            stream = new MediaStream(allTracks);
+          }
+        } catch (e) {
+          console.warn('無法直接存取 iframe 內容（跨域限制），改用螢幕錄製');
+        }
+      }
+
+      // 方法2: 若無法直接抓 iframe，改用 captureStream 錄製 canvas 或退回 getUserMedia
+      if (!stream) {
+        // 嘗試抓取自己的鏡頭+麥克風（至少錄到醫師端）
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000 }
+        });
+      }
+
       const mimeTypes = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm;codecs=h264,opus','video/webm'];
       let selectedMimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
       if (!selectedMimeType) throw new Error('瀏覽器不支援錄影功能');
-      const mediaRecorder = new MediaRecorder(userStream, { mimeType: selectedMimeType, videoBitsPerSecond: 2500000, audioBitsPerSecond: 128000 });
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: selectedMimeType, videoBitsPerSecond: 2500000, audioBitsPerSecond: 128000 });
       mediaRecorderRef.current = mediaRecorder;
       recordedChunksRef.current = [];
       recordingStartTimeRef.current = Date.now();
@@ -196,7 +231,7 @@ export default function DoctorVideoConsultation() {
       setIsRecording(true);
       setRecordingDuration(0);
       recordingTimerRef.current = setInterval(() => setRecordingDuration(prev => prev + 1), 1000);
-      userStream.getTracks().forEach(track => { track.onended = () => {}; });
+      stream.getTracks().forEach(track => { track.onended = () => stopRecording(); });
     } catch (err) {
       if (err.name === 'NotAllowedError') setError('請授予攝像頭和麥克風權限');
       else if (err.name === 'NotFoundError') setError('找不到攝像頭或麥克風');
@@ -206,13 +241,15 @@ export default function DoctorVideoConsultation() {
 
   const saveRecording = async () => {
     if (recordedChunksRef.current.length === 0) { setError('沒有錄影數據可保存'); return; }
+    const meeting = currentMeetingRef.current;
+    if (!meeting || !meeting.appointment_id) { setError('無法取得預約資訊，錄影儲存失敗'); return; }
     try {
       const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
       if (blob.size === 0) { setError('錄影文件無效'); return; }
       const formData = new FormData();
-      const filename = `consultation_${currentMeeting.appointment_id}_${Date.now()}.webm`;
+      const filename = `consultation_${meeting.appointment_id}_${Date.now()}.webm`;
       formData.append('video', blob, filename);
-      formData.append('appointment_id', currentMeeting.appointment_id);
+      formData.append('appointment_id', meeting.appointment_id);
       formData.append('duration', recordingDuration);
       const response = await fetch('/api/meeting/upload-recording', { method: 'POST', credentials: 'include', body: formData });
       if (!response.ok) { const error = await response.json(); setError('錄影上傳失敗: ' + (error.message || '未知錯誤')); }
@@ -231,19 +268,21 @@ export default function DoctorVideoConsultation() {
   };
 
   const handleMeetingEnd = async () => {
-    if (!currentMeeting) return;
+    const meeting = currentMeetingRef.current;
+    if (!meeting) return;
     if (isRecording) { stopRecording(); await new Promise(resolve => setTimeout(resolve, 5000)); }
     try {
       await fetch('/api/meeting/end', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ appointment_id: currentMeeting.appointment_id, consultation_notes: consultationNotes, recording_duration: recordingDuration })
+        body: JSON.stringify({ appointment_id: meeting.appointment_id, consultation_notes: consultationNotes, recording_duration: recordingDuration })
       });
     } catch (err) { console.error('儲存會議記錄失敗:', err); }
     if (jitsiApiRef.current) { try { jitsiApiRef.current.dispose(); jitsiApiRef.current = null; } catch (err) {} }
     setIsMeetingActive(false);
     setCurrentMeeting(null);
+    currentMeetingRef.current = null;
     setSelectedPatient(null);
     setConsultationNotes('');
     setRecordingDuration(0);

@@ -97,27 +97,27 @@ function FeedbackFormContent() {
 };
 
   return (
-    <div className="p-6 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen">
-      <div className="bg-white rounded-2xl shadow-xl max-w-2xl mx-auto p-8">
-        <div className="flex items-center gap-3 mb-6">
-          <AlertCircle className="w-8 h-8 text-indigo-600" />
-          <h1 className="text-3xl font-bold text-gray-800">問題回報</h1>
+    <div className="p-3 sm:p-6 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 min-h-screen">
+      <div className="bg-white rounded-2xl shadow-xl max-w-2xl mx-auto p-5 sm:p-8">
+        <div className="flex items-center gap-3 mb-4 sm:mb-6">
+          <AlertCircle className="w-6 h-6 sm:w-8 sm:h-8 text-indigo-600 flex-shrink-0" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">問題回報</h1>
         </div>
         
-        <p className="text-gray-600 mb-8">
+        <p className="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8">
           請告訴我們您遇到的問題，我們會盡快處理並改善服務品質。
         </p>
 
         <div>
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-700 mb-4">
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-700 mb-3 sm:mb-4">
               請選擇問題類別
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               {categories.map((category) => (
                 <label
                   key={category.id}
-                  className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                  className={`flex items-center p-3 sm:p-4 rounded-lg border-2 cursor-pointer transition-all ${
                     selectedCategories.includes(category.id)
                         ? 'border-indigo-600 bg-indigo-50'
                         : 'border-gray-200 hover:border-indigo-300 bg-white'
@@ -129,9 +129,9 @@ function FeedbackFormContent() {
                     value={category.id}
                     checked={selectedCategories.includes(category.id)}
                     onChange={() => toggleCategory(category.id)}
-                    className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 rounded"
+                    className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 rounded flex-shrink-0"
                   />
-                  <span className="ml-3 text-gray-700 font-medium">
+                  <span className="ml-3 text-gray-700 font-medium text-sm sm:text-base">
                     {category.label}
                   </span>
                 </label>
@@ -139,8 +139,8 @@ function FeedbackFormContent() {
             </div>
           </div>
 
-          <div className="mb-6">
-            <label htmlFor="feedback" className="block text-lg font-semibold text-gray-700 mb-3">
+          <div className="mb-5 sm:mb-6">
+            <label htmlFor="feedback" className="block text-base sm:text-lg font-semibold text-gray-700 mb-2 sm:mb-3">
               問題描述
             </label>
             <textarea
@@ -149,16 +149,16 @@ function FeedbackFormContent() {
               onChange={(e) => setFeedback(e.target.value)}
               placeholder="請詳細描述您遇到的問題..."
               rows="6"
-              className="text-gray-700 w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-indigo-600 focus:outline-none resize-none transition-colors"
+              className="text-gray-700 w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-indigo-600 focus:outline-none resize-none transition-colors text-sm sm:text-base"
               disabled={loading}
             />
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-xs sm:text-sm text-gray-500 mt-1.5">
               {feedback.length} 字
             </p>
           </div>
 
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+            <div className="mb-4 p-3 sm:p-4 bg-red-50 border-2 border-red-200 rounded-lg">
               <p className="text-red-800 text-sm">{error}</p>
             </div>
           )}
@@ -167,16 +167,16 @@ function FeedbackFormContent() {
             type="button"
             onClick={handleSubmit}
             disabled={loading}
-            className="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold text-lg hover:bg-indigo-700 disabled:bg-gray-400 transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold text-sm sm:text-lg hover:bg-indigo-700 disabled:bg-gray-400 transition-colors flex items-center justify-center gap-2"
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-4 h-4 sm:w-5 sm:h-5" />
             {loading ? '提交中...' : '送出回報'}
           </button>
         </div>
 
         {submitted && (
-          <div className="mt-6 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
-            <p className="text-green-800 font-medium text-center">
+          <div className="mt-5 sm:mt-6 p-3 sm:p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+            <p className="text-green-800 font-medium text-center text-sm sm:text-base">
               ✓ 感謝您的回報！我們已收到您的意見。
             </p>
           </div>
@@ -219,11 +219,11 @@ export default function FeedbackPage() {
   }
 
   return (
-    <div className="relative">
+    <div className="relative flex flex-col min-h-screen">
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
+          className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition"
         >
           <Menu size={24} />
         </button>
@@ -236,28 +236,24 @@ export default function FeedbackPage() {
         setActiveTab={setActiveTab}
       />
 
-      <div
-        className={`transition-all duration-300 ${
-          isOpen ? "ml-64" : "ml-0"
-        }`}
-      >
+      <div className={`flex-1 min-w-0 overflow-x-hidden transition-all duration-300 ${isOpen ? "md:ml-64" : "ml-0"}`}>
         <Navbar />
         
         <div className="relative min-h-screen">
           <FeedbackFormContent />
-          
           {!user && <LockedPageOverlay pageName="問題回報" icon={AlertCircle} />}
         </div>
       </div>
+
       {/* Footer */}
-        <div className="bg-gray-800 text-white py-8">
-          <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400">
-              © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
-            </p>
-          </div>
+      <div className={`transition-all duration-300 ${isOpen ? "md:ml-64" : "ml-0"} bg-gray-800 text-white py-8`}>
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <p className="text-gray-400 text-sm">
+            © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
+          </p>
         </div>
-        <FloatingChat />
+      </div>
+      <FloatingChat />
     </div>
   );
 }

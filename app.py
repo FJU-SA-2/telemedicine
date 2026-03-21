@@ -2936,11 +2936,10 @@ def end_meeting():
 
 @app.route("/api/recording/<filename>", methods=["GET"])
 def get_recording(filename):
-    """獲取錄影檔案（僅限相關醫師和患者）"""
+    """獲取錄影檔案（支援 Range Request，手機串流播放）"""
     if 'user_id' not in session:
         return jsonify({"message": "請先登入"}), 401
     
-    # 驗證權限
     db = get_db()
     cursor = db.cursor(dictionary=True)
     
@@ -2959,7 +2958,6 @@ def get_recording(filename):
         if not appointment:
             return jsonify({"message": "找不到相關預約"}), 404
         
-        # 檢查是否為該預約的醫師或患者
         user_role = session.get('role')
         if user_role == 'doctor':
             if appointment['doctor_id'] != session.get('doctor_id'):
@@ -2970,8 +2968,54 @@ def get_recording(filename):
         else:
             return jsonify({"message": "無效的用戶角色"}), 403
         
-        # 返回檔案
-        return send_from_directory(app.config['RECORDING_FOLDER'], filename)
+        file_path = os.path.join(app.config['RECORDING_FOLDER'], filename)
+        if not os.path.exists(file_path):
+            return jsonify({"message": "錄影檔案不存在"}), 404
+        
+        file_size = os.path.getsize(file_path)
+        range_header = request.headers.get('Range')
+        
+        # 支援 Range Request（手機串流播放必要）
+        if range_header:
+            byte_start, byte_end = 0, file_size - 1
+            match = range_header.replace('bytes=', '').split('-')
+            if match[0]:
+                byte_start = int(match[0])
+            if match[1]:
+                byte_end = int(match[1])
+            
+            length = byte_end - byte_start + 1
+            
+            def generate():
+                with open(file_path, 'rb') as f:
+                    f.seek(byte_start)
+                    remaining = length
+                    while remaining > 0:
+                        chunk = f.read(min(8192, remaining))
+                        if not chunk:
+                            break
+                        remaining -= len(chunk)
+                        yield chunk
+            
+            response = Response(
+                generate(),
+                status=206,
+                mimetype='video/webm',
+                headers={
+                    'Content-Range': f'bytes {byte_start}-{byte_end}/{file_size}',
+                    'Accept-Ranges': 'bytes',
+                    'Content-Length': str(length),
+                    'Content-Disposition': f'inline; filename="{filename}"',
+                }
+            )
+            return response
+        else:
+            # 非 Range 請求，直接回傳整個檔案
+            response = send_from_directory(app.config['RECORDING_FOLDER'], filename)
+            response.headers['Accept-Ranges'] = 'bytes'
+            response.headers['Content-Type'] = 'video/webm'
+            response.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+            return response
         
     except Exception as e:
         print(f"❌ 錄影檔案存取失敗: {str(e)}")

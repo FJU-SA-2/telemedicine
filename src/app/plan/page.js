@@ -122,7 +122,8 @@ export default function PricingPage() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
+          className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition"
+          aria-label="開啟選單"
         >
           <Menu size={24} />
         </button>
@@ -179,7 +180,7 @@ ${isOpen ? 'md:ml-64' : ''}`}>
 
                   {/* 方案圖示 */}
                   <div className={`h-32 bg-gradient-to-br ${plan.color} flex items-center justify-center`}>
-                    <Icon cclassName="w-12 h-12 md:w-16 md:h-16" />
+                    <Icon className="w-12 h-12 md:w-16 md:h-16" />
                   </div>
 
                   {/* 方案內容 */}
