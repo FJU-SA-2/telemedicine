@@ -310,7 +310,7 @@ export default function FavoritesPage() {
           setActiveTab={() => {}}
         />
 
-        <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+        <div className={`transition-all duration-300 ${isOpen ? "md:ml-64" : "ml-0"}`}>
           <Navbar />
           
           {showSuccess && bookingInfo && (
