@@ -68,7 +68,7 @@ export default function PricingPage() {
   },
   {
     name: "會員版（月訂）",
-    price: "NT$260",
+    price: "NT$500",
     period: "每月",
     description: "適合彈性使用的會員方案",
     features: [
@@ -88,9 +88,9 @@ export default function PricingPage() {
   },
   {
     name: "年費會員",
-    price: "NT$1600",
+    price: "NT$5000",
     period: "每年",
-    description: "長期使用最划算，相當於贈送半年服務",
+    description: "長期使用最划算，相當於免費贈送兩個月的服務",
     features: [
       "無限制預約次數",
       "無限制視訊看診",
