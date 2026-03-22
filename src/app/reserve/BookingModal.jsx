@@ -102,20 +102,20 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-white/30 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div className="bg-white rounded-2xl w-full max-w-3xl sm:max-w-3xl md:max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
         {/* 頂部進度條 */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-2xl z-10">
-          <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition">
-            <X size={24} />
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 sm:p-6 rounded-t-2xl z-10">
+          <button onClick={onClose} className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-gray-600 transition">
+            <X size={22} />
           </button>
 
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg">
+          <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6 pr-8">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl sm:text-2xl shadow-lg flex-shrink-0">
               {doctor.last_name.charAt(0)}
             </div>
-            <div>
-              <h3 className="font-bold text-xl text-gray-800">{doctorFullName} 醫師</h3>
-              <p className="text-sm text-blue-600 font-medium">{doctor.specialty}</p>
+            <div className="min-w-0">
+              <h3 className="font-bold text-base sm:text-xl text-gray-800 truncate">{doctorFullName} 醫師</h3>
+              <p className="text-xs sm:text-sm text-blue-600 font-medium">{doctor.specialty}</p>
             </div>
           </div>
 
@@ -129,24 +129,27 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
             ].map((s, idx) => (
               <div key={s.num} className="flex items-center flex-1">
                 <div className="flex flex-col items-center">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold transition-all ${
                     step >= s.num ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-500"
                   }`}>
-                    {step > s.num ? <CheckCircle size={20} /> : <s.icon size={20} />}
+                    {step > s.num ? <CheckCircle size={16} /> : <s.icon size={16} />}
                   </div>
-                  <span className={`text-xs mt-2 font-medium ${step >= s.num ? "text-blue-600" : "text-gray-400"}`}>
+                  <span className={`text-xs mt-1 font-medium hidden sm:block ${step >= s.num ? "text-blue-600" : "text-gray-400"}`}>
                     {s.name}
+                  </span>
+                  <span className={`text-xs mt-1 font-medium sm:hidden ${step >= s.num ? "text-blue-600" : "text-gray-400"}`}>
+                    {s.num}
                   </span>
                 </div>
                 {idx < 3 && (
-                  <div className={`flex-1 h-1 mx-2 rounded ${step > s.num ? "bg-blue-500" : "bg-gray-200"}`} />
+                  <div className={`flex-1 h-1 mx-1 sm:mx-2 rounded ${step > s.num ? "bg-blue-500" : "bg-gray-200"}`} />
                 )}
               </div>
             ))}
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {/* 步驟 1: 選擇時間 */}
           {step === 1 && (
             <div>
@@ -273,14 +276,14 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
                 <button
                   onClick={handleNextStep}
                   disabled={!symptoms.trim()}
-                  className={`flex-1 py-4 rounded-xl font-semibold text-lg transition-all flex items-center justify-center gap-2 ${
+                  className={`flex-1 py-3 rounded-xl font-semibold transition-all flex flex-col items-center justify-center ${
                     symptoms.trim()
                       ? "bg-blue-500 text-white hover:bg-blue-600 shadow-lg" 
                       : "bg-gray-200 text-gray-400 cursor-not-allowed"
                   }`}
                 >
-                  下一步:確認預約
-                  <ArrowRight size={20} />
+                  <span className="text-base font-bold">下一步</span>
+                  <span className="text-xs opacity-80">確認預約</span>
                 </button>
               </div>
             </div>

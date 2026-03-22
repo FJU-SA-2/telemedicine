@@ -6,6 +6,7 @@ import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import { Menu , User, Heart, Stethoscope, Award, BookOpen, Building2, Phone, Calendar, Clock, Save, X, Edit2, Upload, CheckCircle, AlertCircle } from "lucide-react";
 import DoctorSidebar from "../components/DoctorSidebar";
+import Mech_Sidebar from "../components/Mech_Sidebar";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -329,6 +330,7 @@ const handleSave = async () => {
   }
   const isPatient = user.role === "patient";
   const isDoctor = user.role === "doctor";
+  const isMech = user.role === "mech";
   const profile = user.patientProfile || {};
   const doctorProfile = user.doctorProfile || {};
   
@@ -346,7 +348,13 @@ const handleSave = async () => {
               </button>
             )}
 
-      {isDoctor ? (
+      {isMech ? (
+        <Mech_Sidebar
+          isOpen={isOpen}
+          setIsOpen={setIsOpen}
+          approvalStatus="approved"
+        />
+      ) : isDoctor ? (
         <DoctorSidebar  
           isOpen={isOpen} 
           setIsOpen={setIsOpen}
@@ -428,7 +436,7 @@ const handleSave = async () => {
               <div className="p-3 sm:p-4 bg-gradient-to-br rounded-xl hover:bg-gray-100 transition-colors">
                 <p className="text-xs sm:text-sm text-[var(--color-mahogany)] font-medium mb-1">姓名</p>
                 <p className="text-lg font-semibold text-gray-800">
-                  {user.first_name}{user.last_name} 
+                  {user.role === "mech" ? (user.mechanism_name || user.username) : `${user.first_name || ""}${user.last_name || ""}`}
                 </p>
               </div>
 

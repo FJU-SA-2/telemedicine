@@ -25,14 +25,16 @@ from linebot.exceptions import InvalidSignatureError
 from linebot.models import (
     MessageEvent, TextMessage, TextSendMessage,
     TemplateSendMessage, ButtonsTemplate, URIAction,
-    FlexSendMessage
+    FlexSendMessage, FollowEvent
 )
 from dotenv import load_dotenv
+import re
 load_dotenv()
-
+os.environ['LINE_CHANNEL_SECRET'] = '284dabf028558ab491a1358ac425d912'
 LINE_CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET')
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
-
+print(f"🔑 SECRET: '{LINE_CHANNEL_SECRET}'")
+print(f"🔑 TOKEN: '{LINE_CHANNEL_ACCESS_TOKEN}'")
 line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
@@ -694,32 +696,32 @@ def verify_code():
         
         elif role == "doctor":
             # ⭐ 修改這裡:加入 certificate_path 和 approval_status
-           sql_doctor = """
+            sql_doctor = """
                 INSERT INTO doctor (user_id, first_name, last_name, gender, phone_number, 
                                     specialty, practice_hospital, certificate_path, approval_status)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'pending')
             """
-        cursor.execute(sql_doctor, (
+            cursor.execute(sql_doctor, (
                 user_id, first_name, last_name, gender, phone_number, 
                 specialty, practice_hospital, certificate_filename  # ⭐ 這裡
             ))
             # ⭐ 取得剛插入的 doctor_id
-        doctor_id = cursor.lastrowid
+            doctor_id = cursor.lastrowid
 
-        # ⭐ 同步新增 doctor_info 資料表中的對應紀錄
-        sql_doctor_info = """
+            # ⭐ 同步新增 doctor_info 資料表中的對應紀錄
+            sql_doctor_info = """
                 INSERT INTO doctor_info (
                     doctor_id, first_name, last_name, specialty, practice_hospital, phone_number
                 )
                 VALUES (%s, %s, %s, %s, %s, %s)
             """
-        cursor.execute(sql_doctor_info, (
+            cursor.execute(sql_doctor_info, (
                 doctor_id, first_name, last_name, specialty, practice_hospital, phone_number
             ))
            
             # ⭐ 發送醫師註冊收到通知郵件
-        doctor_name = first_name + last_name
-        send_registration_received_email(email, doctor_name)
+            doctor_name = first_name + last_name
+            send_registration_received_email(email, doctor_name)
         
         db.commit()
         
@@ -836,6 +838,8 @@ def login_user():
 @app.route("/api/me", methods=["GET"])
 def get_current_user():
     """取得當前登入使用者資訊"""
+    print(f"🔍 /api/me session 內容: {dict(session)}")
+    print(f"🔍 /api/me 收到的 Cookie header: {request.headers.get('Cookie', 'NONE')[:80]}")
     if 'user_id' not in session:
         return jsonify({"authenticated": False}), 401
     user_id = session.get('user_id')
@@ -913,8 +917,6 @@ def get_current_user():
             if mech_data:
                 user_data["mechanism_id"] = mech_data["mechanism_id"]
                 user_data["mechanism_name"] = mech_data["mechanism_name"]
-
-    # 新增：如果是醫師，取得完整專業資料
         elif role == "doctor":
             cursor.execute("""
                 SELECT  d.doctor_id, d.first_name, d.last_name, d.gender, d.phone_number, 
@@ -2934,11 +2936,10 @@ def end_meeting():
 
 @app.route("/api/recording/<filename>", methods=["GET"])
 def get_recording(filename):
-    """獲取錄影檔案（僅限相關醫師和患者）"""
+    """獲取錄影檔案（支援 Range Request，手機串流播放）"""
     if 'user_id' not in session:
         return jsonify({"message": "請先登入"}), 401
     
-    # 驗證權限
     db = get_db()
     cursor = db.cursor(dictionary=True)
     
@@ -2957,7 +2958,6 @@ def get_recording(filename):
         if not appointment:
             return jsonify({"message": "找不到相關預約"}), 404
         
-        # 檢查是否為該預約的醫師或患者
         user_role = session.get('role')
         if user_role == 'doctor':
             if appointment['doctor_id'] != session.get('doctor_id'):
@@ -2968,8 +2968,54 @@ def get_recording(filename):
         else:
             return jsonify({"message": "無效的用戶角色"}), 403
         
-        # 返回檔案
-        return send_from_directory(app.config['RECORDING_FOLDER'], filename)
+        file_path = os.path.join(app.config['RECORDING_FOLDER'], filename)
+        if not os.path.exists(file_path):
+            return jsonify({"message": "錄影檔案不存在"}), 404
+        
+        file_size = os.path.getsize(file_path)
+        range_header = request.headers.get('Range')
+        
+        # 支援 Range Request（手機串流播放必要）
+        if range_header:
+            byte_start, byte_end = 0, file_size - 1
+            match = range_header.replace('bytes=', '').split('-')
+            if match[0]:
+                byte_start = int(match[0])
+            if match[1]:
+                byte_end = int(match[1])
+            
+            length = byte_end - byte_start + 1
+            
+            def generate():
+                with open(file_path, 'rb') as f:
+                    f.seek(byte_start)
+                    remaining = length
+                    while remaining > 0:
+                        chunk = f.read(min(8192, remaining))
+                        if not chunk:
+                            break
+                        remaining -= len(chunk)
+                        yield chunk
+            
+            response = Response(
+                generate(),
+                status=206,
+                mimetype='video/webm',
+                headers={
+                    'Content-Range': f'bytes {byte_start}-{byte_end}/{file_size}',
+                    'Accept-Ranges': 'bytes',
+                    'Content-Length': str(length),
+                    'Content-Disposition': f'inline; filename="{filename}"',
+                }
+            )
+            return response
+        else:
+            # 非 Range 請求，直接回傳整個檔案
+            response = send_from_directory(app.config['RECORDING_FOLDER'], filename)
+            response.headers['Accept-Ranges'] = 'bytes'
+            response.headers['Content-Type'] = 'video/webm'
+            response.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+            return response
         
     except Exception as e:
         print(f"❌ 錄影檔案存取失敗: {str(e)}")
@@ -4160,6 +4206,22 @@ def cancel_appointment():
 
         print("=" * 60)
 
+        # ✅ 即時 LINE 推播給患者
+        try:
+            from line_notifier import notify_booking_cancelled
+            notify_booking_cancelled(
+                patient_id     = appt["patient_id"],
+                patient_name   = patient_name,
+                doctor_name    = doctor_name,
+                specialty      = appt["specialty"],
+                date_str       = appointment_date.strftime('%Y年%m月%d日'),
+                time_str       = str(appointment_time)[:5],
+                cancel_reason  = cancel_reason,
+                refund_message = refund_message,
+            )
+        except Exception as line_err:
+            print(f"⚠️ LINE 取消通知推播失敗: {line_err}")
+
         return jsonify({
             "success": True, 
             "message": refund_message,
@@ -4754,6 +4816,543 @@ def add_doctor():
     except Exception as e:
         print("新增醫師錯誤:", e)
         return jsonify({"error": "伺服器錯誤"}), 500
+    
+# ─────────────────────────────────────────
+# 機構排班（POST）
+# ─────────────────────────────────────────
+@app.route('/api/mechanism/schedules', methods=['POST'])
+def mechanism_save_schedules():
+    """機構管理員幫醫師儲存排班"""
+    if 'user_id' not in session:
+        return jsonify({'error': '未登入'}), 401
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': '無效的請求資料'}), 400
+
+    doctor_id  = data.get('doctor_id')
+    schedules  = data.get('schedules', [])
+    week_start = data.get('week_start')
+    week_end   = data.get('week_end')
+
+    if not doctor_id:
+        return jsonify({'error': '缺少 doctor_id'}), 400
+
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        # 刪除過期排班
+        cursor.execute("""
+            DELETE FROM schedules
+            WHERE doctor_id = %s
+              AND TIMESTAMP(schedule_date, time_slot) < NOW()
+        """, (doctor_id,))
+
+        # 刪除該週舊排班
+        if week_start and week_end:
+            cursor.execute("""
+                DELETE FROM schedules
+                WHERE doctor_id = %s
+                  AND schedule_date BETWEEN %s AND %s
+            """, (doctor_id, week_start, week_end))
+        elif schedules:
+            dates = list(set([item['date'] for item in schedules]))
+            for d in dates:
+                cursor.execute("""
+                    DELETE FROM schedules
+                    WHERE doctor_id = %s AND schedule_date = %s
+                """, (doctor_id, d))
+
+        # 插入新排班
+        for item in schedules:
+            schedule_date = item.get('date')
+            time_slot     = item.get('time_slot')
+            is_available  = item.get('is_available', 1)
+
+            if not schedule_date or not time_slot:
+                continue
+
+            cursor.execute("""
+                INSERT INTO schedules (doctor_id, schedule_date, time_slot, is_available)
+                VALUES (%s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE is_available = VALUES(is_available)
+            """, (doctor_id, schedule_date, time_slot, is_available))
+
+        db.commit()
+        cursor.close()
+        db.close()
+
+        return jsonify({'message': '排班儲存成功'}), 200
+
+    except Exception as e:
+        print(f"機構排班儲存失敗: {e}")
+        return jsonify({'error': '伺服器錯誤'}), 500
+
+
+# ─────────────────────────────────────────
+# 檢查 LINE 綁定狀態
+# ─────────────────────────────────────────
+@app.route('/api/line/binding-status', methods=['GET'])
+def get_line_binding_status():
+    """檢查當前登入用戶的 LINE 綁定狀態"""
+    if 'user_id' not in session:
+        return jsonify({'error': '未登入'}), 401
+    
+    user_id = session['user_id']
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT line_user_id FROM users WHERE user_id = %s",
+        (user_id,)
+    )
+    user = cursor.fetchone()
+    cursor.close()
+    db.close()
+    
+    if not user:
+        return jsonify({'error': '用戶不存在'}), 404
+    
+    is_bound = user['line_user_id'] is not None
+    
+    return jsonify({
+        'is_bound': is_bound,
+        'line_user_id': user['line_user_id'] if is_bound else None
+    })
+ 
+ 
+# ─────────────────────────────────────────
+# 解除 LINE 綁定
+# ─────────────────────────────────────────
+@app.route('/api/line/unbind', methods=['POST'])
+def unbind_line():
+    """解除當前登入用戶的 LINE 綁定"""
+    if 'user_id' not in session:
+        return jsonify({'error': '未登入'}), 401
+    
+    user_id = session['user_id']
+    
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "UPDATE users SET line_user_id = NULL WHERE user_id = %s",
+        (user_id,)
+    )
+    db.commit()
+    cursor.close()
+    db.close()
+    
+    return jsonify({
+        'success': True,
+        'message': '已成功解除 LINE 綁定'
+    })
+ 
+ 
+# ─────────────────────────────────────────
+# 測試推播 (開發用,上線後應移除或加權限檢查)
+# ─────────────────────────────────────────
+@app.route('/api/line/test-notification', methods=['POST'])
+def test_line_notification():
+    """測試推播通知給當前登入用戶"""
+    if 'user_id' not in session:
+        return jsonify({'error': '未登入'}), 401
+    
+    user_id = session['user_id']
+    
+    # 取得用戶的 line_user_id
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT line_user_id, username FROM users WHERE user_id = %s",
+        (user_id,)
+    )
+    user = cursor.fetchone()
+    cursor.close()
+    db.close()
+    
+    if not user or not user['line_user_id']:
+        return jsonify({'error': '未綁定 LINE 帳號'}), 400
+    
+    # 推播測試訊息
+    from line_notifier import push_line_message
+    
+    message = f"""🔔 測試通知
+ 
+親愛的 {user['username']} 您好!
+ 
+這是一則測試通知,確認您已成功綁定 LINE 通知服務。
+ 
+✅ 系統將在以下情況推送通知:
+• 預約確認
+• 看診提醒(開始前5分鐘)
+• 預約取消
+• 問題回報狀態更新
+ 
+祝您使用愉快! 😊"""
+    
+    success = push_line_message(user['line_user_id'], message)
+    
+    if success:
+        return jsonify({
+            'success': True,
+            'message': '測試通知已發送,請查看您的 LINE'
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'error': '推播失敗,請檢查設定'
+        }), 500
+
+
+# ═════════════════════════════════════════════════════════════════
+# LINE BOT WEBHOOK - Email 綁定功能
+# ═════════════════════════════════════════════════════════════════
+
+# ─────────────────────────────────────────
+# Email 驗證格式
+# ─────────────────────────────────────────
+def is_valid_email(email):
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+
+# ─────────────────────────────────────────
+# 檢查 LINE User ID 是否已綁定
+# ─────────────────────────────────────────
+def is_line_user_bound(line_user_id):
+    """檢查此 LINE User ID 是否已經綁定過帳號"""
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT user_id FROM users WHERE line_user_id = %s",
+        (line_user_id,)
+    )
+    result = cursor.fetchone()
+    cursor.close()
+    db.close()
+    return result is not None
+
+
+# ─────────────────────────────────────────
+# 透過 Email 綁定 LINE User ID
+# ─────────────────────────────────────────
+def bind_email_to_line(email, line_user_id):
+    """
+    根據 email 查找用戶,並綁定 line_user_id
+    返回: (success: bool, message: str, user_info: dict)
+    """
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    # 查詢用戶是否存在
+    cursor.execute(
+        "SELECT user_id, username, email, role FROM users WHERE email = %s",
+        (email,)
+    )
+    user = cursor.fetchone()
+    
+    if not user:
+        cursor.close()
+        db.close()
+        return False, "❌ 找不到此 Email,請確認您輸入的 Email 是否正確", None
+    
+    # 檢查此帳號是否已被其他 LINE 帳號綁定
+    if user.get('line_user_id') and user['line_user_id'] != line_user_id:
+        cursor.close()
+        db.close()
+        return False, "❌ 此 Email 已被其他 LINE 帳號綁定", None
+    
+    # 綁定 LINE User ID
+    cursor.execute(
+        "UPDATE users SET line_user_id = %s WHERE user_id = %s",
+        (line_user_id, user['user_id'])
+    )
+    db.commit()
+    
+    cursor.close()
+    db.close()
+    
+    return True, "✅ 綁定成功!", user
+
+
+# ─────────────────────────────────────────
+# 取得用戶資訊 (透過 LINE User ID)
+# ─────────────────────────────────────────
+def get_user_by_line_id(line_user_id):
+    """透過 LINE User ID 取得用戶資訊"""
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT user_id, username, email, role FROM users WHERE line_user_id = %s",
+        (line_user_id,)
+    )
+    user = cursor.fetchone()
+    cursor.close()
+    db.close()
+    return user
+
+
+# ─────────────────────────────────────────
+# Webhook 路由
+# ─────────────────────────────────────────
+@app.route("/line/webhook", methods=['POST'])
+def line_webhook():
+    """LINE Webhook 入口"""
+    signature = request.headers.get('X-Line-Signature', '')
+    body = request.get_data(as_text=True)
+    print(f"🔔 收到 Webhook，簽章: {signature}")
+    print(f"Body: {body}")
+
+    # LINE Verify 會發送空 body，直接回 200 讓驗證通過
+    if not body or body.strip() == '':
+        return 'OK', 200
+
+    try:
+        handler.handle(body, signature)
+    except InvalidSignatureError:
+        print("❌ 簽章驗證失敗")
+        return 'Invalid signature', 400
+    except Exception as e:
+        print(f"❌ 處理 Webhook 失敗: {e}")
+        return 'Error', 500
+
+    return 'OK', 200
+
+
+# ─────────────────────────────────────────
+# 事件處理：用戶加好友
+# ─────────────────────────────────────────
+@handler.add(FollowEvent)
+def handle_follow(event):
+    """當用戶加 Bot 為好友時"""
+    line_user_id = event.source.user_id
+    print(f"✅ 新用戶加入: {line_user_id}")
+    
+    welcome_message = """🎉 歡迎使用遠距醫療系統通知服務!
+
+為了讓您能即時收到看診提醒、預約通知等訊息,請先完成帳號綁定。
+
+📧 請輸入您在系統註冊的 Email 地址:
+(例如: user@example.com)
+
+💡 提示:
+• Email 必須是您在遠距醫療系統註冊時使用的信箱
+• 綁定後即可收到系統通知
+• 如有問題請聯繫客服"""
+
+    try:
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text=welcome_message)
+        )
+        print(f"✅ 歡迎訊息已發送給 {line_user_id}")
+    except Exception as e:
+        print(f"❌ 發送歡迎訊息失敗: {e}")
+
+
+# ─────────────────────────────────────────
+# 事件處理:接收文字訊息
+# ─────────────────────────────────────────
+@handler.add(MessageEvent, message=TextMessage)
+def handle_message(event):
+    """處理用戶發送的文字訊息"""
+    line_user_id = event.source.user_id
+    user_message = event.message.text.strip()
+    
+    print(f"📩 收到訊息 from {line_user_id}: {user_message}")
+    
+    # 檢查是否已綁定
+    if is_line_user_bound(line_user_id):
+        user = get_user_by_line_id(line_user_id)
+        
+        # 已綁定用戶的指令處理
+        if user_message == "我的資料" or user_message.lower() == "info":
+            reply_text = f"""📋 您的帳號資訊:
+
+👤 用戶名稱: {user['username']}
+📧 Email: {user['email']}
+🏥 身份: {'病患' if user['role'] == 'patient' else '醫師' if user['role'] == 'doctor' else user['role']}
+✅ LINE 綁定狀態: 已綁定
+
+如需解除綁定,請輸入「解除綁定」"""
+        
+        elif user_message == "解除綁定":
+            db = get_db()
+            cursor = db.cursor()
+            cursor.execute(
+                "UPDATE users SET line_user_id = NULL WHERE line_user_id = %s",
+                (line_user_id,)
+            )
+            db.commit()
+            cursor.close()
+            db.close()
+            
+            reply_text = """✅ 已成功解除 LINE 綁定
+
+您將不再收到系統通知。
+如需重新綁定,請輸入您的 Email 地址。"""
+            print(f"✅ 用戶 {line_user_id} 已解除綁定")
+        
+        elif user_message == "幫助" or user_message.lower() == "help":
+            reply_text = """📖 可用指令:
+
+• 我的資料 - 查看帳號資訊
+• 解除綁定 - 解除 LINE 綁定
+• 幫助 - 顯示此說明
+
+您也可以直接在系統中查看通知中心喔!"""
+        
+        else:
+            reply_text = """我收到您的訊息了!
+
+💡 目前支援的指令:
+• 我的資料
+• 解除綁定
+• 幫助
+
+如需查看通知,請登入系統查看通知中心。"""
+        
+        try:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text=reply_text)
+            )
+        except Exception as e:
+            print(f"❌ 回覆訊息失敗: {e}")
+        return
+    
+    # ─────────────────────────────────────────
+    # 未綁定用戶 → 嘗試 Email 綁定
+    # ─────────────────────────────────────────
+    
+    # 檢查是否為 Email 格式
+    if is_valid_email(user_message):
+        success, message, user_info = bind_email_to_line(user_message, line_user_id)
+        
+        if success:
+            role_name = "病患" if user_info['role'] == 'patient' else "醫師" if user_info['role'] == 'doctor' else user_info['role']
+            
+            reply_text = f"""✅ 綁定成功!
+
+👤 用戶名稱: {user_info['username']}
+📧 Email: {user_info['email']}
+🏥 身份: {role_name}
+
+您現在可以透過 LINE 接收:
+• 📅 預約確認通知
+• ⏰ 看診提醒 (開始前 5 分鐘)
+• 📝 預約取消通知
+• 💬 問題回報狀態更新
+
+💡 提示:
+輸入「我的資料」可查看帳號資訊
+輸入「幫助」查看更多功能"""
+            print(f"✅ Email {user_message} 綁定成功: {user_info['username']}")
+        else:
+            reply_text = message
+            print(f"❌ 綁定失敗: {message}")
+        
+        try:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text=reply_text)
+            )
+        except Exception as e:
+            print(f"❌ 回覆訊息失敗: {e}")
+    
+    else:
+        # 不是有效的 Email 格式
+        reply_text = """❌ Email 格式不正確
+
+請輸入您在系統註冊時使用的 Email 地址
+例如: user@example.com
+
+💡 Email 格式範例:
+• user123@gmail.com
+• doctor.wang@hospital.com
+• patient@example.com"""
+        
+        try:
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(text=reply_text)
+            )
+        except Exception as e:
+            print(f"❌ 回覆訊息失敗: {e}")
+
+
+# ═════════════════════════════════════════════════════════════════
+# END OF LINE BOT WEBHOOK
+# ═════════════════════════════════════════════════════════════════
+
+
+# ═════════════════════════════════════════════════════════════════
+# 內部 LINE 即時推播 API（供 Next.js route.js 呼叫）
+# ═════════════════════════════════════════════════════════════════
+
+@app.route("/api/internal/line/booking-success", methods=["POST"])
+def internal_line_booking_success():
+    """預約成功即時推播（由 Next.js appointments route.js 呼叫）"""
+    try:
+        data = request.get_json()
+        from line_notifier import notify_booking_success
+        notify_booking_success(
+            patient_id   = data["patient_id"],
+            patient_name = data["patient_name"],
+            doctor_name  = data["doctor_name"],
+            specialty    = data["specialty"],
+            date_str     = data["date_str"],
+            time_str     = data["time_str"],
+        )
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        print(f"⚠️ 預約成功推播失敗: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/internal/line/booking-cancelled", methods=["POST"])
+def internal_line_booking_cancelled():
+    """預約取消即時推播（由 Next.js appointments route.js 呼叫）"""
+    try:
+        data = request.get_json()
+        from line_notifier import notify_booking_cancelled
+        notify_booking_cancelled(
+            patient_id     = data["patient_id"],
+            patient_name   = data["patient_name"],
+            doctor_name    = data["doctor_name"],
+            specialty      = data["specialty"],
+            date_str       = data["date_str"],
+            time_str       = data["time_str"],
+            cancel_reason  = data["cancel_reason"],
+            refund_message = data["refund_message"],
+        )
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        print(f"⚠️ 預約取消推播失敗: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/internal/line/feedback-received", methods=["POST"])
+def internal_line_feedback_received():
+    """問題回報確認即時推播（由 Next.js feedback route.js 呼叫）"""
+    try:
+        data = request.get_json()
+        from line_notifier import notify_feedback_received
+        notify_feedback_received(
+            patient_id     = data["patient_id"],
+            patient_name   = data["patient_name"],
+            categories_str = data["categories_str"],
+            feedback_text  = data["feedback_text"],
+        )
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        print(f"⚠️ 回報通知推播失敗: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 if __name__ == "__main__":
+    from line_notifier import start_scheduler
+    start_scheduler()
     start_background_tasks()
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=False)

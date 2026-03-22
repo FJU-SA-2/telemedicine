@@ -1,15 +1,13 @@
-export async function POST(request) {
+export async function GET(request) {  // ← 注意是 GET 不是 POST
   try {
-    const body = await request.json();
-    const cookies = request.headers.get('cookie'); // ✅ 必須帶上，否則 Flask session 是空的
+    const cookies = request.headers.get('cookie');
 
-    const res = await fetch('http://127.0.0.1:5000/api/verify-code', {
-      method: 'POST',
+    const res = await fetch('http://127.0.0.1:5000/api/record', {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         ...(cookies && { 'Cookie': cookies }),
       },
-      body: JSON.stringify(body),
     });
 
     const data = await res.json();

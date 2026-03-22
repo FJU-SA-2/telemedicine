@@ -214,7 +214,7 @@ export default function FloatingChat() {
 
       {/* 聊天視窗 */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-[9999] w-96 h-[600px] bg-white shadow-2xl rounded-2xl flex flex-col overflow-hidden border border-gray-200">
+        <div className="fixed bottom-6 right-3 sm:right-6 z-[9999] w-[calc(100%-24px)] max-w-sm sm:w-96 h-[70vh] sm:h-[600px] bg-white shadow-2xl rounded-2xl flex flex-col overflow-hidden border border-gray-200">
           {/* 標題列 */}
           <div className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-5 py-4 flex justify-between items-center">
             <div className="flex items-center gap-3">

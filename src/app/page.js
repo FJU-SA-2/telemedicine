@@ -79,13 +79,14 @@ export default function HomePage() {
     <div className="relative">
       {/* 只在 Sidebar 關閉時顯示打開按鈕 */}
       {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
-        >
-          <Menu size={24} />
-        </button>
-      )}
+              <button
+                onClick={() => setIsOpen(true)}
+                className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition "
+                aria-label="開啟選單"
+              >
+                <Menu size={24} />
+              </button>
+            )}
 
       {/* 側邊欄 */}
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
@@ -253,7 +254,7 @@ export default function HomePage() {
       {/* 表身 */}
       <tbody className="divide-y divide-gray-200 text-sm">
         {[
-          ["費用", "$0（試用期間）", "NT$260 / 月", "NT$1600 / 年"],
+          ["費用", "$0（試用期間）", "NT$500 / 月", "NT$5000 / 年"],
           ["預約次數", "無限制", "無限制", "無限制"],
           ["視訊看診", "✔", "✔", "✔"],
           ["完整就診紀錄", "✔", "✔", "✔"],
@@ -288,7 +289,7 @@ export default function HomePage() {
     試用期結束後，需選擇月訂或年費方案以繼續使用會員服務。
   </p>
   <p className="mt-6 text-sm text-center">
-    機構。
+    機構可直接合作聯繫。
   </p>
 </div>
 </section>

@@ -11,7 +11,9 @@ export default function Navbar({ sidebarOpen = false }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  const displayName = user ? `${user.first_name}${user.last_name}` : "訪客";
+  const displayName = user
+    ? (user.role === "mech" ? (user.mechanism_name || user.username) : `${user.first_name}${user.last_name}`)
+    : "訪客";
 
   useEffect(() => {
     (async () => {
