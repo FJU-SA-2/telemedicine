@@ -102,7 +102,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm }) 
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-white/30 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div className="bg-white rounded-2xl w-full max-w-3xl sm:max-w-3xl md:max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
         {/* 頂部進度條 */}
         <div className="sticky top-0 bg-white border-b border-gray-200 p-4 sm:p-6 rounded-t-2xl z-10">
           <button onClick={onClose} className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-gray-600 transition">
