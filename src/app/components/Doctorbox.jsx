@@ -5,7 +5,7 @@ export default function Doctorbox() {
   const [doctors, setDoctors] = useState([]);
 
   useEffect(() => {
-    fetch('http://127.0.0.1:5000/api/doctors')
+    fetch(`http://127.0.0.1:5000/api/doctors`)
       .then((res) => res.json())
       .then((data) => setDoctors(data))
       .catch((err) => console.error(err));

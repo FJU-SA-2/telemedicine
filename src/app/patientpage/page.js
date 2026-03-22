@@ -14,10 +14,10 @@ const COLOR_LIGHT_CYAN = "var(--color-light-cyan)";
 
 // --- Dashboard Header ---
 const DashboardHeader = ({ userName, onAddAppointment }) => (
-  <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-10 md:mb-12">
+  <div className="flex flex-row justify-between items-center gap-4 mb-10 md:mb-12">
   
-  <div>
-    <h1 className="text-2xl md:text-4xl font-extrabold text-[var(--color-azure)] mb-1">
+  <div className="min-w-0">
+    <h1 className="text-2xl md:text-4xl font-extrabold text-[var(--color-azure)] mb-1 truncate">
       👋 Hello {userName}!
     </h1>
     <p className="text-base md:text-xl text-gray-500">
@@ -25,10 +25,10 @@ const DashboardHeader = ({ userName, onAddAppointment }) => (
     </p>
   </div>
 
-  <div className="flex justify-end w-full md:w-auto">
+  <div className="flex-shrink-0">
     <button
       onClick={onAddAppointment}
-      className="flex items-center bg-[var(--color-lime-cream)] hover:bg-[var(--color-azure)] text-white font-semibold px-4 md:px-6 py-2 md:py-3 rounded-xl shadow-md hover:shadow-lg transition"
+      className="flex items-center bg-[var(--color-lime-cream)] hover:bg-[var(--color-azure)] text-white font-semibold px-4 md:px-6 py-2 md:py-3 rounded-xl shadow-md hover:shadow-lg transition whitespace-nowrap"
     >
       <Calendar size={20} className="mr-2" />
       新增預約
@@ -79,8 +79,9 @@ const AppointmentCard = ({ appointment, onJoinMeeting }) => {
           )}
         </div>
 
-        <div className="md:text-right md:ml-4 w-full md:w-auto">
-          <span className={`inline-block font-bold px-4 py-1 rounded-full text-sm mb-3 ${
+        <div className="flex-shrink-0 w-full md:w-auto md:ml-4">
+          <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-start gap-3 md:gap-0">
+          <span className={`inline-block font-bold px-4 py-1 rounded-full text-sm md:mb-3 ${
             appointment.status === '已確認' ? 'bg-green-100 text-green-700' :
             appointment.status === '已完成' ? 'bg-blue-100 text-blue-700' :
             'bg-yellow-100 text-yellow-700'
@@ -90,23 +91,24 @@ const AppointmentCard = ({ appointment, onJoinMeeting }) => {
           
           {/* 倒數計時顯示 */}
           {appointment.countdown && (
-            <div className="mb-3">
-              <p className="text-sm text-gray-600 font-semibold bg-gray-100 px-3 py-2 rounded-lg">
+            <div className="md:mb-3">
+              <p className="text-sm text-gray-600 font-semibold bg-gray-100 px-3 py-2 rounded-lg whitespace-nowrap">
                 ⏰ {appointment.countdown}
               </p>
             </div>
           )}
+          </div>
           
           {/* 進入診間按鈕 */}
           {appointment.canJoin ? (
             <button 
               onClick={() => onJoinMeeting(appointment.appointment_id)}
-              className="w-full bg-[var(--color-azure)] hover:bg-[var(--color-lime-cream)]/80 text-white font-semibold px-4 py-2 rounded-lg transition-all shadow-md hover:shadow-lg"
+              className="mt-2 md:mt-0 w-full bg-[var(--color-azure)] hover:bg-[var(--color-lime-cream)]/80 text-white font-semibold px-4 py-2 rounded-lg transition-all shadow-md hover:shadow-lg"
             >
               🎥 進入診間
             </button>
           ) : (
-            <button className="w-full bg-gray-200 text-gray-500 font-semibold px-4 py-2 rounded-lg cursor-not-allowed">
+            <button className="mt-2 md:mt-0 w-full bg-gray-200 text-gray-500 font-semibold px-4 py-2 rounded-lg cursor-not-allowed">
               進入診間
             </button>
           )}
@@ -379,11 +381,12 @@ export default function Page() {
   ];
 
   return (
-    <div className="relative min-h-screen bg-gray-50">
+    <div className="relative flex-col min-h-screen bg-gray-50">
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-3 left-3 md:left-4 text-gray-800 z-30 hover:bg-white rounded-lg transition"
+          className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition "
+          aria-label="開啟選單"
         >
           <Menu size={24} />
         </button>
@@ -392,7 +395,7 @@ export default function Page() {
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
 
       {/* 主內容區: 內縮效果 */}
-      <div className={`min-h-screen bg-gradient-to-br from-[${COLOR_PERIWINKLE}]/30 via-white to-[${COLOR_LIGHT_CYAN}]/30 transition-all duration-300 ${isOpen ? 'lg:ml-64' : 'ml-0'}`}>
+      <div className={`flex-1 min-w-0 bg-gradient-to-br from-[${COLOR_PERIWINKLE}]/30 via-white to-[${COLOR_LIGHT_CYAN}]/30 transition-all duration-300 ${isOpen ? 'lg:ml-64' : 'ml-0'} overflow-x-hidden`}>
         <Navbar />
         <div className="px-4 py-6 md:p-6 max-w-7xl mx-auto">
           <DashboardHeader userName={userName} onAddAppointment={handleAddAppointment} />
@@ -428,23 +431,23 @@ export default function Page() {
                           </p>
                         </div>
 
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4 text-gray-700 text-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center space-x-4 text-gray-700 text-sm min-w-0">
                             {item.date && (
-                              <span className="flex items-center">
-                                <Calendar size={16} className="mr-2" />
+                              <span className="flex items-center truncate">
+                                <Calendar size={16} className="mr-2 flex-shrink-0" />
                                 {item.date}
                               </span>
                             )}
                           </div>
                           <button
                             onClick={() => setSelectedId(item.id)}
-                            className="bg-white text-gray-800 px-6 py-3 rounded-full font-semibold hover:bg-opacity-90 transition-all flex items-center shadow-lg"
+                            className="flex-shrink-0 bg-white text-gray-800 px-4 sm:px-6 py-2 sm:py-3 rounded-full font-semibold hover:bg-opacity-90 transition-all flex items-center shadow-lg text-sm sm:text-base"
                             onMouseEnter={() => setAutoPlay(false)}
                             onMouseLeave={() => setAutoPlay(true)}
                           >
                             閱讀全文
-                            <ChevronRight size={20} className="ml-2" />
+                            <ChevronRight size={18} className="ml-1 sm:ml-2" />
                           </button>
                         </div>
                       </div>
@@ -499,12 +502,12 @@ export default function Page() {
       {/* 文章詳細內容彈窗 */}
       {selectedItem && (
        <div 
-         className="fixed inset-0 bg-black/30 bg-opacity-30 backdrop-blur-sm z-50 p-4 overflow-y-auto flex"
+         className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 p-3 sm:p-4 overflow-y-auto flex items-start justify-center"
           onClick={() => setSelectedId(null)}
             >
 
           <div 
-               className="bg-white/95 backdrop-blur-lg rounded-3xl max-w-4xl w-full mx-auto my-12 
+               className="bg-white/95 backdrop-blur-lg rounded-3xl w-full max-w-4xl mx-auto my-6 sm:my-12 
              shadow-[0_8px_30px_rgba(0,0,0,0.15)] border border-white/40 
              max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
@@ -525,7 +528,7 @@ export default function Page() {
                 </span>
               )}
               
-              <h2 className="text-3xl md:text-4xl font-bold text-black mb-4 drop-shadow-lg pr-12">
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-black mb-4 drop-shadow-lg pr-12 break-words">
                   {selectedItem.title}
               </h2>
               
@@ -588,14 +591,14 @@ export default function Page() {
         </div>
       )}
       {/* Footer */}
-        <div className="bg-gray-800 text-white py-8">
-          <div className="w-full text-center">
-            <p className="text-gray-400">
-              © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
-            </p>
-          </div>
+      <div className={`transition-all duration-300 ${isOpen ? 'lg:ml-64' : 'ml-0'} bg-gray-800 text-white py-8`}>
+        <div className="w-full text-center">
+          <p className="text-gray-400">
+            © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
+          </p>
         </div>
-        <FloatingChat />
+      </div>
+      <FloatingChat />
     </div>
   );
 }

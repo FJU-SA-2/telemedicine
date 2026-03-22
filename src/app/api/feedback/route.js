@@ -77,6 +77,27 @@ export async function POST(request) {
 
     console.log(`✅ 回報已提交 - ID: ${result.insertId}`);
 
+    // ✅ 即時 LINE 推播（僅患者，非同步）
+    if (patient_id) {
+      const [patientNameRows] = await connection.execute(
+        'SELECT first_name, last_name FROM patient WHERE patient_id = ?',
+        [patient_id]
+      );
+      const pName = patientNameRows.length > 0
+        ? `${patientNameRows[0].last_name}${patientNameRows[0].first_name}` : '患者';
+
+      fetch("http://localhost:5000/api/internal/line/feedback-received", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patient_id:     patient_id,
+          patient_name:   pName,
+          categories_str: Array.isArray(categories) ? categories.join("、") : String(categories || "未分類"),
+          feedback_text:  feedback_text,
+        }),
+      }).catch(err => console.warn("LINE 回報推播呼叫失敗:", err));
+    }
+
     return NextResponse.json({
       success: true,
       message: '回報提交成功',

@@ -79,13 +79,14 @@ export default function HomePage() {
     <div className="relative">
       {/* 只在 Sidebar 關閉時顯示打開按鈕 */}
       {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="p-3 fixed top-2 left-4 text-gray-800 z-30 bg-white rounded-lg transition"
-        >
-          <Menu size={24} />
-        </button>
-      )}
+              <button
+                onClick={() => setIsOpen(true)}
+                className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition "
+                aria-label="開啟選單"
+              >
+                <Menu size={24} />
+              </button>
+            )}
 
       {/* 側邊欄 */}
       <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />

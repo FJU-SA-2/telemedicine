@@ -16,7 +16,7 @@ export async function GET(request) {
     // 直接把 cookie 轉發給 Flask，不繞經 Next.js 內部
     const cookie = request.headers.get("cookie") || "";
 
-    const meResponse = await fetch("http://127.0.0.1:5000/api/me", {
+    const meResponse = await fetch(`http://127.0.0.1:5000/api/me`, {
       method: "GET",
       headers: { Cookie: cookie },
     });

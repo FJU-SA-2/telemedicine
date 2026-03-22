@@ -21,6 +21,7 @@ export default function PatientVideoConsultation() {
   const [isOpen, setIsOpen] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [completedAppointment, setCompletedAppointment] = useState(null);
+  const [videoPlayerUrl, setVideoPlayerUrl] = useState(null);
   const jitsiContainerRef = useRef(null);
   const jitsiApiRef = useRef(null);
 
@@ -323,7 +324,7 @@ export default function PatientVideoConsultation() {
       if (response.ok) {
         const data = await response.json();
         if (data.appointment.recording_url) {
-          window.open(`/api/recording/${data.appointment.recording_url}`, '_blank');
+          setVideoPlayerUrl(`/api/recording/${data.appointment.recording_url}`);
         } else {
           setError('此次看診尚無錄影記錄');
         }
@@ -364,34 +365,32 @@ export default function PatientVideoConsultation() {
   if (isMeetingActive && currentMeeting) {
     return (
       <div className="h-screen bg-gray-900 flex flex-col">
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-4 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center space-x-4">
-            <Heart className="w-6 h-6" />
-            <div>
-              <h2 className="font-semibold text-lg">視訊看診進行中</h2>
-              <p className="text-sm text-blue-100">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <Heart className="w-5 h-5 flex-shrink-0" />
+            <div className="min-w-0">
+              <h2 className="font-semibold text-sm sm:text-lg">視訊看診進行中</h2>
+              <p className="text-xs text-blue-100 truncate">
                 醫師: {currentMeeting.doctor_first_name} {currentMeeting.doctor_last_name}
-                <span className="mx-2">•</span>
+                <span className="mx-1">·</span>
                 {currentMeeting.doctor_specialty}
-                <span className="mx-2">•</span>
-                {currentMeeting.practice_hospital}
               </p>
             </div>
           </div>
 
           <button
             onClick={leaveMeeting}
-            className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg flex items-center space-x-2 transition-all transform hover:scale-105 shadow-lg"
+            className="flex-shrink-0 bg-red-500 hover:bg-red-600 text-white px-3 sm:px-6 py-2 rounded-lg flex items-center gap-1.5 transition-all shadow-lg text-sm font-semibold"
           >
-            <PhoneOff className="w-5 h-5" />
-            <span className="font-semibold">結束看診</span>
+            <PhoneOff className="w-4 h-4" />
+            <span className="hidden sm:inline">結束看診</span>
           </button>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
           <div ref={jitsiContainerRef} className="flex-1 bg-gray-900" />
 
-          <div className="w-96 bg-white border-l border-gray-200 overflow-y-auto">
+          <div className="hidden sm:block w-80 lg:w-96 bg-white border-l border-gray-200 overflow-y-auto">
             <div className="p-6">
               <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
                 <User className="w-5 h-5 mr-2 text-blue-600" />
@@ -461,11 +460,11 @@ export default function PatientVideoConsultation() {
   // Main UI
   return (
     <>
-      <div className="relative min-h-screen bg-gray-50">
+      <div className="relative flex flex-col min-h-screen bg-gray-50">
         {!isOpen && (
           <button
             onClick={() => setIsOpen(true)}
-            className="p-3 fixed top-2 left-4 text-gray-800 z-30  transition"
+            className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition"
           >
             <Menu size={24} />
           </button>
@@ -478,18 +477,17 @@ export default function PatientVideoConsultation() {
           setActiveTab={setActiveTab}
         />
 
-        <div className={`transition-all duration-300 ${isOpen ? "ml-64" : "ml-0"}`}>
+        <div className={`flex-1 min-w-0 overflow-x-hidden transition-all duration-300 ${isOpen ? "md:ml-64" : "ml-0"}`}>
           <Navbar setIsSidebarOpen={setIsOpen} />
 
-          {/* ✅ 主內容區域 */}
-          <div className="pt-5 relative min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="pt-3 sm:pt-5 relative min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
               <div className="flex items-center justify-between">
                 <button
                   onClick={() => setShowHistory(!showHistory)}
-                  className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                  className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 sm:px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors text-sm"
                 >
-                  <FileText className="w-5 h-5" />
+                  <FileText className="w-4 h-4" />
                   <span>{showHistory ? "返回預約" : "看診紀錄"}</span>
                 </button>
               </div>
@@ -524,45 +522,45 @@ export default function PatientVideoConsultation() {
 
               {!showHistory ? (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div className="bg-white rounded-xl shadow-md p-6">
+                  <div className="grid grid-cols-3 gap-3 sm:gap-6 mb-6 sm:mb-8">
+                    <div className="bg-white rounded-xl shadow-sm p-3 sm:p-6">
                       <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-500 text-sm">即將看診</p>
-                          <p className="text-3xl font-bold text-gray-900 mt-1">
+                        <div className="min-w-0">
+                          <p className="text-gray-500 text-xs sm:text-sm truncate">即將看診</p>
+                          <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">
                             {appointments.length}
                           </p>
                         </div>
-                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                          <Calendar className="w-6 h-6 text-blue-600" />
+                        <div className="w-9 h-9 sm:w-12 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Calendar className="w-4 h-4 sm:w-6 sm:h-6 text-blue-600" />
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-md p-6">
+                    <div className="bg-white rounded-xl shadow-sm p-3 sm:p-6">
                       <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-500 text-sm">看診紀錄</p>
-                          <p className="text-3xl font-bold text-gray-900 mt-1">
+                        <div className="min-w-0">
+                          <p className="text-gray-500 text-xs sm:text-sm truncate">看診紀錄</p>
+                          <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">
                             {consultationHistory.length}
                           </p>
                         </div>
-                        <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                          <FileText className="w-6 h-6 text-green-600" />
+                        <div className="w-9 h-9 sm:w-12 sm:h-12 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <FileText className="w-4 h-4 sm:w-6 sm:h-6 text-green-600" />
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-md p-6">
+                    <div className="bg-white rounded-xl shadow-sm p-3 sm:p-6">
                       <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-500 text-sm">視訊狀態</p>
-                          <p className="text-3xl font-bold text-blue-600 mt-1">
+                        <div className="min-w-0">
+                          <p className="text-gray-500 text-xs sm:text-sm truncate">視訊狀態</p>
+                          <p className="text-lg sm:text-3xl font-bold text-blue-600 mt-1">
                             {jitsiLoaded ? "就緒" : "載入中"}
                           </p>
                         </div>
-                        <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                          <Video className="w-6 h-6 text-purple-600" />
+                        <div className="w-9 h-9 sm:w-12 sm:h-12 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Video className="w-4 h-4 sm:w-6 sm:h-6 text-purple-600" />
                         </div>
                       </div>
                     </div>
@@ -597,67 +595,57 @@ export default function PatientVideoConsultation() {
                       {appointments.map((appointment) => (
                         <div
                           key={appointment.appointment_id}
-                          className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden"
+                          className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden"
                         >
-                          <div className="flex items-center p-6">
-                            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mr-4">
-                              <User className="w-8 h-8 text-blue-600" />
-                            </div>
-
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-3 mb-2">
-                                <h3 className="text-xl font-bold text-gray-900">
-                                  {appointment.doctor_first_name}{" "}
-                                  {appointment.doctor_last_name} 醫師
-                                </h3>
-                                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full">
-                                  {appointment.doctor_specialty}
-                                </span>
+                          <div className="flex flex-col sm:flex-row sm:items-center p-4 sm:p-6 gap-4">
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                              <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <User className="w-6 h-6 text-blue-600" />
                               </div>
 
-                              <div className="flex flex-col space-y-1 text-sm text-gray-600">
-                                <div className="flex items-center space-x-2">
-                                  <Clock className="w-4 h-4" />
-                                  <span>
-                                    預約時間: {appointment.appointment_date}{" "}
-                                    {appointment.appointment_time}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-2 mb-1">
+                                  <h3 className="text-base sm:text-lg font-bold text-gray-900">
+                                    {appointment.doctor_first_name}{appointment.doctor_last_name} 醫師
+                                  </h3>
+                                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full whitespace-nowrap">
+                                    {appointment.doctor_specialty}
                                   </span>
                                 </div>
-                                <div className="flex items-center space-x-2">
-                                  <Monitor className="w-4 h-4" />
-                                  <span>{appointment.practice_hospital}</span>
-                                </div>
-                                {appointment.symptoms && (
-                                  <div className="flex items-center space-x-2">
-                                    <FileText className="w-4 h-4" />
-                                    <span className="truncate max-w-md">
-                                      症狀: {appointment.symptoms}
-                                    </span>
+
+                                <div className="space-y-1 text-xs sm:text-sm text-gray-600">
+                                  <div className="flex items-center gap-1.5">
+                                    <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                                    <span>{appointment.appointment_date} {appointment.appointment_time}</span>
                                   </div>
-                                )}
+                                  <div className="flex items-center gap-1.5">
+                                    <Monitor className="w-3.5 h-3.5 flex-shrink-0" />
+                                    <span className="truncate">{appointment.practice_hospital}</span>
+                                  </div>
+                                  {appointment.symptoms && (
+                                    <div className="flex items-start gap-1.5">
+                                      <FileText className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                                      <span className="line-clamp-2">症狀: {appointment.symptoms}</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
-                            <div className="flex flex-col space-y-2">
+                            <div className="flex-shrink-0 w-full sm:w-auto">
                               {appointment.meeting_room_id ? (
                                 <button
                                   onClick={() => joinMeeting(appointment)}
                                   disabled={isLoading || !jitsiLoaded}
-                                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                                  className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md text-sm font-semibold"
                                 >
-                                  <Video className="w-5 h-5" />
-                                  <span className="font-semibold">
-                                    {jitsiLoaded ? "進入看診" : "載入中..."}
-                                  </span>
+                                  <Video className="w-4 h-4" />
+                                  <span>{jitsiLoaded ? "進入看診" : "載入中..."}</span>
                                 </button>
                               ) : (
-                                <div className="bg-yellow-50 border border-yellow-200 px-4 py-3 rounded-lg">
-                                  <p className="text-yellow-800 text-sm font-medium">
-                                    等待醫師開啟會議室
-                                  </p>
-                                  <p className="text-yellow-600 text-xs mt-1">
-                                    請稍候,醫師將會在預約時間開始看診
-                                  </p>
+                                <div className="bg-yellow-50 border border-yellow-200 px-4 py-2.5 rounded-lg text-center sm:text-left">
+                                  <p className="text-yellow-800 text-xs sm:text-sm font-medium">等待醫師開啟會議室</p>
+                                  <p className="text-yellow-600 text-xs mt-0.5">請稍候，醫師將會在預約時間開始看診</p>
                                 </div>
                               )}
                             </div>
@@ -667,12 +655,12 @@ export default function PatientVideoConsultation() {
                     </div>
                   )}
 
-                  <div className="mt-8 bg-white rounded-2xl shadow-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                      <Heart className="w-5 h-5 mr-2 text-blue-600" />
+                    <div className="mt-6 sm:mt-8 bg-white rounded-2xl shadow-sm p-4 sm:p-6">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                      <Heart className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-blue-600" />
                       視訊看診須知
                     </h3>
-                    <div className="grid md:grid-cols-2 gap-4 text-gray-600">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-gray-600">
                       {[
                         {
                           icon: <Video className="w-3 h-3 text-blue-600" />,
@@ -738,32 +726,29 @@ export default function PatientVideoConsultation() {
                         {consultationHistory.map((record) => (
                           <div
                             key={record.appointment_id}
-                            className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow overflow-hidden"
+                            className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden relative"
                           >
-                            <div className="p-6">
-                              <div className="flex items-start justify-between mb-4">
-                                <div className="flex items-start space-x-4">
-                                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                                    <CheckCircle className="w-6 h-6 text-green-600" />
-                                  </div>
-                                  <div>
-                                    <h3 className="text-lg font-bold text-gray-900">
-                                      {record.doctor_first_name}{" "}
-                                      {record.doctor_last_name} 醫師
-                                    </h3>
-                                    <p className="text-sm text-gray-600">
-                                      {record.doctor_specialty} •{" "}
-                                      {record.practice_hospital}
-                                    </p>
-                                    <p className="text-sm text-gray-500 mt-1">
-                                      {formatDate(record.appointment_date)}{" "}
-                                      {record.appointment_time}
-                                    </p>
-                                  </div>
+                            {/* 狀態 badge — 右上角 */}
+                            <span className="absolute top-3 right-3 px-2.5 py-1 bg-green-100 text-green-700 text-xs rounded-full whitespace-nowrap">
+                              已完成
+                            </span>
+
+                            <div className="p-4 sm:p-6">
+                              <div className="flex items-start gap-3 mb-4 pr-16">
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
                                 </div>
-                                <span className="px-3 py-1 bg-green-100 text-green-700 text-sm rounded-full">
-                                  已完成
-                                </span>
+                                <div className="min-w-0">
+                                  <h3 className="text-base sm:text-lg font-bold text-gray-900">
+                                    {record.doctor_first_name}{record.doctor_last_name} 醫師
+                                  </h3>
+                                  <p className="text-xs sm:text-sm text-gray-600">
+                                    {record.doctor_specialty} · {record.practice_hospital}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    {formatDate(record.appointment_date)} {record.appointment_time}
+                                  </p>
+                                </div>
                               </div>
 
                               {record.symptoms && (
@@ -811,19 +796,14 @@ export default function PatientVideoConsultation() {
                                 </div>
                               )}
 
-                              <div className="flex items-center justify-between pt-4 border-t border-gray-200 ">
-                                <div className="flex items-center space-x-4 text-sm text-gray-600">
-                                  
-                                </div>
-
-                                <div className="flex items-center space-x-2">
+                              <div className="flex flex-wrap items-center justify-end gap-2 pt-4 border-t border-gray-200">
                                   {!record.rating && (
                                     <button
                                       onClick={() => {
                                         setCompletedAppointment(record);
                                         setShowRatingModal(true);
                                       }}
-                                      className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors text-sm"
+                                      className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors text-xs sm:text-sm"
                                     >
                                       <span>⭐</span>
                                       <span>評分</span>
@@ -832,17 +812,14 @@ export default function PatientVideoConsultation() {
 
                                   {record.recording_url && (
                                     <button
-                                      onClick={() =>
-                                        viewRecording(record.appointment_id)
-                                      }
-                                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors text-sm"
+                                      onClick={() => viewRecording(record.appointment_id)}
+                                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors text-xs sm:text-sm"
                                     >
-                                      <PlayCircle className="w-4 h-4" />
+                                      <PlayCircle className="w-3.5 h-3.5" />
                                       <span>觀看錄影</span>
                                     </button>
                                   )}
                                 </div>
-                              </div>
                             </div>
                           </div>
                         ))}
@@ -859,12 +836,13 @@ export default function PatientVideoConsultation() {
         {/* Footer */}
         <div className="bg-gray-800 text-white py-8">
           <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400">
+            <p className="text-gray-400 text-sm">
               © 2025 MedOnGo. 讓醫療服務更便捷、更貼心。
             </p>
           </div>
         </div>
       </div>
+
 
       {/* 評分彈窗 - 背景為原始頁面 */}
       {showRatingModal && (
@@ -880,6 +858,49 @@ export default function PatientVideoConsultation() {
           />
         </div>
       )}
+
+      {/* 錄影播放 Modal */}
+      {videoPlayerUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3 sm:p-6"
+          onClick={() => setVideoPlayerUrl(null)}
+        >
+          <div
+            className="bg-black rounded-2xl overflow-hidden w-full max-w-3xl shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 bg-gray-900">
+              <span className="text-white text-sm font-medium">看診錄影</span>
+              <div className="flex items-center gap-3">
+                <a
+                  href={videoPlayerUrl}
+                  download
+                  className="text-blue-400 hover:text-blue-300 text-xs flex items-center gap-1 transition"
+                >
+                  ↓ 下載
+                </a>
+                <button
+                  onClick={() => setVideoPlayerUrl(null)}
+                  className="text-gray-400 hover:text-white transition text-lg leading-none"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <video
+              src={videoPlayerUrl}
+              controls
+              autoPlay
+              playsInline
+              className="w-full max-h-[70vh] bg-black"
+              style={{ display: 'block' }}
+            >
+              您的瀏覽器不支援影片播放，請點擊「下載」後觀看。
+            </video>
+          </div>
+        </div>
+      )}
+
       <FloatingChat />
     </>
   );

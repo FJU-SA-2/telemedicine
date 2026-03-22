@@ -658,11 +658,13 @@ const TelemedicineDashboard = () => {
     finally { setStatsLoading(false); }
   }, []);
 
-  const fetchDoctors = useCallback(async () => {
+  const fetchDoctors = useCallback(async (mid) => {
+    const id = mid ?? mechanismId;
+    if (!id) return;
     setDoctorsLoading(true);
     try {
       const p = new URLSearchParams();
-      if (mechanismId) p.set("mechanism_id", mechanismId);
+      p.set("mechanism_id", id);
       if (doctorSearch) p.set("search", doctorSearch);
       if (doctorStatus) p.set("status", doctorStatus);
       const data = await apiFetch(`/api/mechanism/doctors?${p}`);
@@ -684,7 +686,14 @@ const TelemedicineDashboard = () => {
   }, [patientSearch, patientGender]);
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
-  useEffect(() => { const t = setTimeout(fetchDoctors, doctorSearch ? 400 : 0); return () => clearTimeout(t); }, [fetchDoctors]);
+  // mechanismId 取得後立即觸發，直接傳入避免 closure 時序問題
+  useEffect(() => { if (mechanismId) fetchDoctors(mechanismId); }, [mechanismId]);
+  // 搜尋條件變更時才 debounce（mechanismId 此時必定已存在）
+  useEffect(() => {
+    if (!mechanismId) return;
+    const t = setTimeout(() => fetchDoctors(mechanismId), doctorSearch || doctorStatus ? 400 : 0);
+    return () => clearTimeout(t);
+  }, [doctorSearch, doctorStatus, mechanismId]);
   useEffect(() => { const t = setTimeout(fetchPatients, patientSearch ? 400 : 0); return () => clearTimeout(t); }, [fetchPatients]);
 
   const handleRemoveDoctor = async (doctorId) => {
