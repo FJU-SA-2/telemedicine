@@ -888,11 +888,11 @@ const TelemedicineDashboard = () => {
       {/* Modals */}
       {editingDoctor && (
         <DoctorEditModal doctor={editingDoctor} onClose={() => setEditingDoctor(null)}
-          onSaved={(msg, type = "success") => { setEditingDoctor(null); showToast(msg, type); if (type === "success") fetchDoctors(); }} />
+          onSaved={(msg, type = "success") => { setEditingDoctor(null); showToast(msg, type); if (type === "success") fetchDoctors(mechanismId); }} />
       )}
       {addingDoctor && (
         <AddDoctorModal onClose={() => setAddingDoctor(false)}
-          onSaved={(msg) => { setAddingDoctor(false); showToast(msg); fetchDoctors(); fetchStats(); }} />
+          onSaved={(msg) => { setAddingDoctor(false); showToast(msg); fetchDoctors(mechanismId); fetchStats(); }} />
       )}
       {viewingPatientId && (
         <PatientDetailModal patientId={viewingPatientId} onClose={() => setViewingPatientId(null)} />

@@ -4766,57 +4766,90 @@ def add_doctor():
     try:
         data = request.get_json()
 
-        first_name = data.get("first_name")
-        last_name = data.get("last_name")
-        gender = data.get("gender")
-        specialty = data.get("specialty")
-        practice_hospital = data.get("practice_hospital")
-        phone_number = data.get("phone_number")
-        approval_status = data.get("approval_status")
-        certificate_path = data.get("certificate_path")
+        first_name        = data.get("first_name")
+        last_name         = data.get("last_name")
+        gender            = data.get("gender", "male")
+        specialty         = data.get("specialty", "")
+        practice_hospital = data.get("practice_hospital", "")
+        phone_number      = data.get("phone_number", "")
+        approval_status   = data.get("approval_status", "pending")
+        certificate_path  = data.get("certificate_path", "")
+        email             = data.get("email")
+        password          = data.get("password")
 
-        # 基本驗證
         if not first_name or not last_name:
             return jsonify({"error": "姓名為必填"}), 400
+        if not email:
+            return jsonify({"error": "Email 為必填"}), 400
+        if not password or len(password) < 6:
+            return jsonify({"error": "密碼至少 6 個字元"}), 400
 
-        conn = get_db()
-        cursor = conn.cursor()
-        sql = """
-        INSERT INTO doctor_info
-        (first_name, last_name, gender, specialty,
-         practice_hospital, phone_number,
-         approval_status, certificate_path)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """
+        conn   = get_db()
+        cursor = conn.cursor(dictionary=True)
 
-        values = (
-            first_name,
-            last_name,
-            gender,
-            specialty,
-            practice_hospital,
-            phone_number,
-            approval_status,
-            certificate_path
+        # 1. 從 mechanism 表取得 mechanism_id
+        cursor.execute(
+            "SELECT mechanism_id FROM mechanism WHERE user_id = %s",
+            (session.get("user_id"),)
         )
+        mech = cursor.fetchone()
+        if not mech:
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "找不到機構資料，請重新登入"}), 403
+        mechanism_id = mech["mechanism_id"]
 
-        cursor.execute(sql, values)
-        conn.commit()
+        # 2. 檢查 email 是否重複
+        cursor.execute("SELECT user_id FROM users WHERE email = %s", (email,))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "此 Email 已被註冊"}), 400
 
+        # 3. 建立 users 帳號
+        import bcrypt
+        username  = f"{last_name}{first_name}"
+        hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        cursor.execute(
+            "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, 'doctor')",
+            (username, email, hashed_pw)
+        )
+        user_id = cursor.lastrowid
+
+        # 4. 插入 doctor 主表
+        cursor.execute("""
+            INSERT INTO doctor
+              (user_id, first_name, last_name, gender, specialty,
+               practice_hospital, phone_number,
+               approval_status, certificate_path, mechanism_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            user_id, first_name, last_name, gender, specialty,
+            practice_hospital, phone_number,
+            approval_status, certificate_path, mechanism_id
+        ))
         doctor_id = cursor.lastrowid
 
+        # 5. 插入 doctor_info 副表（specialty/practice_hospital 為 NOT NULL）
+        cursor.execute("""
+            INSERT INTO doctor_info
+              (doctor_id, user_id, first_name, last_name, gender,
+               specialty, practice_hospital, phone_number)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            doctor_id, user_id, first_name, last_name, gender,
+            specialty, practice_hospital, phone_number
+        ))
+
+        conn.commit()
         cursor.close()
         conn.close()
 
-        return jsonify({
-            "message": "醫師新增成功",
-            "doctor_id": doctor_id
-        }), 201
+        return jsonify({"message": "醫師新增成功", "doctor_id": doctor_id}), 201
 
     except Exception as e:
         print("新增醫師錯誤:", e)
-        return jsonify({"error": "伺服器錯誤"}), 500
-    
+        return jsonify({"error": str(e)}), 500
 # ─────────────────────────────────────────
 # 機構排班（POST）
 # ─────────────────────────────────────────
@@ -5024,7 +5057,7 @@ def is_line_user_bound(line_user_id):
     """檢查此 LINE User ID 是否已經綁定過帳號"""
     db = get_db()
     cursor = db.cursor(dictionary=True)
-    cursor.execute(
+    (
         "SELECT user_id FROM users WHERE line_user_id = %s",
         (line_user_id,)
     )
