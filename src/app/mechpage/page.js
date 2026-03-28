@@ -394,11 +394,11 @@ const AddDoctorModal = ({ onClose, onSaved }) => {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm font-medium text-gray-600 block mb-1">姓 <span className="text-rose-500">*</span></label>
+                <label className="text-sm font-medium text-gray-600 block mb-1">名 <span className="text-rose-500">*</span></label>
                 <input type="text" value={form.last_name} onChange={e => set("last_name", e.target.value)} className={inputCls} />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-600 block mb-1">名 <span className="text-rose-500">*</span></label>
+                <label className="text-sm font-medium text-gray-600 block mb-1">姓 <span className="text-rose-500">*</span></label>
                 <input type="text" value={form.first_name} onChange={e => set("first_name", e.target.value)} className={inputCls} />
               </div>
             </div>
