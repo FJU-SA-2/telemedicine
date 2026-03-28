@@ -495,7 +495,9 @@ export default function DoctorVideoConsultation() {
       />
 
       {/* 主內容：手機 overlay sidebar 不推移，桌機推移 */}
-      <div className={`transition-all duration-300 ${isOpen ? "md:ml-64" : "ml-0"}`}>
+      <div className={`transition-all duration-300 ${
+          isOpen ? "md:ml-64" : "ml-0"
+        }`}>
         <Navbar setIsSidebarOpen={setIsOpen} />
 
         {/* bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 */}

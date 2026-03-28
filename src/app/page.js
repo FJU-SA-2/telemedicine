@@ -254,7 +254,7 @@ export default function HomePage() {
       {/* 表身 */}
       <tbody className="divide-y divide-gray-200 text-sm">
         {[
-          ["費用", "$0（試用期間）", "NT$260 / 月", "NT$1600 / 年"],
+          ["費用", "$0（試用期間）", "NT$500 / 月", "NT$5000 / 年"],
           ["預約次數", "無限制", "無限制", "無限制"],
           ["視訊看診", "✔", "✔", "✔"],
           ["完整就診紀錄", "✔", "✔", "✔"],
@@ -289,7 +289,7 @@ export default function HomePage() {
     試用期結束後，需選擇月訂或年費方案以繼續使用會員服務。
   </p>
   <p className="mt-6 text-sm text-center">
-    機構。
+    機構可直接合作聯繫。
   </p>
 </div>
 </section>
