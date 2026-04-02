@@ -54,7 +54,7 @@ export async function POST(request) {
     );
 
     const patientName = patientInfo.length > 0 
-      ? `${patientInfo[0].last_name}${patientInfo[0].first_name}`
+      ? `${patientInfo[0].first_name}${patientInfo[0].last_name}`
       : '患者';
 
     const [result] = await connection.execute(
@@ -243,8 +243,8 @@ export async function PATCH(request) {
     );
 
     const doctorName = `${appointment.doctor_first_name}${appointment.doctor_last_name}`;
-    const patientName = appointment.patient_last_name && appointment.patient_first_name
-      ? `${appointment.patient_last_name}${appointment.patient_first_name}` : '患者';
+    const patientName = appointment.patient_first_name && appointment.patient_last_name
+      ? `${appointment.patient_first_name}${appointment.patient_last_name}` : '患者';
 
     await connection.execute(
       `INSERT INTO notifications (patient_id, type, title, message, related_id, is_read) VALUES (?, 'appointment_cancelled', '預約已取消', ?, ?, FALSE)`,

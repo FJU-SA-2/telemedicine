@@ -161,7 +161,7 @@ export default function AppointmentRecords() {
         setAppointments((prev) =>
           prev.map((a) =>
             a.appointment_id === selectedAppointment.appointment_id
-              ? { ...a, status: "已取消", cancel_reason: cancelReason }
+              ? { ...a, status: "已取消", cancellation_reason: cancelReason }
               : a
           )
         );

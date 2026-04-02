@@ -84,7 +84,7 @@ export async function POST(request) {
         [patient_id]
       );
       const pName = patientNameRows.length > 0
-        ? `${patientNameRows[0].last_name}${patientNameRows[0].first_name}` : '患者';
+        ? `${patientNameRows[0].first_name}${patientNameRows[0].last_name}` : '患者';
 
       fetch("http://localhost:5000/api/internal/line/feedback-received", {
         method: "POST",

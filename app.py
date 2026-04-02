@@ -4137,8 +4137,8 @@ def cancel_appointment():
             refund_percentage = 100
             refund_message = "取消成功，將全額退款，於三日內退款"
 
-        patient_name = f"{appt['patient_last_name']}{appt['patient_first_name']}"
-        doctor_name = f"{appt['doctor_last_name']}{appt['doctor_first_name']}"
+        patient_name = f"{appt['patient_first_name']}{appt['patient_last_name']}"
+        doctor_name = f"{appt['doctor_first_name']}{appt['doctor_last_name']}"
         
         print(f"預約 ID: {appointment_id}")
         print(f"患者: {patient_name}")
@@ -5054,10 +5054,9 @@ def is_valid_email(email):
 # 檢查 LINE User ID 是否已綁定
 # ─────────────────────────────────────────
 def is_line_user_bound(line_user_id):
-    """檢查此 LINE User ID 是否已經綁定過帳號"""
     db = get_db()
     cursor = db.cursor(dictionary=True)
-    (
+    cursor.execute(                      # ← 加回 cursor.execute
         "SELECT user_id FROM users WHERE line_user_id = %s",
         (line_user_id,)
     )
@@ -5192,14 +5191,14 @@ def handle_message(event):
     """處理用戶發送的文字訊息"""
     line_user_id = event.source.user_id
     user_message = event.message.text.strip()
-    
+
     print(f"📩 收到訊息 from {line_user_id}: {user_message}")
-    
-    # 檢查是否已綁定
+
+    # ── 已綁定用戶 ──────────────────────────────────────────
     if is_line_user_bound(line_user_id):
         user = get_user_by_line_id(line_user_id)
-        
-        # 已綁定用戶的指令處理
+        nickname = user.get('username', '用戶')
+
         if user_message == "我的資料" or user_message.lower() == "info":
             reply_text = f"""📋 您的帳號資訊:
 
@@ -5209,7 +5208,7 @@ def handle_message(event):
 ✅ LINE 綁定狀態: 已綁定
 
 如需解除綁定,請輸入「解除綁定」"""
-        
+
         elif user_message == "解除綁定":
             db = get_db()
             cursor = db.cursor()
@@ -5220,32 +5219,41 @@ def handle_message(event):
             db.commit()
             cursor.close()
             db.close()
-            
             reply_text = """✅ 已成功解除 LINE 綁定
 
 您將不再收到系統通知。
 如需重新綁定,請輸入您的 Email 地址。"""
             print(f"✅ 用戶 {line_user_id} 已解除綁定")
-        
+
         elif user_message == "幫助" or user_message.lower() == "help":
             reply_text = """📖 可用指令:
 
-• 我的資料 - 查看帳號資訊
-• 解除綁定 - 解除 LINE 綁定
-• 幫助 - 顯示此說明
+- 我的資料 - 查看帳號資訊
+- 解除綁定 - 解除 LINE 綁定
+- 幫助 - 顯示此說明
 
 您也可以直接在系統中查看通知中心喔!"""
-        
+
         else:
-            reply_text = """我收到您的訊息了!
+            # ── 已綁定：輸入其他內容 → 顯示兩段歡迎訊息 ──
+            msg1 = (
+                f"{nickname}您好！\n"
+                f"🎉 歡迎使用醫隨行LINE通知服務！\n\n"
+                "🔖 目前支援的指令:\n"
+                "• 我的資料\n"
+                "• 解除綁定\n"
+                "• 幫助\n"
+                "如需查看通知,請登入系統查看通知中心。"
+            )
+            try:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    [TextSendMessage(text=msg1)]
+                )
+            except Exception as e:
+                print(f"❌ 回覆訊息失敗: {e}")
+            return
 
-💡 目前支援的指令:
-• 我的資料
-• 解除綁定
-• 幫助
-
-如需查看通知,請登入系統查看通知中心。"""
-        
         try:
             line_bot_api.reply_message(
                 event.reply_token,
@@ -5254,18 +5262,22 @@ def handle_message(event):
         except Exception as e:
             print(f"❌ 回覆訊息失敗: {e}")
         return
+
+    # ── 未綁定用戶 ──────────────────────────────────────────
     
-    # ─────────────────────────────────────────
-    # 未綁定用戶 → 嘗試 Email 綁定
-    # ─────────────────────────────────────────
-    
-    # 檢查是否為 Email 格式
-    if is_valid_email(user_message):
+    # 指令類（未綁定時也能識別）
+    KNOWN_COMMANDS = {"我的資料", "解除綁定", "幫助", "info", "help"}
+
+    if user_message in KNOWN_COMMANDS or user_message.lower() in KNOWN_COMMANDS:
+        # 未綁定卻輸入指令 → 同樣顯示兩段引導訊息
+        show_guide = True
+    elif is_valid_email(user_message):
+        # 嘗試 Email 綁定
+        show_guide = False
         success, message, user_info = bind_email_to_line(user_message, line_user_id)
-        
+
         if success:
             role_name = "病患" if user_info['role'] == 'patient' else "醫師" if user_info['role'] == 'doctor' else user_info['role']
-            
             reply_text = f"""✅ 綁定成功!
 
 👤 用戶名稱: {user_info['username']}
@@ -5273,10 +5285,10 @@ def handle_message(event):
 🏥 身份: {role_name}
 
 您現在可以透過 LINE 接收:
-• 📅 預約確認通知
-• ⏰ 看診提醒 (開始前 5 分鐘)
-• 📝 預約取消通知
-• 💬 問題回報狀態更新
+- 📅 預約確認通知
+- ⏰ 看診提醒 (開始前 5 分鐘)
+- 📝 預約取消通知
+- 💬 問題回報狀態更新
 
 💡 提示:
 輸入「我的資料」可查看帳號資訊
@@ -5285,7 +5297,7 @@ def handle_message(event):
         else:
             reply_text = message
             print(f"❌ 綁定失敗: {message}")
-        
+
         try:
             line_bot_api.reply_message(
                 event.reply_token,
@@ -5293,23 +5305,31 @@ def handle_message(event):
             )
         except Exception as e:
             print(f"❌ 回覆訊息失敗: {e}")
-    
+        return
     else:
-        # 不是有效的 Email 格式
-        reply_text = """❌ Email 格式不正確
+        # 不是 Email 也不是指令 → 顯示兩段引導訊息
+        show_guide = True
 
-請輸入您在系統註冊時使用的 Email 地址
-例如: user@example.com
-
-💡 Email 格式範例:
-• user123@gmail.com
-• doctor.wang@hospital.com
-• patient@example.com"""
-        
+    if show_guide:
+        msg1 = (
+            "您好！\n"
+            "🎉 歡迎使用醫隨行LINE通知服務！\n\n"
+            "為了讓您能即時收到看診提醒、預約通知等訊息,請先完成帳號綁定。\n\n"
+            "📧 請直接於訊息中輸入您在系統註冊的 Email 地址:\n"
+            "(例如: user@example.com)\n"
+            "綁定成功後會收到系統通知回覆✅\n\n"
+            "💡 提示:\n"
+            "• Email 必須是您在遠距醫療系統註冊時使用的信箱\n"
+            "• 綁定成功後即可收到系統通知\n"
+            "• 如需解除綁定，請於訊息中輸入「解除綁定」"
+        )
+        msg2 = (
+            "如需查看通知,請登入系統查看通知中心。"
+        )
         try:
             line_bot_api.reply_message(
                 event.reply_token,
-                TextSendMessage(text=reply_text)
+                [TextSendMessage(text=msg1), TextSendMessage(text=msg2)]
             )
         except Exception as e:
             print(f"❌ 回覆訊息失敗: {e}")

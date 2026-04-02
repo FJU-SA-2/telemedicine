@@ -219,7 +219,7 @@ def notify_upcoming_appointments():
                 a.appointment_date,
                 a.appointment_time,
                 u.line_user_id,
-                CONCAT(p.last_name, p.first_name) AS patient_name,
+                CONCAT(p.first_name, p.last_name) AS patient_name,
                 CONCAT(d.first_name, d.last_name) AS doctor_name,
                 d.specialty
             FROM appointments a
