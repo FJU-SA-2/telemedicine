@@ -27,44 +27,44 @@ def get_db():
 # ─────────────────────────────────────────
 # 綁定碼：產生
 # ─────────────────────────────────────────
-def generate_bind_code(user_id: int) -> str:
-    code = ''.join(random.choices(string.digits, k=6))
-    expires_at = datetime.now() + timedelta(minutes=10)
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute("""
-        INSERT INTO bind_codes (user_id, code, expires_at)
-        VALUES (%s, %s, %s)
-        ON DUPLICATE KEY UPDATE code = %s, expires_at = %s
-    """, (user_id, code, expires_at, code, expires_at))
-    db.commit()
-    cursor.close()
-    db.close()
-    return code
+# def generate_bind_code(user_id: int) -> str:
+#     code = ''.join(random.choices(string.digits, k=6))
+#     expires_at = datetime.now() + timedelta(minutes=10)
+#     db = get_db()
+#     cursor = db.cursor()
+#     cursor.execute("""
+#         INSERT INTO bind_codes (user_id, code, expires_at)
+#         VALUES (%s, %s, %s)
+#         ON DUPLICATE KEY UPDATE code = %s, expires_at = %s
+#     """, (user_id, code, expires_at, code, expires_at))
+#     db.commit()
+#     cursor.close()
+#     db.close()
+#     return code
 
 
 # ─────────────────────────────────────────
 # 綁定碼：驗證並完成綁定
 # ─────────────────────────────────────────
-def verify_and_bind(line_user_id: str, code: str) -> bool:
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    cursor.execute("""
-        SELECT user_id FROM bind_codes
-        WHERE code = %s AND expires_at > NOW()
-    """, (code,))
-    row = cursor.fetchone()
-    if not row:
-        cursor.close()
-        db.close()
-        return False
-    cursor.execute("UPDATE users SET line_user_id = %s WHERE user_id = %s",
-                   (line_user_id, row["user_id"]))
-    cursor.execute("DELETE FROM bind_codes WHERE code = %s", (code,))
-    db.commit()
-    cursor.close()
-    db.close()
-    return True
+# def verify_and_bind(line_user_id: str, code: str) -> bool:
+#     db = get_db()
+#     cursor = db.cursor(dictionary=True)
+#     cursor.execute("""
+#         SELECT user_id FROM bind_codes
+#         WHERE code = %s AND expires_at > NOW()
+#     """, (code,))
+#     row = cursor.fetchone()
+#     if not row:
+#         cursor.close()
+#         db.close()
+#         return False
+#     cursor.execute("UPDATE users SET line_user_id = %s WHERE user_id = %s",
+#                    (line_user_id, row["user_id"]))
+#     cursor.execute("DELETE FROM bind_codes WHERE code = %s", (code,))
+#     db.commit()
+#     cursor.close()
+#     db.close()
+#     return True
 
 
 # ─────────────────────────────────────────
