@@ -924,7 +924,8 @@ def get_current_user():
                         di.education, di.description, di.experience, di.qualifications, 
                         di.consultation_fee, di.consultation_type, 
                         di.photo,
-                        d.approval_status
+                        d.approval_status,
+                        d.mechanism_id
                 FROM doctor d
                 LEFT JOIN doctor_info di ON d.doctor_id = di.doctor_id
                 WHERE d.user_id = %s
@@ -946,8 +947,10 @@ def get_current_user():
                     'consultation_fee': doctor_data['consultation_fee'],
                     'consultation_type': doctor_data['consultation_type'],
                     'approval_status': doctor_data['approval_status'],
-                    'photo': doctor_data.get('photo') or ""
+                    'photo': doctor_data.get('photo') or "",
+                    'mechanism_id': doctor_data.get('mechanism_id')
                 }
+                user_data["mechanism_id"] = doctor_data.get("mechanism_id")
         
         return jsonify({
             "authenticated": True,
@@ -3208,6 +3211,8 @@ def get_post(post_id):
     cursor = conn.cursor(dictionary=True)
     
     try:
+        current_user_id = session.get('user_id')
+
         # 獲取文章
         query = """
             SELECT p.id, p.title, p.content, p.is_anonymous, p.created_at, p.user_id,
@@ -3222,6 +3227,9 @@ def get_post(post_id):
         if not post:
             return jsonify({'success': False, 'message': '文章不存在'}), 404
         
+        # 標記是否為作者
+        post['is_author'] = (current_user_id is not None and post['user_id'] == current_user_id)
+
         # 獲取留言
         query = """
             SELECT c.id, c.content, c.is_anonymous, c.created_at, c.user_id,
@@ -3234,6 +3242,10 @@ def get_post(post_id):
         cursor.execute(query, (post_id,))
         comments = cursor.fetchall()
         
+        # 為每則留言標記是否為作者
+        for comment in comments:
+            comment['is_author'] = (current_user_id is not None and comment['user_id'] == current_user_id)
+
         post['comments'] = comments
         
         return jsonify({

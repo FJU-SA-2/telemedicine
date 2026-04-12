@@ -60,22 +60,19 @@ export default function DoctorSchedulePage() {
                 if (res.ok) {
                     const data = await res.json();
                     if (data.authenticated && data.user.role === 'doctor') {
-                        const doctorRes = await fetch(
-                            `/api/doctor/profile?user_id=${data.user.user_id}`,
-                            { credentials: 'include' }
-                        );
-                        if (doctorRes.ok) {
-                            const doctorData = await doctorRes.json();
-                            setDoctorId(doctorData.doctor_id);
-                            if (doctorData.mechanism_id) {
-                                setViewOnly(true);
-                                setHasMechanism(true);
-                                setMechanismName(doctorData.mechanism_name || "所屬機構");
-                            }
-                        } else {
-                            const errorData = await doctorRes.json();
-                            console.error('❌ 取得醫師資料失敗:', errorData);
-                            alert(`無法取得醫師資料: ${errorData.message}`);
+                        const profile = data.user.doctorProfile;
+                        if (!profile?.doctor_id) {
+                            alert('無法取得醫師資料');
+                            return;
+                        }
+                        setDoctorId(profile.doctor_id);
+
+                        // 直接從 /api/me 判斷是否隸屬機構
+                        const mid = profile.mechanism_id ?? data.user.mechanism_id;
+                        if (mid) {
+                            setViewOnly(true);
+                            setHasMechanism(true);
+                            setMechanismName(data.user.mechanism_name || "所屬機構");
                         }
                     } else {
                         alert('請先以醫師身份登入');

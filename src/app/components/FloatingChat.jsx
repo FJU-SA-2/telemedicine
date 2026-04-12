@@ -332,7 +332,7 @@ export default function FloatingChat() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && isLoggedIn && sendMessage()}
-                className={`flex-1 border rounded-xl px-4 py-3 text-sm focus:outline-none transition
+                className={`flex-1 border rounded-xl px-4 py-3 text-sm focus:outline-none transition text-gray-700
                   ${isLoggedIn 
                     ? 'border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent' 
                     : 'border-gray-200 bg-gray-100 cursor-not-allowed'
