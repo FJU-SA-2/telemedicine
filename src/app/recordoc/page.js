@@ -181,7 +181,17 @@ export default function AppointmentRecords() {
     }
   };
 
+  const isAppointmentExpired = (appointmentDate, appointmentTime) => {
+    const appointmentDateTime = new Date(`${appointmentDate}T${appointmentTime}`);
+    return appointmentDateTime < new Date();
+  };
+
   const handleCancelClick = (appointment) => {
+    if (isAppointmentExpired(appointment.appointment_date, appointment.appointment_time)) {
+      alert("此預約時間已過期，無法取消。");
+      return;
+    }
+
     const refund = calculateRefund(appointment.appointment_date, appointment.appointment_time);
     setRefundInfo(refund);
     setSelectedAppointment(appointment);
@@ -482,12 +492,18 @@ export default function AppointmentRecords() {
                     )}
 
                     {appointment.status === '已確認' && (
-                      <button
-                        onClick={() => handleCancelClick(appointment)}
-                        className="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-2 rounded-lg transition mt-4 text-sm"
-                      >
-                        取消預約
-                      </button>
+                      isAppointmentExpired(appointment.appointment_date, appointment.appointment_time) ? (
+                        <div className="w-full bg-gray-100 text-gray-500 font-medium py-2 rounded-lg mt-4 text-sm text-center border border-gray-300">
+                          預約時間已過期
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleCancelClick(appointment)}
+                          className="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-2 rounded-lg transition mt-4 text-sm"
+                        >
+                          取消預約
+                        </button>
+                      )
                     )}
                   </div>
                 </div>
@@ -599,12 +615,18 @@ export default function AppointmentRecords() {
                             </button>
                           )}
                           {appointment.status === '已確認' && (
-                            <button
-                              onClick={() => handleCancelClick(appointment)}
-                              className="bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-medium px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition"
-                            >
-                              取消
-                            </button>
+                            isAppointmentExpired(appointment.appointment_date, appointment.appointment_time) ? (
+                              <span className="text-gray-400 text-xs sm:text-sm border border-gray-300 bg-gray-100 px-3 py-1.5 rounded-lg">
+                                已過期
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleCancelClick(appointment)}
+                                className="bg-red-500 hover:bg-red-600 text-white text-xs sm:text-sm font-medium px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg transition"
+                              >
+                                取消
+                              </button>
+                            )
                           )}
                         </td>
                       </tr>

@@ -70,7 +70,8 @@ export default function AppointmentRecords() {
         },
       }));
 
-      setAppointments(formattedData);
+      const finalData = await autoExpireAppointments(formattedData);
+      setAppointments(finalData);
     } catch (error) {
       console.error(error);
       setAppointments([]);
@@ -123,7 +124,51 @@ export default function AppointmentRecords() {
     }
   };
 
+  const isAppointmentExpired = (appointmentDate, appointmentTime) => {
+    const appointmentDateTime = new Date(`${appointmentDate}T${appointmentTime}`);
+    return appointmentDateTime < new Date();
+  };
+
+  const autoExpireAppointments = async (appointmentList) => {
+    const expired = appointmentList.filter(
+      (a) => a.status === "已確認" && isAppointmentExpired(a.appointment_date, a.appointment_time)
+    );
+
+    if (expired.length === 0) return appointmentList;
+
+    const results = await Promise.allSettled(
+      expired.map((a) =>
+        fetch("/api/cancel_appointment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            appointment_id: a.appointment_id,
+            cancellation_reason: "預約時間已過期",
+          }),
+        })
+      )
+    );
+
+    const cancelledIds = new Set(
+      expired
+        .filter((_, i) => results[i].status === "fulfilled")
+        .map((a) => a.appointment_id)
+    );
+
+    return appointmentList.map((a) =>
+      cancelledIds.has(a.appointment_id)
+        ? { ...a, status: "已取消", cancellation_reason: "預約時間已過期" }
+        : a
+    );
+  };
+
   const handleCancelClick = (appointment) => {
+    if (isAppointmentExpired(appointment.appointment_date, appointment.appointment_time)) {
+      alert("此預約時間已過期，無法手動取消。");
+      return;
+    }
+
     const refund = calculateRefund(appointment.appointment_date, appointment.appointment_time);
     setRefundInfo(refund);
     setSelectedAppointment(appointment);
