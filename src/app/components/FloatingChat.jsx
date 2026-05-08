@@ -214,7 +214,7 @@ export default function FloatingChat() {
 
       {/* 聊天視窗 */}
       {isOpen && (
-        <div className="fixed bottom-6 right-3 sm:right-6 z-[9999] w-[calc(100%-24px)] max-w-sm sm:w-96 h-[70vh] sm:h-[600px] bg-white shadow-2xl rounded-2xl flex flex-col overflow-hidden border border-gray-200">
+        <div className="fixed bottom-6 right-3 sm:right-6 z-[9999] w-[calc(100%-24px)] max-w-sm sm:w-96 h-[600px] bg-white shadow-2xl rounded-2xl flex flex-col border border-gray-200" style={{height: '600px', maxHeight: '85vh'}}>
           {/* 標題列 */}
           <div className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-5 py-4 flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -241,7 +241,7 @@ export default function FloatingChat() {
           </div>
 
           {/* 訊息區域 */}
-          <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-gradient-to-b from-gray-50 to-white">
+          <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-gradient-to-b from-gray-50 to-white" style={{minHeight: 0}}>
             {/* 未登入時顯示提示訊息 */}
             {!isLoggedIn && (
               <div className="flex justify-center items-center h-full">

@@ -199,6 +199,7 @@ export default function DoctorSchedulePage() {
 
     const toggleSlot = (date, time) => {
         if (viewOnly) return;
+        
         if (isTimeSlotPast(date, time)) {
             alert('無法設定已過期的排班時段');
             return;
@@ -249,7 +250,7 @@ export default function DoctorSchedulePage() {
             return newSchedules;
         });
     };
-
+    //只把「開診 = true」送出
     const saveSchedules = async () => {
         if (viewOnly) {
             alert('您已加入院所，排班由院所管理，無法自行修改');

@@ -28,11 +28,11 @@ function BookingPage({ doctors, schedules, setSchedules }) {
     const slotDateTime = new Date(`${dateStr}T${timeStr}`);
     return slotDateTime < now;
   };
-
+  //顯示哪些醫師、哪些時段有效
   const validSchedules = schedules.filter(
     s => s.is_available === 1 && !isTimeSlotExpired(s.schedule_date, s.time_slot)
   );
-
+  // 只顯示「有排班的醫師」，沒排班的直接不出現
   const doctorsWithSchedules = new Set(
     validSchedules.map(s => s.doctor_id)
   );

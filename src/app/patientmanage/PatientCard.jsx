@@ -62,7 +62,7 @@ export default function PatientCard({ patient, onPatientClick }) {
           onClick={() => onPatientClick(patient)}
           className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all font-semibold shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-sm"
         >
-          查看完整病歷
+          查看平台病歷
           <ChevronRight size={18} />
         </button>
       </div>
