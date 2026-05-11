@@ -5092,6 +5092,124 @@ def add_doctor():
     except Exception as e:
         print("新增醫師錯誤:", e)
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/mechanism/patients", methods=["POST"])
+def add_patient():
+    try:
+        data = request.get_json()
+
+        first_name = data.get("last_name")
+        last_name = data.get("first_name")
+        gender = data.get("gender", "male")
+        phone_number = data.get("phone_number", "")
+        username = data.get("username")
+        email = data.get("email")
+        password = data.get("password")
+
+        # patient 額外欄位（可選）
+        address = data.get("address", "")
+        date_of_birth = data.get("date_of_birth", None)
+        id_number = data.get("id_number", "")
+        smoking_status = data.get("smoking_status", "no")
+        drug_allergies = data.get("drug_allergies", "")
+        medical_history = data.get("medical_history", "")
+        height = data.get("height", None)
+        weight = data.get("weight", None)
+        chronic_disease = data.get("chronic_disease", "")
+        emergency_contact_name = data.get("emergency_contact_name", "")
+        emergency_contact_phone = data.get("emergency_contact_phone", "")
+
+        # ── 基本驗證 ──
+        if not first_name or not last_name:
+            return jsonify({"error": "姓名為必填"}), 400
+        if not email:
+            return jsonify({"error": "Email 為必填"}), 400
+        if not username:
+            return jsonify({"error": "帳號為必填"}), 400
+        if not password or len(password) < 6:
+            return jsonify({"error": "密碼至少 6 個字元"}), 400
+
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        # ── 1. 檢查 email 是否重複 ──
+        cursor.execute("SELECT user_id FROM users WHERE email = %s", (email,))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "此 Email 已被註冊"}), 400
+
+        # ── 2. 檢查 username 是否重複 ──
+        cursor.execute("SELECT user_id FROM users WHERE username = %s", (username,))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "此帳號已被使用"}), 400
+
+        # ── 3. 建立 users（patient） ──
+        cursor.execute(
+            """
+            INSERT INTO users (username, email, password_hash, role)
+            VALUES (%s, %s, %s, 'patient')
+            """,
+            (username, email, password)
+        )
+        user_id = cursor.lastrowid
+
+        # ── 4. 建立 patient 主表 ──
+        cursor.execute("""
+            INSERT INTO patient (
+                user_id,
+                first_name,
+                last_name,
+                gender,
+                phone_number,
+                date_of_birth,
+                address,
+                id_number,
+                smoking_status,
+                drug_allergies,
+                medical_history,
+                height,
+                weight,
+                chronic_disease,
+                emergency_contact_name,
+                emergency_contact_phone
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            user_id,
+            first_name,
+            last_name,
+            gender,
+            phone_number,
+            date_of_birth,
+            address,
+            id_number,
+            smoking_status,
+            drug_allergies,
+            medical_history,
+            height,
+            weight,
+            chronic_disease,
+            emergency_contact_name,
+            emergency_contact_phone
+        ))
+
+        patient_id = cursor.lastrowid
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            "message": "患者新增成功",
+            "patient_id": patient_id
+        }), 201
+
+    except Exception as e:
+        print("新增患者錯誤:", e)
+        return jsonify({"error": str(e)}), 500
 # ─────────────────────────────────────────
 # 機構排班（POST）
 # ─────────────────────────────────────────
