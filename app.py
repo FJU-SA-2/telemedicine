@@ -5158,12 +5158,12 @@ def add_patient():
     try:
         data         = request.get_json()
         print("收到資料:", data) 
-        first_name   = data.get("first_name")
-        last_name    = data.get("last_name")
+        first_name   = data.get("last_name")
+        last_name    = data.get("first_name")
         gender       = data.get("gender", "male")
         phone_number = data.get("phone_number", "")
         email        = data.get("email")
-        password     = data.get("password")
+        password_hash     = data.get("password")
 
         # ── 驗證必填 ──
         if not first_name or not last_name:
@@ -5184,13 +5184,13 @@ def add_patient():
             return jsonify({"error": "此 Email 已被註冊"}), 400
 
         # 2. 建立 users 帳號
-        import bcrypt
-        username  = f"{last_name}{first_name}"
-        hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+      
+        username  = f"{first_name}{last_name}"
+       
 
         cursor.execute(
             "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, 'patient')",
-            (username, email, hashed_pw)
+            (username, email, password_hash )
         )
         user_id = cursor.lastrowid
 
