@@ -4975,14 +4975,12 @@ def manage_mechanism_patients():
                 return jsonify({"error": "此 Email 已被註冊"}), 400
 
             # 2. 建立 users 帳號
-            import bcrypt
-            username  = f"{last_name}{first_name}"
-            hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            username = f"{last_name}{first_name}"
 
             cursor.execute(
-                "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, 'patient')",
-                (username, email, hashed_pw)
-            )
+              "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, 'patient')",
+              (username, email, password)
+                )
             user_id = cursor.lastrowid
 
             # 3. 插入 patient 表
