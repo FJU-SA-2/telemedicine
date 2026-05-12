@@ -461,7 +461,6 @@ const AddPatientModal = ({ onClose, onSaved }) => {
     last_name: "",
     gender: "male",
     phone_number: "",
-    username: "",
     email: "",
     password: "",
   });
@@ -472,8 +471,7 @@ const AddPatientModal = ({ onClose, onSaved }) => {
   const handleSave = async () => {
     if (!form.first_name || !form.last_name) { setError("姓名為必填"); return; }
     if (!form.email) { setError("Email 為必填"); return; }
-    if (!form.username) { setError("帳號為必填"); return; }
-    if (!form.password || form.password.length < 6) { setError("密碼為必填且至少 6 個字元"); return; }
+    if (!form.password || form.password.length < 10) { setError("密碼為必填且至少 10 個字元"); return; }
     setSaving(true);
     setError("");
     try {
@@ -510,11 +508,11 @@ const AddPatientModal = ({ onClose, onSaved }) => {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm font-medium text-gray-600 block mb-1">名 <span className="text-rose-500">*</span></label>
+                <label className="text-sm font-medium text-gray-600 block mb-1">姓 <span className="text-rose-500">*</span></label>
                 <input type="text" value={form.last_name} onChange={e => set("last_name", e.target.value)} className={inputCls} />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-600 block mb-1">姓 <span className="text-rose-500">*</span></label>
+                <label className="text-sm font-medium text-gray-600 block mb-1">名 <span className="text-rose-500">*</span></label>
                 <input type="text" value={form.first_name} onChange={e => set("first_name", e.target.value)} className={inputCls} />
               </div>
             </div>
@@ -527,10 +525,11 @@ const AddPatientModal = ({ onClose, onSaved }) => {
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-600 block mb-1">Email <span className="text-rose-500"></span></label>
-              <input type="email" value={form.email} onChange={e => set("email", e.target.value)}
-                placeholder="patient@example.com" className={inputCls} />
+              <label className="text-sm font-medium text-gray-600 block mb-1">電話號碼 <span className="text-rose-500">*</span></label>
+              <input type="text" value={form.phone_number} onChange={e => set("phone_number", e.target.value)}
+                placeholder="09xx-xxx-xxx" className={inputCls} />
             </div>
+            
             
           </div>
 
@@ -538,15 +537,15 @@ const AddPatientModal = ({ onClose, onSaved }) => {
           <div className="space-y-3 pt-3 border-t border-gray-100">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">登入帳號設定</p>
             <div>
-              <label className="text-sm font-medium text-gray-600 block mb-1">帳號（電話號碼） <span className="text-rose-500">*</span></label>
-              <input type="text" value={form.username} onChange={e => set("username", e.target.value)}
-                placeholder="09xx-xxx-xxx" className={inputCls} />
+              <label className="text-sm font-medium text-gray-600 block mb-1">帳號（Email） <span className="text-rose-500"></span></label>
+              <input type="email" value={form.email} onChange={e => set("email", e.target.value)}
+                placeholder="patient@example.com" className={inputCls} />
             </div>
             
             <div>
               <label className="text-sm font-medium text-gray-600 block mb-1">密碼（身分證字號） <span className="text-rose-500">*</span></label>
               <input type="password" value={form.password} onChange={e => set("password", e.target.value)}
-                placeholder="至少 6 個字元" className={inputCls} />
+                placeholder="" className={inputCls} />
             </div>
           </div>
         </div>

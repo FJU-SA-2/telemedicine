@@ -4897,50 +4897,112 @@ def remove_mechanism_doctor(doctor_id):
 
 # ── 患者管理 ──────────────────────────────────────────────────────────
 
-@app.route('/api/mechanism/patients', methods=['GET'])
+@app.route('/api/mechanism/patients', methods=['GET', 'POST'])
 @require_mechanism
-def get_mechanism_patients():
-    search = request.args.get('search', '').strip()
-    gender_filter = request.args.get('gender', '')
+def manage_mechanism_patients():
 
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    try:
-        sql = """
-            SELECT
-                p.patient_id, p.first_name, p.last_name, p.gender,
-                p.date_of_birth, p.phone_number, p.smoking_status, p.chronic_disease,
-                MAX(a.appointment_date) AS last_appointment,
-                COUNT(a.appointment_id) AS total_appointments
-            FROM patient p
-            JOIN appointments a ON p.patient_id = a.patient_id
-            JOIN doctor d ON a.doctor_id = d.doctor_id
-            WHERE d.mechanism_id = %s
-        """
-        params = [request.mechanism_id]
+    # ── GET：查詢患者列表 ──
+    if request.method == 'GET':
+        search = request.args.get('search', '').strip()
+        gender_filter = request.args.get('gender', '')
 
-        if search:
-            sql += " AND (p.first_name LIKE %s OR p.last_name LIKE %s OR p.id_number LIKE %s)"
-            like = f'%{search}%'
-            params += [like, like, like]
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        try:
+            sql = """
+                SELECT
+                    p.patient_id, p.first_name, p.last_name, p.gender,
+                    p.date_of_birth, p.phone_number, p.smoking_status, p.chronic_disease,
+                    MAX(a.appointment_date) AS last_appointment,
+                    COUNT(a.appointment_id) AS total_appointments
+                FROM patient p
+                JOIN appointments a ON p.patient_id = a.patient_id
+                JOIN doctor d ON a.doctor_id = d.doctor_id
+                WHERE d.mechanism_id = %s
+            """
+            params = [request.mechanism_id]
 
-        if gender_filter:
-            sql += " AND p.gender = %s"
-            params.append(gender_filter)
+            if search:
+                sql += " AND (p.first_name LIKE %s OR p.last_name LIKE %s OR p.id_number LIKE %s)"
+                like = f'%{search}%'
+                params += [like, like, like]
 
-        sql += " GROUP BY p.patient_id ORDER BY last_appointment DESC"
-        cursor.execute(sql, params)
-        patients = cursor.fetchall()
+            if gender_filter:
+                sql += " AND p.gender = %s"
+                params.append(gender_filter)
 
-        for pt in patients:
-            for key in ['date_of_birth', 'last_appointment']:
-                if pt.get(key):
-                    pt[key] = pt[key].isoformat() if hasattr(pt[key], 'isoformat') else str(pt[key])
+            sql += " GROUP BY p.patient_id ORDER BY last_appointment DESC"
+            cursor.execute(sql, params)
+            patients = cursor.fetchall()
 
-        return jsonify({'patients': patients, 'total': len(patients)})
-    finally:
-        cursor.close()
-        db.close()
+            for pt in patients:
+                for key in ['date_of_birth', 'last_appointment']:
+                    if pt.get(key):
+                        pt[key] = pt[key].isoformat() if hasattr(pt[key], 'isoformat') else str(pt[key])
+
+            return jsonify({'patients': patients, 'total': len(patients)})
+        finally:
+            cursor.close()
+            db.close()
+
+    # ── POST：新增患者 ──
+    if request.method == 'POST':
+        try:
+            data         = request.get_json()
+            print("收到資料:", data)
+            first_name   = data.get("first_name")
+            last_name    = data.get("last_name")
+            gender       = data.get("gender", "male")
+            phone_number = data.get("phone_number", "")
+            email        = data.get("email")
+            password     = data.get("password")
+
+            if not first_name or not last_name:
+                return jsonify({"error": "姓名為必填"}), 400
+            if not email:
+                return jsonify({"error": "Email 為必填"}), 400
+            if not password or len(password) < 10:
+                return jsonify({"error": "密碼至少 10 個字元"}), 400
+
+            conn   = get_db()
+            cursor = conn.cursor(dictionary=True)
+
+            # 1. 檢查 email 是否重複
+            cursor.execute("SELECT user_id FROM users WHERE email = %s", (email,))
+            if cursor.fetchone():
+                cursor.close()
+                conn.close()
+                return jsonify({"error": "此 Email 已被註冊"}), 400
+
+            # 2. 建立 users 帳號
+            import bcrypt
+            username  = f"{last_name}{first_name}"
+            hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+            cursor.execute(
+                "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, 'patient')",
+                (username, email, hashed_pw)
+            )
+            user_id = cursor.lastrowid
+
+            # 3. 插入 patient 表
+            cursor.execute("""
+                INSERT INTO patient
+                  (user_id, first_name, last_name, gender, phone_number)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (
+                user_id, first_name, last_name, gender, phone_number or None
+            ))
+            patient_id = cursor.lastrowid
+
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return jsonify({"message": "患者新增成功", "patient_id": patient_id}), 201
+
+        except Exception as e:
+            print("新增患者錯誤:", e)
+            return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/mechanism/patients/<int:patient_id>', methods=['GET'])
@@ -5096,116 +5158,58 @@ def add_doctor():
 @app.route("/api/mechanism/patients", methods=["POST"])
 def add_patient():
     try:
-        data = request.get_json()
-
-        first_name = data.get("last_name")
-        last_name = data.get("first_name")
-        gender = data.get("gender", "male")
+        data         = request.get_json()
+        print("收到資料:", data) 
+        first_name   = data.get("first_name")
+        last_name    = data.get("last_name")
+        gender       = data.get("gender", "male")
         phone_number = data.get("phone_number", "")
-        username = data.get("username")
-        email = data.get("email")
-        password = data.get("password")
+        email        = data.get("email")
+        password     = data.get("password")
 
-        # patient 額外欄位（可選）
-        address = data.get("address", "")
-        date_of_birth = data.get("date_of_birth", None)
-        id_number = data.get("id_number", "")
-        smoking_status = data.get("smoking_status", "no")
-        drug_allergies = data.get("drug_allergies", "")
-        medical_history = data.get("medical_history", "")
-        height = data.get("height", None)
-        weight = data.get("weight", None)
-        chronic_disease = data.get("chronic_disease", "")
-        emergency_contact_name = data.get("emergency_contact_name", "")
-        emergency_contact_phone = data.get("emergency_contact_phone", "")
-
-        # ── 基本驗證 ──
+        # ── 驗證必填 ──
         if not first_name or not last_name:
             return jsonify({"error": "姓名為必填"}), 400
         if not email:
             return jsonify({"error": "Email 為必填"}), 400
-        if not username:
-            return jsonify({"error": "帳號為必填"}), 400
         if not password or len(password) < 6:
             return jsonify({"error": "密碼至少 6 個字元"}), 400
 
-        conn = get_db()
+        conn   = get_db()
         cursor = conn.cursor(dictionary=True)
 
-        # ── 1. 檢查 email 是否重複 ──
+        # 1. 檢查 email 是否重複
         cursor.execute("SELECT user_id FROM users WHERE email = %s", (email,))
         if cursor.fetchone():
             cursor.close()
             conn.close()
             return jsonify({"error": "此 Email 已被註冊"}), 400
 
-        # ── 2. 檢查 username 是否重複 ──
-        cursor.execute("SELECT user_id FROM users WHERE username = %s", (username,))
-        if cursor.fetchone():
-            cursor.close()
-            conn.close()
-            return jsonify({"error": "此帳號已被使用"}), 400
+        # 2. 建立 users 帳號
+        import bcrypt
+        username  = f"{last_name}{first_name}"
+        hashed_pw = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
-        # ── 3. 建立 users（patient） ──
         cursor.execute(
-            """
-            INSERT INTO users (username, email, password_hash, role)
-            VALUES (%s, %s, %s, 'patient')
-            """,
-            (username, email, password)
+            "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, 'patient')",
+            (username, email, hashed_pw)
         )
         user_id = cursor.lastrowid
 
-        # ── 4. 建立 patient 主表 ──
+        # 3. 插入 patient 表
         cursor.execute("""
-            INSERT INTO patient (
-                user_id,
-                first_name,
-                last_name,
-                gender,
-                phone_number,
-                date_of_birth,
-                address,
-                id_number,
-                smoking_status,
-                drug_allergies,
-                medical_history,
-                height,
-                weight,
-                chronic_disease,
-                emergency_contact_name,
-                emergency_contact_phone
-            )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO patient
+              (user_id, first_name, last_name, gender, phone_number)
+            VALUES (%s, %s, %s, %s, %s)
         """, (
-            user_id,
-            first_name,
-            last_name,
-            gender,
-            phone_number,
-            date_of_birth,
-            address,
-            id_number,
-            smoking_status,
-            drug_allergies,
-            medical_history,
-            height,
-            weight,
-            chronic_disease,
-            emergency_contact_name,
-            emergency_contact_phone
+            user_id, first_name, last_name, gender, phone_number or None
         ))
-
         patient_id = cursor.lastrowid
 
         conn.commit()
         cursor.close()
         conn.close()
-
-        return jsonify({
-            "message": "患者新增成功",
-            "patient_id": patient_id
-        }), 201
+        return jsonify({"message": "患者新增成功", "patient_id": patient_id}), 201
 
     except Exception as e:
         print("新增患者錯誤:", e)
