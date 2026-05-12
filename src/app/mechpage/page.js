@@ -413,7 +413,6 @@ const AddDoctorModal = ({ onClose, onSaved }) => {
             {[
               { key: "specialty", label: "專科", placeholder: "例：內科、外科" },
               { key: "phone_number", label: "聯絡電話", placeholder: "09xx-xxx-xxx" },
-              { key: "practice_hospital", label: "執業院所", placeholder: "醫院名稱" },
               { key: "certificate_path", label: "證書路徑", placeholder: "上傳後填入路徑（選填）" },
             ].map(({ key, label, placeholder }) => (
               <div key={key}>
