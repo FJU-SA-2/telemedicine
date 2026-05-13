@@ -2239,7 +2239,8 @@ def get_all_schedules():
                 doctor_id,
                 DATE_FORMAT(schedule_date, '%Y-%m-%d') as schedule_date,
                 time_slot,
-                is_available
+                is_available,
+                schedule_type
             FROM schedules
             WHERE is_available = 1
             AND TIMESTAMP(schedule_date, time_slot) >= NOW()
