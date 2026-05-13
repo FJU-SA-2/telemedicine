@@ -205,16 +205,15 @@ export default function MechanismSchedulePage() {
                     const isAvailable = item.is_available == 1 || item.is_available === true;
                     if (!isAvailable) return;
 
-                    const type = item.schedule_type === 'online' ? 'online' : 'physical';
-
+                    const type = item.schedule_type === 'online' ? 'online'
+                               : item.schedule_type === 'physical' ? 'physical' 
+                               : null;
+                    if (!type) return;
                     for (const [sess, info] of Object.entries(SESSION_GROUPS)) {
                         if (info.slots.includes(slot)) {
-                            // 以先讀到的為準，不合併成 both
-                            if (init[date][sess] === 'off') {
-                                init[date][sess] = type;
-                            }
-                        }
+                            init[date][sess] = type; // ← 直接覆蓋，以最後一筆為準
                     }
+                }   
                 });
             }
             setSchedules(init);
@@ -354,6 +353,7 @@ export default function MechanismSchedulePage() {
 
             if (res.ok) {
                 showToast("排班儲存成功！", "success");
+                await loadSchedules();
             } else {
                 const err = await res.json().catch(() => ({}));
                 showToast(err.error || "儲存失敗", "error");

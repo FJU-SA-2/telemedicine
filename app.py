@@ -5261,6 +5261,7 @@ def mechanism_save_schedules():
 
         # 插入新排班（一筆時段可同時有 online / physical 兩筆）
         for item in schedules:
+            
             schedule_date   = item.get('date')
             time_slot       = item.get('time_slot')
             is_available    = item.get('is_available', 1)
