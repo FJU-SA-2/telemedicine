@@ -5259,21 +5259,37 @@ def mechanism_save_schedules():
                     WHERE doctor_id = %s AND schedule_date = %s
                 """, (doctor_id, d))
 
-        # 插入新排班
+        # 插入新排班（一筆時段可同時有 online / physical 兩筆）
         for item in schedules:
-            schedule_date = item.get('date')
-            time_slot     = item.get('time_slot')
-            is_available  = item.get('is_available', 1)
+            schedule_date   = item.get('date')
+            time_slot       = item.get('time_slot')
+            is_available    = item.get('is_available', 1)
+            schedule_type   = item.get('schedule_type')  # 'online' | 'physical'
 
             if not schedule_date or not time_slot:
                 continue
+            if schedule_type not in ('online', 'physical'):
+                continue
 
             cursor.execute("""
-                INSERT INTO schedules (doctor_id, schedule_date, time_slot, is_available)
-                VALUES (%s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE is_available = VALUES(is_available)
-            """, (doctor_id, schedule_date, time_slot, is_available))
-
+    INSERT INTO schedules (
+        doctor_id,
+        schedule_date,
+        time_slot,
+        is_available,
+        schedule_type
+    )
+    VALUES (%s, %s, %s, %s, %s)
+    ON DUPLICATE KEY UPDATE
+        is_available = VALUES(is_available),
+        schedule_type = VALUES(schedule_type)
+""", (
+    doctor_id,
+    schedule_date,
+    time_slot,
+    is_available,
+    schedule_type
+))
         db.commit()
         cursor.close()
         db.close()
