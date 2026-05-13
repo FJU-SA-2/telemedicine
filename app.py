@@ -4975,7 +4975,7 @@ def manage_mechanism_patients():
                 return jsonify({"error": "此 Email 已被註冊"}), 400
 
             # 2. 建立 users 帳號
-            username = f"{last_name}{first_name}"
+            username = f"{first_name}{last_name}"
 
             cursor.execute(
               "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, 'patient')",
