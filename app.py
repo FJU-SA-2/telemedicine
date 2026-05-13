@@ -2186,7 +2186,8 @@ def get_doctor_schedules(doctor_id):
                     doctor_id,
                     DATE_FORMAT(schedule_date, '%Y-%m-%d') as schedule_date,
                     time_slot,
-                    is_available
+                    is_available,
+                    schedule_type
                 FROM schedules
                 WHERE doctor_id = %s
                 AND schedule_date BETWEEN %s AND %s
@@ -2200,7 +2201,8 @@ def get_doctor_schedules(doctor_id):
                     doctor_id,
                     DATE_FORMAT(schedule_date, '%Y-%m-%d') as schedule_date,
                     time_slot,
-                    is_available
+                    is_available,
+                    schedule_type
                 FROM schedules
                 WHERE doctor_id = %s
                 ORDER BY schedule_date ASC, time_slot ASC

@@ -169,14 +169,13 @@ export default function MechanismSchedulePage() {
     };
 
     // ── 載入排班 ──────────────────────────────────────────────────────
-    useEffect(() => {
+    // ✅ 修正：改成 useCallback 並接受 targetWeekDates 參數，
+    //    避免閉包捕捉到過期的 weekDates，確保儲存後重新載入也能讀到最新資料。
+    const loadSchedules = useCallback(async (targetWeekDates) => {
+        const dates = targetWeekDates ?? weekDates;
+        const startDate = dates[0].fullDate;
+        const endDate   = dates[6].fullDate;
         if (!selectedDoctorId) return;
-        loadSchedules();
-    }, [selectedDoctorId, currentWeekStart]);
-
-    const loadSchedules = async () => {
-        const startDate = weekDates[0].fullDate;
-        const endDate   = weekDates[6].fullDate;
         try {
             const res = await fetch(
                 `/api/schedules/${selectedDoctorId}?start_date=${startDate}&end_date=${endDate}`,
@@ -185,16 +184,23 @@ export default function MechanismSchedulePage() {
             if (!res.ok) throw new Error();
             const data = await res.json();
 
-            const init = {};
-            weekDates.forEach(d => {
-                init[d.fullDate] = { morning: 'off', afternoon: 'off', evening: 'off' };
+            // 先把每天每節的所有 slot 收集起來，最後再用多數決定診別
+            // ✅ 修正：改用「有任何一個 available slot 就算開診」邏輯，
+            //    不再以最後一筆覆蓋，避免因資料順序造成顯示錯誤。
+            const sessHits = {}; // { date: { sess: { physical: n, online: n } } }
+            dates.forEach(d => {
+                sessHits[d.fullDate] = {
+                    morning:   { physical: 0, online: 0 },
+                    afternoon: { physical: 0, online: 0 },
+                    evening:   { physical: 0, online: 0 },
+                };
             });
 
             if (Array.isArray(data)) {
                 data.forEach(item => {
                     if (!item.schedule_date || !item.time_slot) return;
                     const date = item.schedule_date.slice(0, 10);
-                    if (!init[date]) return;
+                    if (!sessHits[date]) return;
 
                     const rawSlot = String(item.time_slot);
                     const parts = rawSlot.split(":");
@@ -206,21 +212,41 @@ export default function MechanismSchedulePage() {
                     if (!isAvailable) return;
 
                     const type = item.schedule_type === 'online' ? 'online'
-                               : item.schedule_type === 'physical' ? 'physical' 
+                               : item.schedule_type === 'physical' ? 'physical'
                                : null;
                     if (!type) return;
+
                     for (const [sess, info] of Object.entries(SESSION_GROUPS)) {
                         if (info.slots.includes(slot)) {
-                            init[date][sess] = type; // ← 直接覆蓋，以最後一筆為準
+                            sessHits[date][sess][type]++;
+                        }
                     }
-                }   
                 });
             }
+
+            // 把計票結果轉成 schedules state
+            const init = {};
+            dates.forEach(d => {
+                init[d.fullDate] = { morning: 'off', afternoon: 'off', evening: 'off' };
+                for (const sess of SESSION_KEYS) {
+                    const hits = sessHits[d.fullDate][sess];
+                    if (hits.physical > 0 || hits.online > 0) {
+                        // 哪種類型的時段多，就設為那種（同數時 physical 優先）
+                        init[d.fullDate][sess] = hits.online > hits.physical ? 'online' : 'physical';
+                    }
+                }
+            });
+
             setSchedules(init);
         } catch {
             showToast("載入排班失敗", "error");
         }
-    };
+    }, [selectedDoctorId, weekDates]);
+
+    useEffect(() => {
+        if (!selectedDoctorId) return;
+        loadSchedules();
+    }, [selectedDoctorId, currentWeekStart]);
 
     // ── Toggle ────────────────────────────────────────────────────────
     const toggleSession = (date, session) => {
@@ -325,6 +351,8 @@ export default function MechanismSchedulePage() {
                 if (res.ok) successCount++;
             }
             showToast(`已套用到之後 ${successCount} 週並儲存完成！`, "success");
+            // ✅ 修正：套用完也重新載入當前週，顯示最新狀態
+            await loadSchedules(weekDates);
         } catch {
             showToast("套用失敗，請稍後再試", "error");
         } finally {
@@ -353,7 +381,8 @@ export default function MechanismSchedulePage() {
 
             if (res.ok) {
                 showToast("排班儲存成功！", "success");
-                await loadSchedules();
+                // ✅ 儲存成功後直接保留當前 schedules state，不重新從 API 載入
+                // 避免 loadSchedules 閉包問題導致畫面被清空
             } else {
                 const err = await res.json().catch(() => ({}));
                 showToast(err.error || "儲存失敗", "error");
