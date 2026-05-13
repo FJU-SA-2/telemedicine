@@ -32,6 +32,12 @@ export default function DoctorVideoConsultation() {
   const recordingStartTimeRef = useRef(null);
   const currentMeetingRef = useRef(null); // 避免 async callback stale closure
 
+  // ── 語音錄製（獨立音軌，用於 Whisper 轉文字）──────────────
+  const audioRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcriptDone, setTranscriptDone] = useState(false);
+
   useEffect(() => {
     async function fetchApprovalStatus() {
       try {
@@ -73,6 +79,9 @@ export default function DoctorVideoConsultation() {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.stop();
       }
+      if (audioRecorderRef.current && audioRecorderRef.current.state === 'recording') {
+        audioRecorderRef.current.stop();
+      }
     };
   }, []);
 
@@ -110,18 +119,26 @@ export default function DoctorVideoConsultation() {
     try {
       setIsLoading(true);
       setSelectedPatient(appointment);
+
       const response = await fetch('/api/meeting/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ appointment_id: appointment.appointment_id })
       });
+
       if (!response.ok) throw new Error('無法創建會議室');
+
       const data = await response.json();
       const meetingData = { ...appointment, meeting_room_id: data.meeting_room_id };
       setCurrentMeeting(meetingData);
       currentMeetingRef.current = meetingData;
+
       setIsMeetingActive(true);
+      
+      // 自動開始音訊錄製（供 Whisper 語音轉文字）
+      await startAudioRecording();
+
       setTimeout(() => { initJitsi(data.meeting_room_id, appointment); }, 100);
     } catch (err) {
       setError('無法開始會議,請稍後再試');
@@ -267,19 +284,133 @@ export default function DoctorVideoConsultation() {
     }
   };
 
+  // ── 獨立音訊錄製（供 Whisper 轉文字用）─────────────────────
+  const startAudioRecording = async () => {
+    try {
+      const audioStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000 }
+      });
+      audioChunksRef.current = [];
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm';
+      const audioRecorder = new MediaRecorder(audioStream, { mimeType, audioBitsPerSecond: 128000 });
+      audioRecorderRef.current = audioRecorder;
+
+      // ⭐ 只在這裡綁定 ondataavailable，不覆蓋 onstop
+      audioRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      audioRecorder.start(1000); // 每秒收一次資料
+      console.log('✅ 音訊錄製已啟動（供語音轉文字用）');
+    } catch (err) {
+      console.warn('⚠️ 無法啟動音訊錄製:', err.message);
+    }
+  };
+
+  const stopAudioRecording = () => {
+    return new Promise((resolve) => {
+      const recorder = audioRecorderRef.current;
+      if (!recorder || recorder.state !== 'recording') {
+        resolve(null);
+        return;
+      }
+
+      // ⭐ 先 requestData 確保最後一段資料被收進來，再 stop
+      recorder.requestData();
+
+      recorder.onstop = () => {
+        // 停止 stream 所有 track
+        recorder.stream?.getTracks().forEach(t => t.stop());
+
+        // ⭐ 用 setTimeout 確保 ondataavailable 最後一筆已處理完
+        setTimeout(() => {
+          const chunks = audioChunksRef.current;
+          if (chunks.length === 0) {
+            console.warn('⚠️ 音訊 chunks 為空');
+            resolve(null);
+            return;
+          }
+          const blob = new Blob(chunks, { type: 'audio/webm' });
+          console.log(`✅ 音訊錄製完成，大小：${blob.size} bytes，共 ${chunks.length} 個 chunk`);
+          resolve(blob.size > 0 ? blob : null);
+        }, 300);
+      };
+
+      recorder.stop();
+    });
+  };
+
+  const uploadAudioForTranscription = async (audioBlob, appointmentId) => {
+    if (!audioBlob || !appointmentId) return;
+    setIsTranscribing(true);
+    setTranscriptDone(false);
+    try {
+      const filename = `consultation_${appointmentId}_${Date.now()}.webm`;
+      const formData = new FormData();
+      formData.append('audio', audioBlob, filename);
+
+      console.log(`📤 送出 Whisper 轉文字，appointment_id=${appointmentId}，大小=${audioBlob.size} bytes`);
+
+      const res = await fetch(`/api/appointments/${appointmentId}/transcribe`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setTranscriptDone(true);
+        console.log('✅ 語音轉文字完成，逐字稿已儲存至 DB');
+      } else {
+        console.error('❌ 語音轉文字失敗:', data.message);
+      }
+    } catch (err) {
+      console.error('❌ 語音轉文字上傳失敗:', err.message);
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
   const handleMeetingEnd = async () => {
     const meeting = currentMeetingRef.current;
     if (!meeting) return;
-    if (isRecording) { stopRecording(); await new Promise(resolve => setTimeout(resolve, 5000)); }
+
+    // 停止影片錄製
+    if (isRecording) {
+      stopRecording();
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    // ⭐ 先停止音訊錄製、取得 blob
+    const audioBlob = await stopAudioRecording();
+
+    // ⭐ 先呼叫 meeting/end（更新 DB 狀態為已完成）
     try {
       await fetch('/api/meeting/end', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ appointment_id: meeting.appointment_id, consultation_notes: consultationNotes, recording_duration: recordingDuration })
+        body: JSON.stringify({
+          appointment_id: meeting.appointment_id,
+          consultation_notes: consultationNotes,
+          recording_duration: recordingDuration
+        })
       });
-    } catch (err) { console.error('儲存會議記錄失敗:', err); }
-    if (jitsiApiRef.current) { try { jitsiApiRef.current.dispose(); jitsiApiRef.current = null; } catch (err) {} }
+    } catch (err) {
+      console.error('儲存會議記錄失敗:', err);
+    }
+
+    // ⭐ 在清除 state / 離開診間前，先送出轉文字（await 確保送出完成）
+    if (audioBlob && meeting.appointment_id) {
+      await uploadAudioForTranscription(audioBlob, meeting.appointment_id);
+    }
+
+    // 最後才清除所有狀態、離開診間
+    if (jitsiApiRef.current) {
+      try { jitsiApiRef.current.dispose(); jitsiApiRef.current = null; } catch (err) {}
+    }
     setIsMeetingActive(false);
     setCurrentMeeting(null);
     currentMeetingRef.current = null;
@@ -335,6 +466,20 @@ export default function DoctorVideoConsultation() {
 
           {/* 右：操作按鈕 */}
           <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
+            {/* 語音轉文字狀態 */}
+            {isTranscribing && (
+              <div className="flex items-center gap-1 bg-teal-500/20 px-2 sm:px-3 py-1.5 rounded-lg">
+                <Mic className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-teal-300 animate-pulse" />
+                <span className="text-xs text-teal-200 hidden sm:inline">逐字稿生成中...</span>
+              </div>
+            )}
+            {transcriptDone && !isTranscribing && (
+              <div className="flex items-center gap-1 bg-teal-500/30 px-2 sm:px-3 py-1.5 rounded-lg">
+                <Mic className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-teal-200" />
+                <span className="text-xs text-teal-200 hidden sm:inline">逐字稿完成</span>
+              </div>
+            )}
+
             {/* 錄影狀態（手機上縮小） */}
             {isRecording && (
               <div className="flex items-center gap-1 bg-red-500/20 px-2 sm:px-4 py-1.5 rounded-lg animate-pulse">
@@ -452,6 +597,31 @@ export default function DoctorVideoConsultation() {
                   </div>
                 </div>
               )}
+
+              {/* 語音轉文字狀態 */}
+              <div className={`rounded-lg p-4 mb-4 border ${
+                isTranscribing
+                  ? 'bg-teal-50 border-teal-200'
+                  : transcriptDone
+                  ? 'bg-green-50 border-green-200'
+                  : 'bg-blue-50 border-blue-200'
+              }`}>
+                <div className="flex items-center space-x-2">
+                  <Mic className={`w-4 h-4 ${isTranscribing ? 'text-teal-500 animate-pulse' : transcriptDone ? 'text-green-500' : 'text-blue-500'}`} />
+                  <div className="flex-1">
+                    <p className={`text-sm font-semibold ${isTranscribing ? 'text-teal-900' : transcriptDone ? 'text-green-900' : 'text-blue-900'}`}>
+                      {isTranscribing ? '逐字稿生成中...' : transcriptDone ? '逐字稿已完成' : '音訊錄製中'}
+                    </p>
+                    <p className={`text-xs mt-0.5 ${isTranscribing ? 'text-teal-600' : transcriptDone ? 'text-green-600' : 'text-blue-600'}`}>
+                      {isTranscribing
+                        ? 'Whisper AI 正在轉換，請稍候'
+                        : transcriptDone
+                        ? '可在看診記錄中查看與編輯逐字稿'
+                        : '看診結束後自動送出語音轉文字'}
+                    </p>
+                  </div>
+                </div>
+              </div>
 
               <div className="mb-4">
                 <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
@@ -633,6 +803,7 @@ export default function DoctorVideoConsultation() {
                   { icon: Monitor, bg: 'bg-emerald-100', color: 'text-emerald-600', title: '螢幕共享', desc: '可分享檢查報告或醫療資料給患者' },
                   { icon: FileText, bg: 'bg-emerald-100', color: 'text-emerald-600', title: '即時記錄', desc: '在看診過程中記錄診斷與處方建議' },
                   { icon: Circle, bg: 'bg-red-100', color: 'text-red-600', title: '自動錄影', desc: '看診過程自動錄影,保護醫病雙方權益' },
+                  { icon: Mic, bg: 'bg-teal-100', color: 'text-teal-600', title: 'AI 語音逐字稿', desc: '看診結束後自動 Whisper 轉文字，可至看診記錄查看與生成週摘要' },
                 ].map(({ icon: Icon, bg, color, title, desc }) => (
                   <div key={title} className="flex items-start gap-3">
                     <div className={`w-6 h-6 ${bg} rounded-full flex items-center justify-center flex-shrink-0 mt-0.5`}>

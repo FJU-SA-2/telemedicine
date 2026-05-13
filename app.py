@@ -29,6 +29,7 @@ from linebot.models import (
 )
 from dotenv import load_dotenv
 import re
+import openai
 load_dotenv()
 os.environ['LINE_CHANNEL_SECRET'] = '284dabf028558ab491a1358ac425d912'
 LINE_CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET')
@@ -79,7 +80,7 @@ ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
 ALLOWED_PHOTO_EXTENSIONS = {'png', 'jpg', 'jpeg'} # 確保允許的格式存在
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB（支援音訊/影片上傳）
 
 # 確保上傳資料夾存在
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -1455,7 +1456,236 @@ def update_doctor_advice(appointment_id):
 
     return jsonify({"message": "Advice updated successfully"}), 200
 
-   
+
+# ─────────────────────────────────────────
+# 語音轉文字 API（OpenAI Whisper）
+# ─────────────────────────────────────────
+@app.route('/api/appointments/<int:appointment_id>/transcribe', methods=['POST'])
+def transcribe_audio(appointment_id):
+    """接收音訊檔案，使用 OpenAI Whisper 進行語音轉文字，並儲存到資料庫"""
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    if session.get('role') != 'doctor':
+        return jsonify({"message": "此功能僅供醫師使用"}), 403
+
+    if 'audio' not in request.files:
+        return jsonify({"message": "未收到音訊檔案"}), 400
+
+    audio_file = request.files['audio']
+    if audio_file.filename == '':
+        return jsonify({"message": "音訊檔案為空"}), 400
+
+    openai_api_key = os.getenv('OPENAI_API_KEY')
+    if not openai_api_key:
+        return jsonify({"message": "伺服器未設定 OPENAI_API_KEY"}), 500
+
+    try:
+        # ⭐ 先將檔案讀成 bytes，避免 SpooledTemporaryFile seek 問題
+        audio_file.stream.seek(0)
+        audio_bytes = audio_file.stream.read()
+
+        if not audio_bytes:
+            return jsonify({"message": "音訊資料為空，請重新錄製"}), 400
+
+        print(f"📤 準備送 Whisper，音訊大小：{len(audio_bytes)} bytes，檔名：{audio_file.filename}")
+
+        client = openai.OpenAI(api_key=openai_api_key)
+
+        # ⭐ 用 (filename, bytes, mimetype) tuple 傳入，確保 SDK 正確識別格式
+        filename = audio_file.filename or 'audio.webm'
+        mimetype = audio_file.mimetype or 'audio/webm'
+
+        transcript_response = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=(filename, audio_bytes, mimetype),
+            language="zh",
+            response_format="text"
+        )
+
+        # ⭐ response_format="text" 時，新版 SDK 直接回傳 str
+        if isinstance(transcript_response, str):
+            transcript_text = transcript_response.strip()
+        else:
+            # 舊版 SDK 可能回傳物件，取 .text
+            transcript_text = getattr(transcript_response, 'text', str(transcript_response)).strip()
+
+        if not transcript_text:
+            print("⚠️ Whisper 回傳空字串，可能音訊無聲或格式不支援")
+            return jsonify({"message": "語音辨識結果為空，請確認麥克風有錄到聲音"}), 400
+
+        print(f"✅ Whisper 轉文字成功：{transcript_text[:80]}...")
+
+        # 儲存逐字稿到資料庫
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE appointments SET transcript = %s WHERE appointment_id = %s
+        """, (transcript_text, appointment_id))
+
+        if cursor.rowcount == 0:
+            print(f"⚠️ 找不到 appointment_id={appointment_id} 或更新無效")
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        print(f"✅ 預約 {appointment_id} 逐字稿已存入 DB（{len(transcript_text)} 字）")
+        return jsonify({"transcript": transcript_text}), 200
+
+    except openai.APIError as e:
+        print(f"❌ OpenAI API 錯誤: {str(e)}")
+        return jsonify({"message": f"語音轉文字失敗: {str(e)}"}), 500
+    except Exception as e:
+        print(f"❌ 語音轉文字失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"message": f"語音轉文字失敗: {str(e)}"}), 500
+
+
+# ─────────────────────────────────────────
+# 取得 / 更新逐字稿 API
+# ─────────────────────────────────────────
+@app.route('/api/appointments/<int:appointment_id>/transcript', methods=['GET'])
+def get_transcript(appointment_id):
+    """取得特定預約的逐字稿"""
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT transcript FROM appointments WHERE appointment_id = %s", (appointment_id,))
+        row = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if not row:
+            return jsonify({"message": "找不到預約"}), 404
+        return jsonify({"transcript": row.get("transcript") or ""}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route('/api/appointments/<int:appointment_id>/transcript', methods=['PUT'])
+def update_transcript(appointment_id):
+    """手動更新逐字稿"""
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    data = request.get_json()
+    transcript = data.get('transcript', '')
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE appointments SET transcript = %s WHERE appointment_id = %s
+        """, (transcript, appointment_id))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"message": "逐字稿已更新"}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+# ─────────────────────────────────────────
+# 週摘要生成 API（OpenAI GPT-4o）
+# ─────────────────────────────────────────
+@app.route('/api/doctor/weekly-summary', methods=['POST'])
+def generate_weekly_summary():
+    """根據一週的看診逐字稿與醫師建議，使用 OpenAI GPT-4o 生成週摘要"""
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    if session.get('role') != 'doctor':
+        return jsonify({"message": "此功能僅供醫師使用"}), 403
+
+    data = request.get_json()
+    week_start = data.get('week_start')
+    week_end = data.get('week_end')
+
+    if not week_start or not week_end:
+        return jsonify({"message": "請提供 week_start 與 week_end 參數"}), 400
+
+    openai_api_key = os.getenv('OPENAI_API_KEY')
+    if not openai_api_key:
+        return jsonify({"message": "伺服器未設定 OPENAI_API_KEY"}), 500
+
+    try:
+        doctor_id = session.get('doctor_id')
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT
+                a.appointment_id,
+                a.appointment_date,
+                a.appointment_time,
+                a.status,
+                a.doctor_advice,
+                a.transcript,
+                p.first_name,
+                p.last_name
+            FROM appointments a
+            INNER JOIN patient p ON a.patient_id = p.patient_id
+            WHERE a.doctor_id = %s
+              AND a.appointment_date BETWEEN %s AND %s
+              AND a.status = '已完成'
+            ORDER BY a.appointment_date, a.appointment_time
+        """, (doctor_id, week_start, week_end))
+        appointments = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        if not appointments:
+            return jsonify({"message": "該週無已完成的看診紀錄", "summary": ""}), 200
+
+        content_lines = []
+        for idx, a in enumerate(appointments, 1):
+            patient_name = f"{a['first_name']}{a['last_name']}"
+            date_str = str(a['appointment_date'])
+            time_str = str(a['appointment_time'])[:5]
+            advice = a.get('doctor_advice') or '（無）'
+            transcript = a.get('transcript') or '（無逐字稿）'
+            content_lines.append(
+                f"【看診 {idx}】{date_str} {time_str} 患者：{patient_name}\n"
+                f"  醫師建議：{advice}\n"
+                f"  看診逐字稿：{transcript}"
+            )
+
+        all_content = "\n\n".join(content_lines)
+        prompt = f"""你是一位專業的醫療助理，請根據以下這一週（{week_start} 至 {week_end}）的看診紀錄，
+為醫師生成一份結構清晰的中文週摘要報告，包含：
+1. 本週看診總覽（患者數、常見主訴）
+2. 各看診重點摘要
+3. 整體觀察與建議
+
+看診紀錄如下：
+{all_content}
+
+請以正式、專業的醫療語氣撰寫，並使用繁體中文。"""
+
+        client = openai.OpenAI(api_key=openai_api_key)
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=2000,
+            temperature=0.4
+        )
+        summary_text = response.choices[0].message.content.strip()
+
+        print(f"✅ 醫師 {doctor_id} 週摘要生成完成（{week_start} ~ {week_end}）")
+        return jsonify({
+            "summary": summary_text,
+            "appointment_count": len(appointments),
+            "week_start": week_start,
+            "week_end": week_end
+        }), 200
+
+    except openai.APIError as e:
+        print(f"❌ OpenAI API 錯誤: {str(e)}")
+        return jsonify({"message": f"摘要生成失敗: {str(e)}"}), 500
+    except Exception as e:
+        print(f"❌ 週摘要生成失敗: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"message": f"摘要生成失敗: {str(e)}"}), 500
+
 
 #醫師註冊檔案上傳
 @app.route("/api/upload-certificate", methods=["POST"])
@@ -4667,50 +4897,110 @@ def remove_mechanism_doctor(doctor_id):
 
 # ── 患者管理 ──────────────────────────────────────────────────────────
 
-@app.route('/api/mechanism/patients', methods=['GET'])
+@app.route('/api/mechanism/patients', methods=['GET', 'POST'])
 @require_mechanism
-def get_mechanism_patients():
-    search = request.args.get('search', '').strip()
-    gender_filter = request.args.get('gender', '')
+def manage_mechanism_patients():
 
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    try:
-        sql = """
-            SELECT
-                p.patient_id, p.first_name, p.last_name, p.gender,
-                p.date_of_birth, p.phone_number, p.smoking_status, p.chronic_disease,
-                MAX(a.appointment_date) AS last_appointment,
-                COUNT(a.appointment_id) AS total_appointments
-            FROM patient p
-            JOIN appointments a ON p.patient_id = a.patient_id
-            JOIN doctor d ON a.doctor_id = d.doctor_id
-            WHERE d.mechanism_id = %s
-        """
-        params = [request.mechanism_id]
+    # ── GET：查詢患者列表 ──
+    if request.method == 'GET':
+        search = request.args.get('search', '').strip()
+        gender_filter = request.args.get('gender', '')
 
-        if search:
-            sql += " AND (p.first_name LIKE %s OR p.last_name LIKE %s OR p.id_number LIKE %s)"
-            like = f'%{search}%'
-            params += [like, like, like]
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        try:
+            sql = """
+                SELECT
+                    p.patient_id, p.first_name, p.last_name, p.gender,
+                    p.date_of_birth, p.phone_number, p.smoking_status, p.chronic_disease,
+                    MAX(a.appointment_date) AS last_appointment,
+                    COUNT(a.appointment_id) AS total_appointments
+                FROM patient p
+                JOIN appointments a ON p.patient_id = a.patient_id
+                JOIN doctor d ON a.doctor_id = d.doctor_id
+                WHERE d.mechanism_id = %s
+            """
+            params = [request.mechanism_id]
 
-        if gender_filter:
-            sql += " AND p.gender = %s"
-            params.append(gender_filter)
+            if search:
+                sql += " AND (p.first_name LIKE %s OR p.last_name LIKE %s OR p.id_number LIKE %s)"
+                like = f'%{search}%'
+                params += [like, like, like]
 
-        sql += " GROUP BY p.patient_id ORDER BY last_appointment DESC"
-        cursor.execute(sql, params)
-        patients = cursor.fetchall()
+            if gender_filter:
+                sql += " AND p.gender = %s"
+                params.append(gender_filter)
 
-        for pt in patients:
-            for key in ['date_of_birth', 'last_appointment']:
-                if pt.get(key):
-                    pt[key] = pt[key].isoformat() if hasattr(pt[key], 'isoformat') else str(pt[key])
+            sql += " GROUP BY p.patient_id ORDER BY last_appointment DESC"
+            cursor.execute(sql, params)
+            patients = cursor.fetchall()
 
-        return jsonify({'patients': patients, 'total': len(patients)})
-    finally:
-        cursor.close()
-        db.close()
+            for pt in patients:
+                for key in ['date_of_birth', 'last_appointment']:
+                    if pt.get(key):
+                        pt[key] = pt[key].isoformat() if hasattr(pt[key], 'isoformat') else str(pt[key])
+
+            return jsonify({'patients': patients, 'total': len(patients)})
+        finally:
+            cursor.close()
+            db.close()
+
+    # ── POST：新增患者 ──
+    if request.method == 'POST':
+        try:
+            data         = request.get_json()
+            print("收到資料:", data)
+            first_name   = data.get("first_name")
+            last_name    = data.get("last_name")
+            gender       = data.get("gender", "male")
+            phone_number = data.get("phone_number", "")
+            email        = data.get("email")
+            password     = data.get("password")
+
+            if not first_name or not last_name:
+                return jsonify({"error": "姓名為必填"}), 400
+            if not email:
+                return jsonify({"error": "Email 為必填"}), 400
+            if not password or len(password) < 10:
+                return jsonify({"error": "密碼至少 10 個字元"}), 400
+
+            conn   = get_db()
+            cursor = conn.cursor(dictionary=True)
+
+            # 1. 檢查 email 是否重複
+            cursor.execute("SELECT user_id FROM users WHERE email = %s", (email,))
+            if cursor.fetchone():
+                cursor.close()
+                conn.close()
+                return jsonify({"error": "此 Email 已被註冊"}), 400
+
+            # 2. 建立 users 帳號
+            username = f"{first_name}{last_name}"
+
+            cursor.execute(
+              "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, 'patient')",
+              (username, email, password)
+                )
+            user_id = cursor.lastrowid
+
+            # 3. 插入 patient 表
+            cursor.execute("""
+                INSERT INTO patient
+                  (user_id, first_name, last_name, gender, phone_number)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (
+                user_id, first_name, last_name, gender, phone_number or None
+            ))
+            patient_id = cursor.lastrowid
+
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return jsonify({"message": "患者新增成功", "patient_id": patient_id}), 201
+
+        except Exception as e:
+            print("新增患者錯誤:", e)
+            return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/mechanism/patients/<int:patient_id>', methods=['GET'])
@@ -4862,6 +5152,66 @@ def add_doctor():
     except Exception as e:
         print("新增醫師錯誤:", e)
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/mechanism/patients", methods=["POST"])
+def add_patient():
+    try:
+        data         = request.get_json()
+        print("收到資料:", data) 
+        first_name   = data.get("last_name")
+        last_name    = data.get("first_name")
+        gender       = data.get("gender", "male")
+        phone_number = data.get("phone_number", "")
+        email        = data.get("email")
+        password_hash     = data.get("password")
+
+        # ── 驗證必填 ──
+        if not first_name or not last_name:
+            return jsonify({"error": "姓名為必填"}), 400
+        if not email:
+            return jsonify({"error": "Email 為必填"}), 400
+        if not password or len(password) < 6:
+            return jsonify({"error": "密碼至少 6 個字元"}), 400
+
+        conn   = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        # 1. 檢查 email 是否重複
+        cursor.execute("SELECT user_id FROM users WHERE email = %s", (email,))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "此 Email 已被註冊"}), 400
+
+        # 2. 建立 users 帳號
+      
+        username  = f"{first_name}{last_name}"
+       
+
+        cursor.execute(
+            "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, 'patient')",
+            (username, email, password_hash )
+        )
+        user_id = cursor.lastrowid
+
+        # 3. 插入 patient 表
+        cursor.execute("""
+            INSERT INTO patient
+              (user_id, first_name, last_name, gender, phone_number)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            user_id, first_name, last_name, gender, phone_number or None
+        ))
+        patient_id = cursor.lastrowid
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"message": "患者新增成功", "patient_id": patient_id}), 201
+
+    except Exception as e:
+        print("新增患者錯誤:", e)
+        return jsonify({"error": str(e)}), 500
 # ─────────────────────────────────────────
 # 機構排班（POST）
 # ─────────────────────────────────────────
@@ -4909,21 +5259,38 @@ def mechanism_save_schedules():
                     WHERE doctor_id = %s AND schedule_date = %s
                 """, (doctor_id, d))
 
-        # 插入新排班
+        # 插入新排班（一筆時段可同時有 online / physical 兩筆）
         for item in schedules:
-            schedule_date = item.get('date')
-            time_slot     = item.get('time_slot')
-            is_available  = item.get('is_available', 1)
+            
+            schedule_date   = item.get('date')
+            time_slot       = item.get('time_slot')
+            is_available    = item.get('is_available', 1)
+            schedule_type   = item.get('schedule_type')  # 'online' | 'physical'
 
             if not schedule_date or not time_slot:
                 continue
+            if schedule_type not in ('online', 'physical'):
+                continue
 
             cursor.execute("""
-                INSERT INTO schedules (doctor_id, schedule_date, time_slot, is_available)
-                VALUES (%s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE is_available = VALUES(is_available)
-            """, (doctor_id, schedule_date, time_slot, is_available))
-
+    INSERT INTO schedules (
+        doctor_id,
+        schedule_date,
+        time_slot,
+        is_available,
+        schedule_type
+    )
+    VALUES (%s, %s, %s, %s, %s)
+    ON DUPLICATE KEY UPDATE
+        is_available = VALUES(is_available),
+        schedule_type = VALUES(schedule_type)
+""", (
+    doctor_id,
+    schedule_date,
+    time_slot,
+    is_available,
+    schedule_type
+))
         db.commit()
         cursor.close()
         db.close()

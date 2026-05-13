@@ -56,7 +56,7 @@ export async function POST(request) {
     const patientName = patientInfo.length > 0 
       ? `${patientInfo[0].first_name}${patientInfo[0].last_name}`
       : '患者';
-
+    //1新增預約
     const [result] = await connection.execute(
       `INSERT INTO appointments 
        (patient_id, doctor_id, appointment_date, appointment_time, status, symptoms, payment_method, amount) 
@@ -65,7 +65,7 @@ export async function POST(request) {
     );
 
     const appointmentId = result.insertId;
-
+    //2把排班時段標為不可用
     await connection.execute(
       `UPDATE schedules 
        SET is_available = '0' 
@@ -86,7 +86,7 @@ export async function POST(request) {
 
 ⚠️ 請在預約時間前 10 分鐘準備好進入視訊會議室
 📱 系統將會提前提醒您`;
-
+    //3寫通知給病患
     await connection.execute(
       `INSERT INTO notifications (patient_id, type, title, message, related_id, is_read)
        VALUES (?, 'appointment_confirmed', '預約成功', ?, ?, FALSE)`,
@@ -100,7 +100,7 @@ export async function POST(request) {
 📝 症狀描述: ${symptoms || '未填寫'}
 
 請準時為患者提供看診服務。`;
-
+    //4寫通知給醫師
     await connection.execute(
       `INSERT INTO doctor_notifications (doctor_id, type, title, message, related_id, is_read)
        VALUES (?, 'new_appointment', '新預約通知', ?, ?, FALSE)`,

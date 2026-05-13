@@ -171,7 +171,7 @@ export default function PatientDetailModal({ patient, onClose }) {
               {/* ===== 完整病歷紀錄區塊 ===== */}
               <div className="bg-white border-2 border-gray-200 rounded-xl p-4 sm:p-5">
                 <h4 className="font-bold text-base sm:text-lg text-gray-800 mb-4 flex items-center gap-2">
-                  <FileText size={20} className="text-green-600 shrink-0" /> 完整病歷紀錄
+                  <FileText size={20} className="text-green-600 shrink-0" /> 平台病歷紀錄
                 </h4>
                 <MedicalHistory patientId={patient.patient_id} />
               </div>
