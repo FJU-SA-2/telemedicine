@@ -48,7 +48,7 @@ CORS(app,
      origins=["http://localhost:3000", "http://127.0.0.1:3000"],
      allow_headers=["Content-Type"],
      expose_headers=["Set-Cookie"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 app.url_map.strict_slashes = False
 
 # Session 設定
@@ -4850,7 +4850,7 @@ def get_mechanism_doctors():
 @require_mechanism
 def update_mechanism_doctor(doctor_id):
     data = request.get_json() or {}
-    allowed = ['specialty', 'phone_number', 'practice_hospital']
+    allowed = ['first_name', 'last_name', 'specialty', 'phone_number', 'gender', 'practice_hospital']
     updates = {k: v for k, v in data.items() if k in allowed}
     if not updates:
         return jsonify({'error': '無可更新的欄位'}), 400

@@ -24,8 +24,8 @@ function EditDoctorModal({ doctor, onClose, onSaved }) {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`/api/doctors/${doctor.doctor_id}`, {
-        method: "PATCH",
+      const res = await fetch(`http://localhost:5000/api/mechanism/doctors/${doctor.doctor_id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
         credentials: "include",
