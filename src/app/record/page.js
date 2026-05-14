@@ -63,6 +63,7 @@ export default function AppointmentRecords() {
         status: item.status,
         cancellation_reason: item.cancellation_reason || null,
         doctor_advice: item.doctor_advice || null,
+        prescription_image: item.prescription_image || "",
         doctor: {
           first_name: item.first_name,
           last_name: item.last_name,
@@ -385,6 +386,20 @@ export default function AppointmentRecords() {
                               <span className="font-semibold">醫生建議：</span>
                               {appointment.doctor_advice}
                             </p>
+                          </div>
+                        )}
+                        {/* 處方箋 */}
+                        {appointment.prescription_image && (
+                          <div className="bg-white border border-gray-200 rounded-xl p-3 mt-3">
+                            <p className="text-sm font-semibold text-gray-700 mb-2">
+                              處方箋
+                            </p>
+
+                            <img
+                              src={`http://127.0.0.1:5000/uploads/prescriptions/${appointment.prescription_image}`}
+                              alt="處方箋"
+                              className="rounded-lg border w-full max-h-96 object-contain"
+                            />
                           </div>
                         )}
                       </div>

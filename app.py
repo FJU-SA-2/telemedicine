@@ -76,6 +76,9 @@ def get_db():
 # 檔案上傳設定
 UPLOAD_FOLDER = 'uploads/certificates'
 PROFILE_PICTURE_FOLDER = 'uploads/profile_pictures'
+# 處方箋圖片資料夾
+PRESCRIPTION_FOLDER = 'uploads/prescriptions'
+
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
 ALLOWED_PHOTO_EXTENSIONS = {'png', 'jpg', 'jpeg'} # 確保允許的格式存在
 
@@ -85,6 +88,7 @@ app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB（支援音訊/影
 # 確保上傳資料夾存在
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(PROFILE_PICTURE_FOLDER, exist_ok=True)
+os.makedirs(PRESCRIPTION_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -1117,7 +1121,67 @@ def update_doctor_profile():
         cursor.close()
         db.close()
 
+@app.route('/api/upload-prescription/<int:appointment_id>', methods=['POST'])
+def upload_prescription(appointment_id):
+    try:
+        if 'prescription' not in request.files:
+            return jsonify({
+                "success": False,
+                "message": "未收到檔案"
+            }), 400
 
+        file = request.files['prescription']
+
+        if file.filename == '':
+            return jsonify({
+                "success": False,
+                "message": "未選擇檔案"
+            }), 400
+
+        if not allowed_photo_file(file.filename):
+            return jsonify({
+                "success": False,
+                "message": "只允許 JPG、JPEG、PNG"
+            }), 400
+
+        filename = secure_filename(
+            f"prescription_{appointment_id}_{int(datetime.now().timestamp())}_{file.filename}"
+        )
+
+        filepath = os.path.join(PRESCRIPTION_FOLDER, filename)
+
+        file.save(filepath)
+
+        db = get_db()
+        cursor = db.cursor()
+
+        cursor.execute("""
+            UPDATE appointments
+            SET prescription_image = %s
+            WHERE appointment_id = %s
+        """, (filename, appointment_id))
+
+        db.commit()
+
+        cursor.close()
+        db.close()
+
+        return jsonify({
+            "success": True,
+            "filename": filename,
+            "image_url": f"/uploads/prescriptions/{filename}"
+        })
+
+    except Exception as e:
+        print(f"❌ 上傳處方箋失敗: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
+    
+@app.route('/uploads/prescriptions/<filename>')
+def get_prescription_image(filename):
+    return send_from_directory('uploads/prescriptions', filename)
 
 @app.route("/uploads/profile_pictures/<filename>", methods=["GET"])
 def get_doctor_photo(filename):
@@ -1251,6 +1315,7 @@ def get_record():
                 a.status,
                 a.cancellation_reason,
                 a.doctor_advice,
+                a.prescription_image,
                 d.first_name,
                 d.last_name,
                 d.specialty as doctor_specialty
@@ -1275,7 +1340,8 @@ def get_record():
                 "doctor_advice": a["doctor_advice"] or "",
                 "first_name": a["first_name"] or "",
                 "last_name": a["last_name"] or "",
-                "doctor_specialty": a["doctor_specialty"] or ""
+                "doctor_specialty": a["doctor_specialty"] or "",
+                "prescription_image": a["prescription_image"] or ""
             })
         
         print(f"✅ 成功取得 {len(formatted_appointments)} 筆病患預約記錄")

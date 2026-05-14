@@ -35,13 +35,52 @@ export default function MechAppointmentRecords() {
         setAppointments([]);
         return;
       }
+      
+      const uploadPrescription = async (appointmentId, file) => {
+  try {
+    const formData = new FormData();
+    formData.append("prescription", file);
 
+    const res = await fetch(
+      `http://127.0.0.1:5000/api/upload-prescription/${appointmentId}`,
+      {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      }
+    );
+
+    const data = await res.json();
+
+        if (data.success) {
+          alert("處方箋上傳成功");
+
+          setAppointments((prev) =>
+            prev.map((a) =>
+              a.appointment_id === appointmentId
+                ? {
+                    ...a,
+                    prescription_image: data.filename,
+                  }
+                : a
+            )
+          );
+        } else {
+          alert(data.message);
+        }
+      } catch (err) {
+        console.error(err);
+        alert("上傳失敗");
+      }
+    };
+    
       const formattedData = data.map((item) => ({
         appointment_id: item.appointment_id,
         appointment_date: item.appointment_date,
         appointment_time: item.appointment_time,
         status: item.status,
         cancellation_reason: item.cancellation_reason || null,
+        prescription_image: item.prescription_image || null,
         doctor_advice: item.doctor_advice || "",
         patient: {
           first_name: item.patient_first_name,
@@ -74,6 +113,44 @@ export default function MechAppointmentRecords() {
         return 'bg-gray-100 text-gray-800 border-gray-300';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
+  const uploadPrescription = async (appointmentId, file) => {
+  try {
+    const formData = new FormData();
+    formData.append("prescription", file);
+
+    const res = await fetch(
+      `/api/upload-prescription/${appointmentId}`,
+      {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      }
+    );
+
+    const data = await res.json();
+
+    if (data.success) {
+        alert("處方箋上傳成功");
+
+        setAppointments((prev) =>
+          prev.map((a) =>
+            a.appointment_id === appointmentId
+              ? {
+                  ...a,
+                  prescription_image: data.image_url,
+                }
+              : a
+          )
+        );
+      } else {
+        alert(data.message);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("上傳失敗");
     }
   };
 
@@ -238,6 +315,34 @@ export default function MechAppointmentRecords() {
                       <div className="flex items-center text-gray-700">
                         <Clock className="w-5 h-5 mr-3 text-blue-600" />
                         <span className="font-medium">{formatTime(appointment.appointment_time)}</span>
+                      </div>
+                      {/* 處方箋上傳 */}
+                      <div className="mt-4 border-t pt-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          上傳處方箋
+                        </label>
+
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            if (e.target.files[0]) {
+                              uploadPrescription(
+                                appointment.appointment_id,
+                                e.target.files[0]
+                              );
+                            }
+                          }}
+                          className="block w-full text-sm text-gray-600"
+                        />
+
+                        {appointment.prescription_image && (
+                          <img
+                            src={`http://127.0.0.1:5000/uploads/prescriptions/${appointment.prescription_image}`}
+                            alt="處方箋"
+                            className="mt-3 rounded-lg border max-h-72 object-contain"
+                          />
+                        )}
                       </div>
                     </div>
 
