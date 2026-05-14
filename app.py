@@ -4963,6 +4963,48 @@ def remove_mechanism_doctor(doctor_id):
         cursor.close()
         db.close()
 
+@app.route('/api/mechanism/doctors/<int:doctor_id>/schedules', methods=['GET'])
+@require_mechanism
+def get_mechanism_doctor_schedules(doctor_id):  # 改這行
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        # 確認該醫師屬於此機構
+        cursor.execute(
+            "SELECT doctor_id FROM doctor WHERE doctor_id = %s AND mechanism_id = %s",
+            (doctor_id, request.mechanism_id)
+        )
+        if not cursor.fetchone():
+            return jsonify({'error': '醫師不存在或無權限'}), 404
+
+        # 取得未來 7 天、is_available=1 的排班
+        cursor.execute(
+            """
+            SELECT schedule_date, time_slot, schedule_type
+            FROM schedules
+            WHERE doctor_id = %s
+              AND is_available = 1
+              AND schedule_date >= CURDATE()
+              AND schedule_date < DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+            ORDER BY schedule_date, time_slot
+            """,
+            (doctor_id,)
+        )
+        rows = cursor.fetchall()
+
+        # 將 date / timedelta 轉為字串，避免 JSON 序列化錯誤
+        for row in rows:
+            if hasattr(row['schedule_date'], 'isoformat'):
+                row['schedule_date'] = row['schedule_date'].isoformat()
+            if hasattr(row['time_slot'], 'total_seconds'):
+                total = int(row['time_slot'].total_seconds())
+                h, m, s = total // 3600, (total % 3600) // 60, total % 60
+                row['time_slot'] = f"{h:02d}:{m:02d}:{s:02d}"
+
+        return jsonify(rows)
+    finally:
+        cursor.close()
+        db.close()
 
 # ── 患者管理 ──────────────────────────────────────────────────────────
 
