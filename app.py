@@ -48,7 +48,7 @@ CORS(app,
      origins=["http://localhost:3000", "http://127.0.0.1:3000"],
      allow_headers=["Content-Type"],
      expose_headers=["Set-Cookie"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 app.url_map.strict_slashes = False
 
 # Session 設定
@@ -2252,7 +2252,8 @@ def get_doctor_schedules(doctor_id):
                     doctor_id,
                     DATE_FORMAT(schedule_date, '%Y-%m-%d') as schedule_date,
                     time_slot,
-                    is_available
+                    is_available,
+                    schedule_type
                 FROM schedules
                 WHERE doctor_id = %s
                 AND schedule_date BETWEEN %s AND %s
@@ -2266,7 +2267,8 @@ def get_doctor_schedules(doctor_id):
                     doctor_id,
                     DATE_FORMAT(schedule_date, '%Y-%m-%d') as schedule_date,
                     time_slot,
-                    is_available
+                    is_available,
+                    schedule_type
                 FROM schedules
                 WHERE doctor_id = %s
                 ORDER BY schedule_date ASC, time_slot ASC
@@ -2303,7 +2305,8 @@ def get_all_schedules():
                 doctor_id,
                 DATE_FORMAT(schedule_date, '%Y-%m-%d') as schedule_date,
                 time_slot,
-                is_available
+                is_available,
+                schedule_type
             FROM schedules
             WHERE is_available = 1
             AND TIMESTAMP(schedule_date, time_slot) >= NOW()
@@ -4913,7 +4916,7 @@ def get_mechanism_doctors():
 @require_mechanism
 def update_mechanism_doctor(doctor_id):
     data = request.get_json() or {}
-    allowed = ['specialty', 'phone_number', 'practice_hospital']
+    allowed = ['first_name', 'last_name', 'specialty', 'phone_number', 'gender', 'practice_hospital']
     updates = {k: v for k, v in data.items() if k in allowed}
     if not updates:
         return jsonify({'error': '無可更新的欄位'}), 400
