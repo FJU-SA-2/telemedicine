@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Calendar, CheckCircle, Clock, X, ArrowRight, ArrowLeft, CreditCard, FileText, Monitor, MapPin } from "lucide-react";
+import { Calendar, CheckCircle, Clock, X, ArrowRight, ArrowLeft, FileText, Monitor, MapPin } from "lucide-react";
 
 // 預約彈窗 - 多步驟流程 (調整順序: 時間 -> 症狀 -> 確認 -> 支付)
 export default function BookingModal({ doctor, schedules, onClose, onConfirm, defaultScheduleType }) {
@@ -9,8 +9,6 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
   const [selectedTime, setSelectedTime] = useState("");
   const [appointmentType] = useState("一般看診");
   const [symptoms, setSymptoms] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
   const [processing, setProcessing] = useState(false);
 
   // ✅ 新增：看診類型選擇，預設帶入來自篩選頁的選擇
@@ -91,13 +89,11 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
     } else if (step === 2 && symptoms.trim()) {
       setStep(3);
     } else if (step === 3) {
-      setStep(4);
-    } else if (step === 4 && paymentMethod) {
       setProcessing(true);
       setTimeout(() => {
         setProcessing(false);
         handleConfirm();
-      }, 2000);
+      }, 1000);
     }
   };
 
@@ -118,7 +114,6 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
       date: selectedDate, 
       time: selectedTime,
       symptoms,
-      paymentMethod,
       // ✅ 新增：把 scheduleType 傳出給 handleBooking
       scheduleType: selectedScheduleType,
     });
@@ -160,7 +155,6 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
               { num: 1, name: "選擇時間", icon: Calendar },
               { num: 2, name: "症狀描述", icon: FileText },
               { num: 3, name: "確認預約", icon: CheckCircle },
-              { num: 4, name: "支付費用", icon: CreditCard }
             ].map((s, idx) => (
               <div key={s.num} className="flex items-center flex-1">
                 <div className="flex flex-col items-center">
@@ -176,7 +170,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
                     {s.num}
                   </span>
                 </div>
-                {idx < 3 && (
+                {idx < 2 && (
                   <div className={`flex-1 h-1 mx-1 sm:mx-2 rounded ${step > s.num ? "bg-blue-500" : "bg-gray-200"}`} />
                 )}
               </div>
@@ -451,12 +445,6 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
                 </div>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-                <p className="text-sm text-yellow-800">
-                  <strong>⚠️ 提醒:</strong>確認後將進入支付頁面,完成支付後預約即生效
-                </p>
-              </div>
-
               <div className="flex gap-3">
                 <button
                   onClick={() => setStep(2)}
@@ -467,104 +455,10 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
                 </button>
                 <button
                   onClick={handleNextStep}
-                  className="flex-1 py-4 rounded-xl font-semibold text-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
-                >
-                  前往支付
-                  <ArrowRight size={20} />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* 步驟 4: 支付 */}
-          {step === 4 && (
-            <div>
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-                <h5 className="font-semibold text-gray-800 mb-2">預約資訊</h5>
-                <div className="space-y-1 text-sm text-gray-600">
-                  <p>• 醫師:{doctorFullName} ({doctor.specialty})</p>
-                  <p>• 時間:{formatDate(selectedDate)} {getDayName(selectedDate)} {selectedTime}</p>
-                  <p>• 看診方式:{selectedScheduleType === "online" ? "線上看診" : "實體看診"}</p>
-                </div>
-              </div>
-
-              <h4 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                <CreditCard size={22} className="text-blue-600" />
-                選擇支付方式
-              </h4>
-
-              <div className="space-y-3 mb-6">
-                {[
-                  { id: "credit", name: "信用卡", desc: "Visa / Mastercard / JCB" },
-                  { id: "line", name: "LINE Pay", desc: "使用 LINE 支付" },
-                  { id: "apple", name: "Apple Pay", desc: "快速安全支付" },
-                  { id: "google", name: "Google Pay", desc: "簡單便捷支付" }
-                ].map(method => (
-                  <button
-                    key={method.id}
-                    onClick={() => setPaymentMethod(method.id)}
-                    className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                      paymentMethod === method.id
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 hover:border-blue-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-semibold text-gray-800">{method.name}</p>
-                        <p className="text-sm text-gray-500">{method.desc}</p>
-                      </div>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        paymentMethod === method.id ? "border-blue-500" : "border-gray-300"
-                      }`}>
-                        {paymentMethod === method.id && (
-                          <div className="w-3 h-3 bg-blue-500 rounded-full" />
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              {paymentMethod === "credit" && (
-                <div className="mb-6">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">信用卡號碼</label>
-                  <input
-                    type="text"
-                    value={cardNumber}
-                    onChange={e => setCardNumber(e.target.value.replace(/\D/g, '').slice(0, 16))}
-                    placeholder="1234 5678 9012 3456"
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
-              )}
-
-              <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-gray-600">掛號費</span>
-                  <span className="font-semibold text-gray-800">NT$250</span>
-                </div>
-                <div className="border-t border-gray-300 my-3" />
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-bold text-gray-800">總計</span>
-                  <span className="text-2xl font-bold text-blue-600">NT$250</span>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setStep(3)}
-                  className="flex-1 py-4 rounded-xl font-semibold text-lg border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
-                >
-                  <ArrowLeft size={20} />
-                  上一步
-                </button>
-                <button
-                  onClick={handleNextStep}
-                  disabled={!paymentMethod || processing}
+                  disabled={processing}
                   className={`flex-1 py-4 rounded-xl font-semibold text-lg transition-all flex items-center justify-center gap-2 ${
-                    paymentMethod && !processing
-                      ? "bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700 shadow-lg" 
+                    !processing
+                      ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 shadow-lg hover:shadow-xl"
                       : "bg-gray-200 text-gray-400 cursor-not-allowed"
                   }`}
                 >
@@ -576,13 +470,14 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
                   ) : (
                     <>
                       <CheckCircle size={20} />
-                      確認支付並預約
+                      確認預約
                     </>
                   )}
                 </button>
               </div>
             </div>
           )}
+
         </div>
       </div>
     </div>
