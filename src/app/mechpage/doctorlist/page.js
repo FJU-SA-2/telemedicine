@@ -274,13 +274,6 @@ function DoctorCard({ doctor, onEdit }) {
         <div className="mt-2">
           <StatusBadge status={doctor.approval_status} />
         </div>
-
-        {/* 諮詢費用（若有） */}
-        {doctor.consultation_fee != null && (
-          <p className="mt-2 text-blue-600 font-bold text-base">
-            NT$ {Number(doctor.consultation_fee).toLocaleString()}
-          </p>
-        )}
       </div>
 
       {/* ── 中段：學經歷 ── */}
