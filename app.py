@@ -30,6 +30,8 @@ from linebot.models import (
 from dotenv import load_dotenv
 import re
 import openai
+from linebot.models import PostbackEvent
+from urllib.parse import parse_qs
 load_dotenv()
 os.environ['LINE_CHANNEL_SECRET'] = '284dabf028558ab491a1358ac425d912'
 LINE_CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET')
@@ -107,6 +109,13 @@ SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
 SENDER_EMAIL = "telemedicine.medongo@gmail.com"
 SENDER_PASSWORD = "nkejdhcftcudzswi"  # ⚠️ 需要使用 Gmail App Password
+
+PREF_TIME_RANGE = {
+    "morning":   ("09:00:00", "12:00:00"),
+    "afternoon": ("14:00:00", "17:00:00"),
+    "evening":   ("18:00:00", "21:30:00"),
+    "any":       ("00:00:00", "23:59:59"),
+}
 
 # 發送驗證郵件
 def send_verification_email(recipient_email, verification_code):
@@ -1387,6 +1396,7 @@ def get_recordoc():
                 a.cancellation_reason,
                 a.status,
                 a.doctor_advice,
+                a.patient_id,
                 p.first_name,
                 p.last_name
             FROM appointments a
@@ -1408,6 +1418,7 @@ def get_recordoc():
                 "status": a["status"] or "",
                 "cancellation_reason": a["cancellation_reason"] or "",
                 "doctor_advice": a["doctor_advice"] or "",
+                "patient_id": a["patient_id"],   # ← 加這行
                 "first_name": a["first_name"] or "",
                 "last_name": a["last_name"] or ""
             })
@@ -5893,6 +5904,560 @@ def internal_line_feedback_received():
         print(f"⚠️ 回報通知推播失敗: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
+@app.route("/api/doctor/followup-request", methods=["POST"])
+def create_followup_request():
+    """
+    醫師按下「建議回診」後呼叫。
+    Body JSON:
+      appointment_id   : int   （原來的看診 ID）
+      patient_id       : int
+      suggested_weeks  : int   （建議幾週後回診）
+      note             : str   （選填備註）
+    """
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return jsonify({"success": False, "message": "請先以醫師身份登入"}), 401
+ 
+    data = request.get_json()
+    appointment_id  = data.get("appointment_id")
+    patient_id      = data.get("patient_id")
+    suggested_weeks = data.get("suggested_weeks", 2)
+    note            = data.get("note", "")
+ 
+    if not appointment_id or not patient_id:
+        return jsonify({"success": False, "message": "缺少必要參數"}), 400
+ 
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        # 取得醫師與患者資訊
+        cursor.execute("""
+            SELECT
+                CONCAT(d.first_name, d.last_name) AS doctor_name,
+                d.specialty,
+                d.doctor_id,
+                CONCAT(p.first_name, p.last_name) AS patient_name
+            FROM appointments a
+            JOIN doctor  d ON a.doctor_id  = d.doctor_id
+            JOIN patient p ON a.patient_id = p.patient_id
+            WHERE a.appointment_id = %s
+        """, (appointment_id,))
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({"success": False, "message": "找不到該預約"}), 404
+ 
+        # 寫入 followup_requests 資料表
+        cursor.execute("""
+            INSERT INTO followup_requests
+                (appointment_id, patient_id, doctor_id, suggested_weeks, note, status, created_at)
+            VALUES (%s, %s, %s, %s, %s, 'pending', NOW())
+        """, (appointment_id, patient_id, row["doctor_id"], suggested_weeks, note))
+        db.commit()
+        followup_request_id = cursor.lastrowid
+ 
+        # 推播 LINE Flex Message
+        from line_notifier import notify_followup_request
+        ok = notify_followup_request(
+            patient_id          = patient_id,
+            patient_name        = row["patient_name"],
+            doctor_name         = row["doctor_name"],
+            specialty           = row["specialty"],
+            suggested_weeks     = suggested_weeks,
+            note                = note,
+            followup_request_id = followup_request_id,
+        )
+ 
+        if not ok:
+            return jsonify({
+                "success": False,
+                "message": "回診請求已建立，但患者尚未綁定 LINE，無法推播通知"
+            }), 200
+ 
+        return jsonify({"success": True, "followup_request_id": followup_request_id}), 200
+ 
+    except Exception as e:
+        db.rollback()
+        print(f"[create_followup_request 錯誤] {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+ 
+ 
+# ─────────────────────────────────────────────────────────────────
+# 2. LINE Postback：患者點選早/午/晚診 → 更新 DB
+#    加在 handle_message 的 @handler.add 區塊旁邊
+# ─────────────────────────────────────────────────────────────────
+ 
+@handler.add(PostbackEvent)
+def handle_postback(event):
+    """處理兩種 postback：
+    1. action=followup_pref  → 患者選偏好時段 → 查排班 → 推播可選時段
+    2. action=followup_slot  → 患者選具體時段 → 寫入待審核 → 通知機構
+    """
+    data_str     = event.postback.data
+    line_user_id = event.source.user_id
+    params       = parse_qs(data_str)
+    action       = params.get("action", [None])[0]
+ 
+    # ──────────────────────────────────────────────────────────────
+    # STEP 1：患者選偏好（早/午/晚/皆可）→ 查空班 → 推播可選時段
+    # ──────────────────────────────────────────────────────────────
+    if action == "followup_pref":
+        request_id = params.get("request_id", [None])[0]
+        pref       = params.get("pref", [None])[0]
+        patient_id = params.get("patient_id", [None])[0]
+ 
+        PREF_LABELS = {
+            "morning":   "早診（09:00–11:30）",
+            "afternoon": "午診（14:00–17:00）",
+            "evening":   "晚診（18:00–21:00）",
+            "any":       "皆可（不限時段）",
+        }
+ 
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        try:
+            # 更新回診請求偏好
+            cursor.execute("""
+                UPDATE followup_requests
+                SET preferred_slot = %s,
+                    status         = 'preference_received',
+                    responded_at   = NOW()
+                WHERE request_id = %s
+            """, (pref, request_id))
+            db.commit()
+ 
+            # 取得這筆回診請求的醫師資料與建議週數
+            cursor.execute("""
+                SELECT
+                    fr.doctor_id,
+                    fr.suggested_weeks,
+                    CONCAT(d.first_name, d.last_name) AS doctor_name,
+                    d.specialty,
+                    CONCAT(p.first_name, p.last_name) AS patient_name,
+                    u.line_user_id
+                FROM followup_requests fr
+                JOIN doctor  d ON fr.doctor_id  = d.doctor_id
+                JOIN patient p ON fr.patient_id = p.patient_id
+                JOIN users   u ON p.user_id     = u.user_id
+                WHERE fr.request_id = %s
+            """, (request_id,))
+            row = cursor.fetchone()
+            if not row:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text="找不到回診資料，請聯絡機構。")
+                )
+                return
+ 
+            # 計算建議回診日期範圍（今天起 suggested_weeks 週內）
+            from datetime import date, timedelta
+            today      = date.today()
+            date_from  = today + timedelta(days=1)
+            date_to    = today + timedelta(weeks=int(row["suggested_weeks"]) + 2)
+ 
+            # 查該醫師在偏好時段的空班
+            time_from, time_to = PREF_TIME_RANGE.get(pref, ("00:00:00", "23:59:59"))
+            cursor.execute("""
+                SELECT schedule_id,
+                    DATE_FORMAT(schedule_date, '%Y-%m-%d') AS date,
+                    TIME_FORMAT(time_slot, '%H:%i')        AS time
+                FROM schedules
+                WHERE doctor_id    = %s
+                  AND is_available = 1
+                  AND schedule_date BETWEEN %s AND %s
+                  AND time_slot    BETWEEN %s AND %s
+                ORDER BY schedule_date ASC, time_slot ASC
+                LIMIT 5
+            """, (row["doctor_id"], date_from, date_to, time_from, time_to))
+            slots = cursor.fetchall()
+ 
+            if not slots:
+                # 該時段沒有空班，告知患者
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(
+                        text=(
+                            f"😔 很抱歉，{row['doctor_name']} 醫師在"
+                            f"「{PREF_LABELS.get(pref, pref)}」目前沒有可預約的時段。\n\n"
+                            f"機構將為您安排其他合適時間，稍後會通知您 📅"
+                        )
+                    )
+                )
+                # 把狀態改成 no_slots_available 讓機構知道要人工處理
+                cursor.execute("""
+                    UPDATE followup_requests
+                    SET status = 'no_slots_available'
+                    WHERE request_id = %s
+                """, (request_id,))
+                db.commit()
+                return
+ 
+            # 先回覆患者「已收到偏好」
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(
+                    text=f"✅ 已收到您的偏好：{PREF_LABELS.get(pref, pref)}\n\n正在為您查詢可預約時段，請稍候..."
+                )
+            )
+ 
+            # 非同步推播可選時段（reply_token 只能用一次，改用 push）
+            from line_notifier import notify_available_slots
+            notify_available_slots(
+                line_id     = row["line_user_id"],
+                patient_name= row["patient_name"],
+                doctor_name = row["doctor_name"],
+                specialty   = row["specialty"],
+                slots       = slots,
+                request_id  = int(request_id),
+            )
+ 
+            # 更新狀態為 slots_sent
+            cursor.execute("""
+                UPDATE followup_requests
+                SET status = 'slots_sent'
+                WHERE request_id = %s
+            """, (request_id,))
+            db.commit()
+ 
+        except Exception as e:
+            print(f"[handle_postback followup_pref 錯誤] {e}")
+            import traceback; traceback.print_exc()
+        finally:
+            cursor.close()
+            db.close()
+ 
+    # ──────────────────────────────────────────────────────────────
+    # STEP 2：患者選具體時段 → 寫入 followup_selected_slots → 待機構審核
+    # ──────────────────────────────────────────────────────────────
+    elif action == "followup_slot":
+        request_id  = params.get("request_id",  [None])[0]
+        schedule_id = params.get("schedule_id", [None])[0]
+        date_str    = params.get("date",        [None])[0]
+        time_str    = params.get("time",        [None])[0]
+ 
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        try:
+            # 取得醫師和患者資訊
+            cursor.execute("""
+                SELECT
+                    fr.doctor_id,
+                    fr.patient_id,
+                    CONCAT(d.first_name, d.last_name) AS doctor_name,
+                    d.specialty,
+                    CONCAT(p.first_name, p.last_name) AS patient_name,
+                    u.line_user_id
+                FROM followup_requests fr
+                JOIN doctor  d ON fr.doctor_id  = d.doctor_id
+                JOIN patient p ON fr.patient_id = p.patient_id
+                JOIN users   u ON p.user_id     = u.user_id
+                WHERE fr.request_id = %s
+            """, (request_id,))
+            row = cursor.fetchone()
+            if not row:
+                line_bot_api.reply_message(
+                    event.reply_token,
+                    TextSendMessage(text="找不到回診資料，請聯絡機構。")
+                )
+                return
+ 
+            # 寫入 followup_selected_slots（待機構審核）
+            cursor.execute("""
+                INSERT INTO followup_selected_slots
+                    (request_id, patient_id, doctor_id, schedule_id,
+                     selected_date, selected_time, status, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, 'pending_review', NOW())
+                ON DUPLICATE KEY UPDATE
+                    schedule_id   = VALUES(schedule_id),
+                    selected_date = VALUES(selected_date),
+                    selected_time = VALUES(selected_time),
+                    status        = 'pending_review',
+                    created_at    = NOW()
+            """, (
+                request_id, row["patient_id"], row["doctor_id"],
+                schedule_id, date_str, time_str
+            ))
+            db.commit()
+ 
+            # 更新回診請求狀態
+            cursor.execute("""
+                UPDATE followup_requests
+                SET status = 'pending_review'
+                WHERE request_id = %s
+            """, (request_id,))
+            db.commit()
+ 
+            # 暫時鎖定該排班（避免被其他人預約，機構審核後才正式轉為預約）
+            cursor.execute("""
+                UPDATE schedules
+                SET is_available = 0
+                WHERE schedule_id = %s
+            """, (schedule_id,))
+            db.commit()
+ 
+            # 回覆患者
+            line_bot_api.reply_message(
+                event.reply_token,
+                TextSendMessage(
+                    text=(
+                        f"✅ 已選擇時段：{date_str} {time_str}\n\n"
+                        f"👨‍⚕️ 醫師：{row['doctor_name']}（{row['specialty']}）\n\n"
+                        f"⏳ 目前狀態：等待機構確認\n"
+                        f"確認後將透過 LINE 通知您，請耐心等候 🙏"
+                    )
+                )
+            )
+ 
+            print(f"[患者選時段] request_id={request_id}, date={date_str}, time={time_str}")
+ 
+        except Exception as e:
+            print(f"[handle_postback followup_slot 錯誤] {e}")
+            import traceback; traceback.print_exc()
+        finally:
+            cursor.close()
+            db.close()
+ 
+ 
+# ─────────────────────────────────────────────────────────────────
+# 3. 機構查看待處理的回診請求（機構後台用）
+# ─────────────────────────────────────────────────────────────────
+@app.route("/api/mechanism/followup-review", methods=["POST"])
+def followup_review():
+    """
+    機構審核患者選的回診時段。
+    Body JSON:
+      request_id : int
+      action     : "approve" | "reject"
+      reject_note: str（拒絕時填原因，選填）
+    """
+    if 'user_id' not in session or session.get('role') != 'mech':
+        return jsonify({"success": False, "message": "需要機構身份"}), 403
+ 
+    data        = request.get_json()
+    request_id  = data.get("request_id")
+    action      = data.get("action")       # approve / reject
+    reject_note = data.get("reject_note", "")
+ 
+    if not request_id or action not in ("approve", "reject"):
+        return jsonify({"success": False, "message": "缺少必要參數"}), 400
+ 
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        # 取得選擇的時段資料
+        cursor.execute("""
+            SELECT
+                fss.*,
+                fr.patient_id,
+                fr.doctor_id,
+                fr.appointment_id AS original_appointment_id,
+                CONCAT(d.first_name, d.last_name) AS doctor_name,
+                d.specialty,
+                CONCAT(p.first_name, p.last_name) AS patient_name,
+                u.line_user_id
+            FROM followup_selected_slots fss
+            JOIN followup_requests fr ON fss.request_id = fr.request_id
+            JOIN doctor  d ON fss.doctor_id  = d.doctor_id
+            JOIN patient p ON fss.patient_id = p.patient_id
+            JOIN users   u ON p.user_id      = u.user_id
+            WHERE fss.request_id = %s
+        """, (request_id,))
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({"success": False, "message": "找不到審核資料"}), 404
+ 
+        if action == "approve":
+            # 建立正式預約
+            cursor.execute("""
+                INSERT INTO appointments
+                    (patient_id, doctor_id, appointment_date, appointment_time,
+                     status, symptoms, payment_method, amount)
+                SELECT
+                    %s, %s, %s, %s,
+                    '已確認',
+                    (SELECT symptoms FROM appointments WHERE appointment_id = %s),
+                    (SELECT payment_method FROM appointments WHERE appointment_id = %s),
+                    (SELECT amount FROM appointments WHERE appointment_id = %s)
+            """, (
+                row["patient_id"], row["doctor_id"],
+                row["selected_date"], row["selected_time"],
+                row["original_appointment_id"],
+                row["original_appointment_id"],
+                row["original_appointment_id"],
+            ))
+            new_appointment_id = cursor.lastrowid
+ 
+            # 更新各表狀態
+            cursor.execute("""
+                UPDATE followup_selected_slots
+                SET status = 'approved', new_appointment_id = %s
+                WHERE request_id = %s
+            """, (new_appointment_id, request_id))
+            cursor.execute("""
+                UPDATE followup_requests
+                SET status = 'scheduled'
+                WHERE request_id = %s
+            """, (request_id,))
+ 
+            db.commit()
+ 
+            # 通知患者預約已確認
+            if row["line_user_id"]:
+                from line_notifier import notify_booking_success
+                notify_booking_success(
+                    patient_id   = row["patient_id"],
+                    patient_name = row["patient_name"],
+                    doctor_name  = row["doctor_name"],
+                    specialty    = row["specialty"],
+                    date_str     = str(row["selected_date"]),
+                    time_str     = str(row["selected_time"])[:5],
+                )
+ 
+            return jsonify({
+                "success": True,
+                "message": f"已確認，新預約 ID：{new_appointment_id}"
+            }), 200
+ 
+        else:  # reject
+            # 釋放排班
+            cursor.execute("""
+                UPDATE schedules
+                SET is_available = 1
+                WHERE schedule_id = %s
+            """, (row["schedule_id"],))
+            cursor.execute("""
+                UPDATE followup_selected_slots
+                SET status = 'rejected'
+                WHERE request_id = %s
+            """, (request_id,))
+            cursor.execute("""
+                UPDATE followup_requests
+                SET status = 'slots_sent'
+                WHERE request_id = %s
+            """, (request_id,))
+            db.commit()
+ 
+            # 通知患者被拒絕，請重新選擇
+            if row["line_user_id"]:
+                msg = (
+                    f"😔 您的回診時段申請（{row['selected_date']} {str(row['selected_time'])[:5]}）"
+                    f"未能通過審核。\n"
+                )
+                if reject_note:
+                    msg += f"原因：{reject_note}\n"
+                msg += "\n請聯絡機構重新安排時段，或等候機構主動通知您 🙏"
+ 
+                from line_notifier import push_line_message
+                push_line_message(row["line_user_id"], msg)
+ 
+            return jsonify({"success": True, "message": "已拒絕並通知患者"}), 200
+ 
+    except Exception as e:
+        db.rollback()
+        print(f"[followup_review 錯誤] {e}")
+        import traceback; traceback.print_exc()
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+@app.route("/api/internal/line/followup-request", methods=["POST"])
+def internal_line_followup_request():
+    try:
+        data = request.get_json()
+        from line_notifier import notify_followup_request
+        ok = notify_followup_request(
+            patient_id          = data["patient_id"],
+            patient_name        = data["patient_name"],
+            doctor_name         = data["doctor_name"],
+            specialty           = data["specialty"],
+            suggested_weeks     = data["suggested_weeks"],
+            note                = data["note"],
+            followup_request_id = data["followup_request_id"],
+        )
+        return jsonify({"ok": ok}), 200
+    except Exception as e:
+        print(f"⚠️ 回診推播失敗: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@app.route("/api/mechanism/followup-requests", methods=["GET"])
+def get_followup_requests():
+    if 'user_id' not in session or session.get('role') != 'mech':
+        return jsonify({"success": False, "message": "需要機構身份"}), 403
+ 
+    status_filter = request.args.get("status", "all")
+
+# 從 DB 查 mechanism_id（不存在 session 裡）
+    db_temp = get_db()
+    cur_temp = db_temp.cursor(dictionary=True)
+    cur_temp.execute("SELECT mechanism_id FROM mechanism WHERE user_id = %s", (session['user_id'],))
+    mech_row = cur_temp.fetchone()
+    cur_temp.close()
+    db_temp.close()
+    if not mech_row:
+        return jsonify({"success": False, "message": "找不到機構資料"}), 404
+    mechanism_id = mech_row['mechanism_id']
+ 
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        where_clause = "WHERE d.mechanism_id = %s"
+        params = [mechanism_id]
+        if status_filter != "all":
+            where_clause += " AND fr.status = %s"
+            params.append(status_filter)
+ 
+        cursor.execute(f"""
+            SELECT
+                fr.request_id,
+                fr.appointment_id,
+                fr.suggested_weeks,
+                fr.note,
+                fr.preferred_slot,
+                fr.status,
+                fr.created_at,
+                fr.responded_at,
+                CONCAT(p.first_name, p.last_name)  AS patient_name,
+                CONCAT(d.first_name, d.last_name)  AS doctor_name,
+                d.specialty,
+                a.appointment_date                 AS last_visit_date,
+                fss.selected_date,
+                TIME_FORMAT(fss.selected_time, '%H:%i') AS selected_time
+            FROM followup_requests fr
+            JOIN patient     p   ON fr.patient_id     = p.patient_id
+            JOIN doctor      d   ON fr.doctor_id      = d.doctor_id
+            JOIN appointments a  ON fr.appointment_id = a.appointment_id
+            LEFT JOIN followup_selected_slots fss ON fss.request_id = fr.request_id
+            {where_clause}
+            ORDER BY
+                CASE fr.status WHEN 'pending_review' THEN 0 ELSE 1 END,
+                fr.created_at DESC
+        """, params)
+        rows = cursor.fetchall()
+ 
+        SLOT_LABELS = {
+            "morning":   "早診（09:00–11:30）",
+            "afternoon": "午診（14:00–17:00）",
+            "evening":   "晚診（18:00–21:00）",
+            "any":       "皆可",
+            None:        "尚未填寫",
+        }
+        for r in rows:
+            r["preferred_slot_label"] = SLOT_LABELS.get(r["preferred_slot"], r["preferred_slot"])
+            r["created_at"]      = str(r["created_at"])
+            r["responded_at"]    = str(r["responded_at"]) if r["responded_at"] else None
+            r["last_visit_date"] = str(r["last_visit_date"])
+            r["selected_date"]   = str(r["selected_date"]) if r["selected_date"] else None
+ 
+        return jsonify({"success": True, "requests": rows}), 200
+ 
+    except Exception as e:
+        print(f"[get_followup_requests 錯誤] {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
 
 if __name__ == "__main__":
     from line_notifier import start_scheduler
