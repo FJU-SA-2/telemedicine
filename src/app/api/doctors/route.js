@@ -10,11 +10,14 @@ const dbConfig = {
 
 export async function GET(request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const practice_hospital = searchParams.get('practice_hospital');
+
     console.log('嘗試連接資料庫...', dbConfig);
     const connection = await mysql.createConnection(dbConfig);
     console.log('資料庫連接成功！');
-    
-    const [rows] = await connection.execute(`
+
+    let query = `
       SELECT 
         d.doctor_id,
         d.first_name,
@@ -23,6 +26,8 @@ export async function GET(request) {
         d.specialty,
         d.practice_hospital,
         d.phone_number,
+        d.approval_status,
+        d.mechanism_id,
         u.email,
         di.education,
         di.description,
@@ -34,17 +39,25 @@ export async function GET(request) {
       JOIN users u ON d.user_id = u.user_id
       LEFT JOIN doctor_info di ON d.doctor_id = di.doctor_id
       WHERE u.role = 'doctor'
-    `);
-    
+    `;
+
+    const params = [];
+
+    if (practice_hospital) {
+      query += ` AND d.practice_hospital = ?`;
+      params.push(practice_hospital);
+    }
+
+    const [rows] = await connection.execute(query, params);
     console.log('查詢結果:', rows);
     await connection.end();
-    
+
     return NextResponse.json(rows);
   } catch (error) {
     console.error('詳細錯誤:', error);
-    return NextResponse.json({ 
-      error: '無法取得醫生資料', 
-      details: error.message 
+    return NextResponse.json({
+      error: '無法取得醫生資料',
+      details: error.message
     }, { status: 500 });
   }
 }

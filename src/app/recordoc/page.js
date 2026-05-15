@@ -97,6 +97,7 @@ export default function AppointmentRecords() {
         appointment_time: item.appointment_time,
         status: item.status,
         cancellation_reason: item.cancellation_reason || null,
+        prescription_image: item.prescription_image || null,
         doctor_advice: item.doctor_advice || "",
         transcript: item.transcript || "",
         patient: { first_name: item.first_name, last_name: item.last_name },
@@ -523,6 +524,21 @@ export default function AppointmentRecords() {
                         </div>
                       )}
 
+                    {/* 處方箋 */}
+                    {appointment.prescription_image && (
+                      <div className="mt-4">
+                        <h4 className="font-semibold text-gray-800 mb-2">
+                          處方箋
+                        </h4>
+
+                        <img
+                          src={`http://127.0.0.1:5000/uploads/prescriptions/${appointment.prescription_image}`}
+                          alt="處方箋"
+                          className="rounded-lg border w-full max-h-96 object-contain"
+                        />
+                      </div>
+                    )}
+                    
                       {appointment.status === '已確認' && (
                         isAppointmentExpired(appointment.appointment_date, appointment.appointment_time) ? (
                           <div className="w-full bg-gray-100 text-gray-500 font-medium py-2 rounded-lg mt-4 text-sm text-center border border-gray-300">

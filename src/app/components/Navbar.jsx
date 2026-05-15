@@ -188,7 +188,7 @@ export default function Navbar({ sidebarOpen = false }) {
             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
 
               {/* 查看方案 */}
-              <Link
+              {/* <Link
                 href={user?.role === "doctor" ? "/docplan" : "/plan"}
                 className="inline-flex items-center gap-2 px-2 sm:px-3 py-2
                            text-[var(--color-azure)] bg-[var(--color-periwinkle)]
@@ -197,7 +197,7 @@ export default function Navbar({ sidebarOpen = false }) {
               >
                 <Gift size={18} className="flex-shrink-0" />
                 <span className="hidden sm:inline text-sm whitespace-nowrap">查看方案</span>
-              </Link>
+              </Link> */}
 
               {/* 通知鈴鐺 */}
               <NotificationBell className="hover:bg-[var(--color-periwinkle)]" user={user} />

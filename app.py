@@ -48,7 +48,7 @@ CORS(app,
      origins=["http://localhost:3000", "http://127.0.0.1:3000"],
      allow_headers=["Content-Type"],
      expose_headers=["Set-Cookie"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 app.url_map.strict_slashes = False
 
 # Session 設定
@@ -76,6 +76,9 @@ def get_db():
 # 檔案上傳設定
 UPLOAD_FOLDER = 'uploads/certificates'
 PROFILE_PICTURE_FOLDER = 'uploads/profile_pictures'
+# 處方箋圖片資料夾
+PRESCRIPTION_FOLDER = 'uploads/prescriptions'
+
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
 ALLOWED_PHOTO_EXTENSIONS = {'png', 'jpg', 'jpeg'} # 確保允許的格式存在
 
@@ -85,6 +88,7 @@ app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB（支援音訊/影
 # 確保上傳資料夾存在
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(PROFILE_PICTURE_FOLDER, exist_ok=True)
+os.makedirs(PRESCRIPTION_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -1117,7 +1121,67 @@ def update_doctor_profile():
         cursor.close()
         db.close()
 
+@app.route('/api/upload-prescription/<int:appointment_id>', methods=['POST'])
+def upload_prescription(appointment_id):
+    try:
+        if 'prescription' not in request.files:
+            return jsonify({
+                "success": False,
+                "message": "未收到檔案"
+            }), 400
 
+        file = request.files['prescription']
+
+        if file.filename == '':
+            return jsonify({
+                "success": False,
+                "message": "未選擇檔案"
+            }), 400
+
+        if not allowed_photo_file(file.filename):
+            return jsonify({
+                "success": False,
+                "message": "只允許 JPG、JPEG、PNG"
+            }), 400
+
+        filename = secure_filename(
+            f"prescription_{appointment_id}_{int(datetime.now().timestamp())}_{file.filename}"
+        )
+
+        filepath = os.path.join(PRESCRIPTION_FOLDER, filename)
+
+        file.save(filepath)
+
+        db = get_db()
+        cursor = db.cursor()
+
+        cursor.execute("""
+            UPDATE appointments
+            SET prescription_image = %s
+            WHERE appointment_id = %s
+        """, (filename, appointment_id))
+
+        db.commit()
+
+        cursor.close()
+        db.close()
+
+        return jsonify({
+            "success": True,
+            "filename": filename,
+            "image_url": f"/uploads/prescriptions/{filename}"
+        })
+
+    except Exception as e:
+        print(f"❌ 上傳處方箋失敗: {str(e)}")
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
+    
+@app.route('/uploads/prescriptions/<filename>')
+def get_prescription_image(filename):
+    return send_from_directory('uploads/prescriptions', filename)
 
 @app.route("/uploads/profile_pictures/<filename>", methods=["GET"])
 def get_doctor_photo(filename):
@@ -1251,6 +1315,7 @@ def get_record():
                 a.status,
                 a.cancellation_reason,
                 a.doctor_advice,
+                a.prescription_image,
                 d.first_name,
                 d.last_name,
                 d.specialty as doctor_specialty
@@ -1275,7 +1340,8 @@ def get_record():
                 "doctor_advice": a["doctor_advice"] or "",
                 "first_name": a["first_name"] or "",
                 "last_name": a["last_name"] or "",
-                "doctor_specialty": a["doctor_specialty"] or ""
+                "doctor_specialty": a["doctor_specialty"] or "",
+                "prescription_image": a["prescription_image"] or ""
             })
         
         print(f"✅ 成功取得 {len(formatted_appointments)} 筆病患預約記錄")
@@ -2186,7 +2252,8 @@ def get_doctor_schedules(doctor_id):
                     doctor_id,
                     DATE_FORMAT(schedule_date, '%Y-%m-%d') as schedule_date,
                     time_slot,
-                    is_available
+                    is_available,
+                    schedule_type
                 FROM schedules
                 WHERE doctor_id = %s
                 AND schedule_date BETWEEN %s AND %s
@@ -2200,7 +2267,8 @@ def get_doctor_schedules(doctor_id):
                     doctor_id,
                     DATE_FORMAT(schedule_date, '%Y-%m-%d') as schedule_date,
                     time_slot,
-                    is_available
+                    is_available,
+                    schedule_type
                 FROM schedules
                 WHERE doctor_id = %s
                 ORDER BY schedule_date ASC, time_slot ASC
@@ -2237,7 +2305,8 @@ def get_all_schedules():
                 doctor_id,
                 DATE_FORMAT(schedule_date, '%Y-%m-%d') as schedule_date,
                 time_slot,
-                is_available
+                is_available,
+                schedule_type
             FROM schedules
             WHERE is_available = 1
             AND TIMESTAMP(schedule_date, time_slot) >= NOW()
@@ -4847,7 +4916,7 @@ def get_mechanism_doctors():
 @require_mechanism
 def update_mechanism_doctor(doctor_id):
     data = request.get_json() or {}
-    allowed = ['specialty', 'phone_number', 'practice_hospital']
+    allowed = ['first_name', 'last_name', 'specialty', 'phone_number', 'gender', 'practice_hospital']
     updates = {k: v for k, v in data.items() if k in allowed}
     if not updates:
         return jsonify({'error': '無可更新的欄位'}), 400
@@ -4894,53 +4963,155 @@ def remove_mechanism_doctor(doctor_id):
         cursor.close()
         db.close()
 
-
-# ── 患者管理 ──────────────────────────────────────────────────────────
-
-@app.route('/api/mechanism/patients', methods=['GET'])
+@app.route('/api/mechanism/doctors/<int:doctor_id>/schedules', methods=['GET'])
 @require_mechanism
-def get_mechanism_patients():
-    search = request.args.get('search', '').strip()
-    gender_filter = request.args.get('gender', '')
-
+def get_mechanism_doctor_schedules(doctor_id):  # 改這行
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:
-        sql = """
-            SELECT
-                p.patient_id, p.first_name, p.last_name, p.gender,
-                p.date_of_birth, p.phone_number, p.smoking_status, p.chronic_disease,
-                MAX(a.appointment_date) AS last_appointment,
-                COUNT(a.appointment_id) AS total_appointments
-            FROM patient p
-            JOIN appointments a ON p.patient_id = a.patient_id
-            JOIN doctor d ON a.doctor_id = d.doctor_id
-            WHERE d.mechanism_id = %s
-        """
-        params = [request.mechanism_id]
+        # 確認該醫師屬於此機構
+        cursor.execute(
+            "SELECT doctor_id FROM doctor WHERE doctor_id = %s AND mechanism_id = %s",
+            (doctor_id, request.mechanism_id)
+        )
+        if not cursor.fetchone():
+            return jsonify({'error': '醫師不存在或無權限'}), 404
 
-        if search:
-            sql += " AND (p.first_name LIKE %s OR p.last_name LIKE %s OR p.id_number LIKE %s)"
-            like = f'%{search}%'
-            params += [like, like, like]
+        # 取得未來 7 天、is_available=1 的排班
+        cursor.execute(
+            """
+            SELECT schedule_date, time_slot, schedule_type
+            FROM schedules
+            WHERE doctor_id = %s
+              AND is_available = 1
+              AND schedule_date >= CURDATE()
+              AND schedule_date < DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+            ORDER BY schedule_date, time_slot
+            """,
+            (doctor_id,)
+        )
+        rows = cursor.fetchall()
 
-        if gender_filter:
-            sql += " AND p.gender = %s"
-            params.append(gender_filter)
+        # 將 date / timedelta 轉為字串，避免 JSON 序列化錯誤
+        for row in rows:
+            if hasattr(row['schedule_date'], 'isoformat'):
+                row['schedule_date'] = row['schedule_date'].isoformat()
+            if hasattr(row['time_slot'], 'total_seconds'):
+                total = int(row['time_slot'].total_seconds())
+                h, m, s = total // 3600, (total % 3600) // 60, total % 60
+                row['time_slot'] = f"{h:02d}:{m:02d}:{s:02d}"
 
-        sql += " GROUP BY p.patient_id ORDER BY last_appointment DESC"
-        cursor.execute(sql, params)
-        patients = cursor.fetchall()
-
-        for pt in patients:
-            for key in ['date_of_birth', 'last_appointment']:
-                if pt.get(key):
-                    pt[key] = pt[key].isoformat() if hasattr(pt[key], 'isoformat') else str(pt[key])
-
-        return jsonify({'patients': patients, 'total': len(patients)})
+        return jsonify(rows)
     finally:
         cursor.close()
         db.close()
+
+# ── 患者管理 ──────────────────────────────────────────────────────────
+
+@app.route('/api/mechanism/patients', methods=['GET', 'POST'])
+@require_mechanism
+def manage_mechanism_patients():
+
+    # ── GET：查詢患者列表 ──
+    if request.method == 'GET':
+        search = request.args.get('search', '').strip()
+        gender_filter = request.args.get('gender', '')
+
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        try:
+            sql = """
+                SELECT
+                    p.patient_id, p.first_name, p.last_name, p.gender,
+                    p.date_of_birth, p.phone_number, p.smoking_status, p.chronic_disease,
+                    MAX(a.appointment_date) AS last_appointment,
+                    COUNT(a.appointment_id) AS total_appointments
+                FROM patient p
+                JOIN appointments a ON p.patient_id = a.patient_id
+                JOIN doctor d ON a.doctor_id = d.doctor_id
+                WHERE d.mechanism_id = %s
+            """
+            params = [request.mechanism_id]
+
+            if search:
+                sql += " AND (p.first_name LIKE %s OR p.last_name LIKE %s OR p.id_number LIKE %s)"
+                like = f'%{search}%'
+                params += [like, like, like]
+
+            if gender_filter:
+                sql += " AND p.gender = %s"
+                params.append(gender_filter)
+
+            sql += " GROUP BY p.patient_id ORDER BY last_appointment DESC"
+            cursor.execute(sql, params)
+            patients = cursor.fetchall()
+
+            for pt in patients:
+                for key in ['date_of_birth', 'last_appointment']:
+                    if pt.get(key):
+                        pt[key] = pt[key].isoformat() if hasattr(pt[key], 'isoformat') else str(pt[key])
+
+            return jsonify({'patients': patients, 'total': len(patients)})
+        finally:
+            cursor.close()
+            db.close()
+
+    # ── POST：新增患者 ──
+    if request.method == 'POST':
+        try:
+            data         = request.get_json()
+            print("收到資料:", data)
+            first_name   = data.get("first_name")
+            last_name    = data.get("last_name")
+            gender       = data.get("gender", "male")
+            phone_number = data.get("phone_number", "")
+            email        = data.get("email")
+            password     = data.get("password")
+
+            if not first_name or not last_name:
+                return jsonify({"error": "姓名為必填"}), 400
+            if not email:
+                return jsonify({"error": "Email 為必填"}), 400
+            if not password or len(password) < 10:
+                return jsonify({"error": "密碼至少 10 個字元"}), 400
+
+            conn   = get_db()
+            cursor = conn.cursor(dictionary=True)
+
+            # 1. 檢查 email 是否重複
+            cursor.execute("SELECT user_id FROM users WHERE email = %s", (email,))
+            if cursor.fetchone():
+                cursor.close()
+                conn.close()
+                return jsonify({"error": "此 Email 已被註冊"}), 400
+
+            # 2. 建立 users 帳號
+            username = f"{first_name}{last_name}"
+
+            cursor.execute(
+              "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, 'patient')",
+              (username, email, password)
+                )
+            user_id = cursor.lastrowid
+
+            # 3. 插入 patient 表
+            cursor.execute("""
+                INSERT INTO patient
+                  (user_id, first_name, last_name, gender, phone_number)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (
+                user_id, first_name, last_name, gender, phone_number or None
+            ))
+            patient_id = cursor.lastrowid
+
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return jsonify({"message": "患者新增成功", "patient_id": patient_id}), 201
+
+        except Exception as e:
+            print("新增患者錯誤:", e)
+            return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/mechanism/patients/<int:patient_id>', methods=['GET'])
@@ -5092,6 +5263,66 @@ def add_doctor():
     except Exception as e:
         print("新增醫師錯誤:", e)
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/mechanism/patients", methods=["POST"])
+def add_patient():
+    try:
+        data         = request.get_json()
+        print("收到資料:", data) 
+        first_name   = data.get("last_name")
+        last_name    = data.get("first_name")
+        gender       = data.get("gender", "male")
+        phone_number = data.get("phone_number", "")
+        email        = data.get("email")
+        password_hash     = data.get("password")
+
+        # ── 驗證必填 ──
+        if not first_name or not last_name:
+            return jsonify({"error": "姓名為必填"}), 400
+        if not email:
+            return jsonify({"error": "Email 為必填"}), 400
+        if not password or len(password) < 6:
+            return jsonify({"error": "密碼至少 6 個字元"}), 400
+
+        conn   = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        # 1. 檢查 email 是否重複
+        cursor.execute("SELECT user_id FROM users WHERE email = %s", (email,))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({"error": "此 Email 已被註冊"}), 400
+
+        # 2. 建立 users 帳號
+      
+        username  = f"{first_name}{last_name}"
+       
+
+        cursor.execute(
+            "INSERT INTO users (username, email, password_hash, role) VALUES (%s, %s, %s, 'patient')",
+            (username, email, password_hash )
+        )
+        user_id = cursor.lastrowid
+
+        # 3. 插入 patient 表
+        cursor.execute("""
+            INSERT INTO patient
+              (user_id, first_name, last_name, gender, phone_number)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            user_id, first_name, last_name, gender, phone_number or None
+        ))
+        patient_id = cursor.lastrowid
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"message": "患者新增成功", "patient_id": patient_id}), 201
+
+    except Exception as e:
+        print("新增患者錯誤:", e)
+        return jsonify({"error": str(e)}), 500
 # ─────────────────────────────────────────
 # 機構排班（POST）
 # ─────────────────────────────────────────
@@ -5139,21 +5370,38 @@ def mechanism_save_schedules():
                     WHERE doctor_id = %s AND schedule_date = %s
                 """, (doctor_id, d))
 
-        # 插入新排班
+        # 插入新排班（一筆時段可同時有 online / physical 兩筆）
         for item in schedules:
-            schedule_date = item.get('date')
-            time_slot     = item.get('time_slot')
-            is_available  = item.get('is_available', 1)
+            
+            schedule_date   = item.get('date')
+            time_slot       = item.get('time_slot')
+            is_available    = item.get('is_available', 1)
+            schedule_type   = item.get('schedule_type')  # 'online' | 'physical'
 
             if not schedule_date or not time_slot:
                 continue
+            if schedule_type not in ('online', 'physical'):
+                continue
 
             cursor.execute("""
-                INSERT INTO schedules (doctor_id, schedule_date, time_slot, is_available)
-                VALUES (%s, %s, %s, %s)
-                ON DUPLICATE KEY UPDATE is_available = VALUES(is_available)
-            """, (doctor_id, schedule_date, time_slot, is_available))
-
+    INSERT INTO schedules (
+        doctor_id,
+        schedule_date,
+        time_slot,
+        is_available,
+        schedule_type
+    )
+    VALUES (%s, %s, %s, %s, %s)
+    ON DUPLICATE KEY UPDATE
+        is_available = VALUES(is_available),
+        schedule_type = VALUES(schedule_type)
+""", (
+    doctor_id,
+    schedule_date,
+    time_slot,
+    is_available,
+    schedule_type
+))
         db.commit()
         cursor.close()
         db.close()

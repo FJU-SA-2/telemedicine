@@ -4,9 +4,9 @@ import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import BookingModal from "./BookingModal";
 import SuccessPage from "./SuccessPage";
-import { Menu, Calendar, Search, Clock, CircleAlert, X } from "lucide-react";
+import { Menu, Calendar, Search, Clock, CircleAlert, X, Monitor, MapPin } from "lucide-react";
 import FloatingChat from "../components/FloatingChat";
-import LockedPageOverlay from "../components/LockedPageOverlay"; // ✅ 新增
+import LockedPageOverlay from "../components/LockedPageOverlay";
 
 
 function BookingPage({ doctors, schedules, setSchedules }) {
@@ -20,6 +20,9 @@ function BookingPage({ doctors, schedules, setSchedules }) {
   const [showAlert, setShowAlert] = useState(true);
   const [selectedHospital, setSelectedHospital] = useState("all");
   const [selectedPaymentType, setSelectedPaymentType] = useState("all");
+  // ✅ 新增：線上/實體篩選，預設不限制（all）
+  const [selectedScheduleType, setSelectedScheduleType] = useState("all");
+
   const availableHospitals = [...new Set(doctors.map(d => d.practice_hospital))].filter(Boolean);
   const paymentTypes = [...new Set(doctors.map(d => d.consultation_type))].filter(Boolean);
 
@@ -28,10 +31,15 @@ function BookingPage({ doctors, schedules, setSchedules }) {
     const slotDateTime = new Date(`${dateStr}T${timeStr}`);
     return slotDateTime < now;
   };
-  //顯示哪些醫師、哪些時段有效
+
+  // ✅ 修改：validSchedules 依 schedule_type 過濾
   const validSchedules = schedules.filter(
-    s => s.is_available === 1 && !isTimeSlotExpired(s.schedule_date, s.time_slot)
+    s =>
+      s.is_available === 1 &&
+      !isTimeSlotExpired(s.schedule_date, s.time_slot) &&
+      (selectedScheduleType === "all" || s.schedule_type === selectedScheduleType)
   );
+
   // 只顯示「有排班的醫師」，沒排班的直接不出現
   const doctorsWithSchedules = new Set(
     validSchedules.map(s => s.doctor_id)
@@ -76,6 +84,16 @@ function BookingPage({ doctors, schedules, setSchedules }) {
     return validSchedules.filter(s => s.doctor_id === doctorId).length;
   };
 
+  // ✅ 新增：判斷某位醫師在目前篩選類型下支援哪些類型（用於卡片標籤顯示）
+  const getDoctorScheduleTypes = (doctorId) => {
+    // 不受 selectedScheduleType 影響，直接看全部有效排班
+    const allValid = schedules.filter(
+      s => s.is_available === 1 && !isTimeSlotExpired(s.schedule_date, s.time_slot)
+    );
+    const types = [...new Set(allValid.filter(s => s.doctor_id === doctorId).map(s => s.schedule_type))];
+    return types;
+  };
+
   const handleBooking = async (bookingData) => {
     try {
       const meRes = await fetch("/api/me");
@@ -104,6 +122,8 @@ function BookingPage({ doctors, schedules, setSchedules }) {
           symptoms: bookingData.symptoms,
           payment_method: bookingData.paymentMethod,
           appointment_type: bookingData.appointmentType,
+          // ✅ 新增：傳遞 schedule_type 給後端
+          schedule_type: bookingData.scheduleType,
           amount: 250
         }),
         credentials: "include",
@@ -145,9 +165,55 @@ function BookingPage({ doctors, schedules, setSchedules }) {
     setSelectedDoctor(null);
   };
 
+  const handleClearAll = () => {
+    setSelectedSpecialty("all");
+    setSelectedDate("");
+    setSearchName("");
+    setSelectedHospital("all");
+    setSelectedPaymentType("all");
+    setSelectedScheduleType("all");
+  };
+
+  const hasActiveFilter =
+    selectedSpecialty !== "all" ||
+    selectedDate ||
+    searchName ||
+    selectedHospital !== "all" ||
+    selectedPaymentType !== "all" ||
+    selectedScheduleType !== "all";
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+
+        {/* ✅ 新增：線上/實體切換 Tab（放在最上方，最顯眼） */}
+        <div className="mb-4">
+          <label className="block text-xs text-gray-500 mb-2 ml-0.5">看診方式</label>
+          <div className="flex gap-2">
+            {[
+              { value: "all", label: "全部", icon: null },
+              { value: "online", label: "線上看診", icon: Monitor },
+              { value: "physical", label: "實體看診", icon: MapPin },
+            ].map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                onClick={() => setSelectedScheduleType(value)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-sm font-semibold border-2 transition-all ${
+                  selectedScheduleType === value
+                    ? value === "online"
+                      ? "border-blue-500 bg-blue-500 text-white shadow-md"
+                      : value === "physical"
+                      ? "border-green-500 bg-green-500 text-white shadow-md"
+                      : "border-gray-700 bg-gray-700 text-white shadow-md"
+                    : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-gray-100"
+                }`}
+              >
+                {Icon && <Icon size={15} />}
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* 搜尋欄 */}
         <div className="relative mb-3">
@@ -224,16 +290,16 @@ function BookingPage({ doctors, schedules, setSchedules }) {
         </div>
 
         {/* 清除篩選 */}
-        {(selectedSpecialty !== "all" || selectedDate || searchName || selectedHospital !== "all" || selectedPaymentType !== "all") && (
+        {hasActiveFilter && (
           <button
-            onClick={() => { setSelectedSpecialty("all"); setSelectedDate(""); setSearchName(""); setSelectedHospital("all"); setSelectedPaymentType("all"); }}
+            onClick={handleClearAll}
             className="mt-3 flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition"
           >
             <X size={12} /> 清除所有篩選
           </button>
         )}
       </div>
-      
+
       {showAlert && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 relative">
           <button
@@ -262,16 +328,14 @@ function BookingPage({ doctors, schedules, setSchedules }) {
       <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-800">
+            {selectedScheduleType === "online" && <span className="text-blue-600 mr-1">線上</span>}
+            {selectedScheduleType === "physical" && <span className="text-green-600 mr-1">實體</span>}
             可預約醫師
             <span className="ml-2 text-blue-600">({filteredDoctors.length})</span>
           </h2>
-          {(selectedSpecialty !== "all" || selectedDate || searchName) && (
+          {hasActiveFilter && (
             <button
-              onClick={() => {
-                setSelectedSpecialty("all");
-                setSelectedDate("");
-                setSearchName("");
-              }}
+              onClick={handleClearAll}
               className="text-sm text-blue-600 hover:text-blue-700 font-medium"
             >
               清除篩選
@@ -290,6 +354,7 @@ function BookingPage({ doctors, schedules, setSchedules }) {
             {filteredDoctors.map(doctor => {
               const availableDates = getDoctorAvailableDates(doctor.doctor_id);
               const availableSlots = getDoctorAvailableSlots(doctor.doctor_id);
+              const scheduleTypes = getDoctorScheduleTypes(doctor.doctor_id);
 
               return (
                 <div
@@ -308,6 +373,20 @@ function BookingPage({ doctors, schedules, setSchedules }) {
                       <p className="text-sm text-blue-600 font-semibold">{doctor.specialty}</p>
                       <p className="text-xs text-gray-500 mt-1 truncate">{doctor.practice_hospital}</p>
                     </div>
+                  </div>
+
+                  {/* ✅ 新增：看診方式標籤 */}
+                  <div className="flex gap-1.5 mb-3">
+                    {scheduleTypes.includes("online") && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                        <Monitor size={11} /> 線上
+                      </span>
+                    )}
+                    {scheduleTypes.includes("physical") && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                        <MapPin size={11} /> 實體
+                      </span>
+                    )}
                   </div>
 
                   <div className="space-y-2 mb-4">
@@ -335,6 +414,8 @@ function BookingPage({ doctors, schedules, setSchedules }) {
         <BookingModal
           doctor={selectedDoctor}
           schedules={schedules}
+          // ✅ 新增：把目前選擇的看診類型傳進 Modal，方便預設篩選
+          defaultScheduleType={selectedScheduleType === "all" ? null : selectedScheduleType}
           onClose={() => { setShowModal(false); setSelectedDoctor(null); }}
           onConfirm={handleBooking}
         />
@@ -356,11 +437,9 @@ export default function HomePage() {
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // ✅ 新增：登入狀態管理
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // ✅ 新增：檢查登入狀態
   useEffect(() => {
     async function checkAuth() {
       try {
@@ -395,7 +474,9 @@ export default function HomePage() {
           doctor_id: Number(s.doctor_id),
           schedule_date: s.schedule_date.split("T")[0],
           time_slot: s.time_slot.substring(0, 5),
-          is_available: Number(s.is_available)
+          is_available: Number(s.is_available),
+          // 修正：保留原始值，若 API 未回傳則預設 null（不強制 online）
+          schedule_type: s.schedule_type || null
         }));
 
         setSchedules(formattedSchedules);
@@ -409,7 +490,6 @@ export default function HomePage() {
     fetchData();
   }, []);
 
-  // ✅ 修改：只在認證檢查時顯示載入
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">

@@ -393,7 +393,7 @@ const handleSave = async () => {
           登出
         </button>
           </div><br></br> */}
-      <div className="p-4 sm:p-5 rounded-xl border border-indigo-300 bg-indigo-50 mb-6">
+      {/* <div className="p-4 sm:p-5 rounded-xl border border-indigo-300 bg-indigo-50 mb-6">
   <h2 className="font-bold text-indigo-700 text-lg flex items-center gap-2">
     🚀 免費試用期
   </h2>
@@ -421,7 +421,7 @@ const handleSave = async () => {
   >
     查看方案 & 升級
   </button>
-</div>
+</div> */}
 
       
 
