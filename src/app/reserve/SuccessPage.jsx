@@ -42,7 +42,7 @@ export default function SuccessPage({ bookingInfo, onClose }) {
               <div>
                 <h3 className="font-bold text-green-900 mb-1 text-sm sm:text-base">預約狀態：已確認</h3>
                 <p className="text-xs sm:text-sm text-green-800">
-                  您的預約已成功確認並完成支付！請在預約時間前 <strong>10 分鐘</strong>登入系統準備視訊就診。
+                  您的預約已成功確認！將於 <strong>3 日內</strong>進行扣款。
                 </p>
               </div>
             </div>
@@ -87,14 +87,6 @@ export default function SuccessPage({ bookingInfo, onClose }) {
                   </div>
                   <p className="font-bold text-gray-800 text-lg sm:text-xl">{bookingInfo.time}</p>
                 </div>
-              </div>
-
-              <div className="bg-green-50 border border-green-200 rounded-lg p-2.5 sm:p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <CreditCard size={14} className="text-green-600" />
-                  <p className="text-xs sm:text-sm text-green-700 font-semibold">支付狀態</p>
-                </div>
-                <p className="font-bold text-green-600 text-sm sm:text-base">已支付 NT$ 250</p>
               </div>
 
               <div className="bg-white border border-gray-200 rounded-lg p-2.5 sm:p-3">

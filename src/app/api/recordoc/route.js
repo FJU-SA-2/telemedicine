@@ -1,5 +1,4 @@
 // 存放路徑: src/app/api/recordoc/route.js
-// ⭐ 與原本相比只加了 a.transcript 這個欄位
 
 import { NextResponse } from "next/server";
 import mysql from "mysql2/promise";
@@ -36,6 +35,7 @@ export async function GET(request) {
     const [appointments] = await connection.execute(
       `SELECT 
         a.appointment_id,
+        a.patient_id,
         DATE_FORMAT(a.appointment_date, '%Y-%m-%d') as appointment_date,
         a.appointment_time,
         a.cancellation_reason,
@@ -54,6 +54,7 @@ export async function GET(request) {
 
     const formatted = appointments.map((a) => ({
       appointment_id: a.appointment_id,
+      patient_id: a.patient_id,
       appointment_date: a.appointment_date || "",
       appointment_time: a.appointment_time
         ? (typeof a.appointment_time === 'string'
@@ -63,11 +64,10 @@ export async function GET(request) {
       status: a.status || "",
       cancellation_reason: a.cancellation_reason || "",
       doctor_advice: a.doctor_advice || "",
-      transcript: a.transcript || "",          // ⭐ 新增
+      transcript: a.transcript || "",
       prescription_image: a.prescription_image || "",
       first_name: a.first_name || "",
       last_name: a.last_name || "",
-      
     }));
 
     return NextResponse.json(formatted, { status: 200 });
