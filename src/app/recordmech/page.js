@@ -80,7 +80,7 @@ export default function MechAppointmentRecords() {
         appointment_time: item.appointment_time,
         status: item.status,
         cancellation_reason: item.cancellation_reason || null,
-        prescription_image: item.prescription_image || null,
+        prescription_image: item.prescription_image || "",
         doctor_advice: item.doctor_advice || "",
         patient: {
           first_name: item.patient_first_name,
@@ -318,31 +318,136 @@ export default function MechAppointmentRecords() {
                       </div>
                       {/* 處方箋上傳 */}
                       <div className="mt-4 border-t pt-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          上傳處方箋
-                        </label>
+                        
+                        {/* 處方箋區 */}
+                        <div className="mt-5">
+                          <p className="text-sm font-semibold text-gray-700 mb-3">
+                            處方箋檔案
+                          </p>
 
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            if (e.target.files[0]) {
-                              uploadPrescription(
-                                appointment.appointment_id,
-                                e.target.files[0]
-                              );
-                            }
-                          }}
-                          className="block w-full text-sm text-gray-600"
-                        />
+                          {appointment.prescription_image ? (
+                            <div className="border border-gray-200 rounded-2xl p-4 bg-gray-50">
+                              
+                              {/* 圖片預覽 */}
+                              <div className="flex justify-center mb-4">
+                                <img
+                                  src={`http://127.0.0.1:5000/uploads/prescriptions/${appointment.prescription_image}`}
+                                  alt="處方箋"
+                                  className="max-h-80 rounded-xl border shadow-sm object-contain cursor-pointer hover:scale-[1.01] transition"
+                                  onClick={() =>
+                                    window.open(
+                                      `http://127.0.0.1:5000/uploads/prescriptions/${appointment.prescription_image}`,
+                                      "_blank"
+                                    )
+                                  }
+                                />
+                              </div>
 
-                        {appointment.prescription_image && (
-                          <img
-                            src={`http://127.0.0.1:5000/uploads/prescriptions/${appointment.prescription_image}`}
-                            alt="處方箋"
-                            className="mt-3 rounded-lg border max-h-72 object-contain"
-                          />
-                        )}
+                              {/* 檔名 */}
+                              <p className="text-xs text-gray-500 text-center mb-4 break-all">
+                                {appointment.prescription_image}
+                              </p>
+
+                              {/* 功能按鈕 */}
+                              <div className="flex flex-wrap gap-2 justify-center">
+
+                                {/* 查看 */}
+                                <button
+                                  onClick={() =>
+                                    window.open(
+                                      `http://127.0.0.1:5000/uploads/prescriptions/${appointment.prescription_image}`,
+                                      "_blank"
+                                    )
+                                  }
+                                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition"
+                                >
+                                  查看
+                                </button>
+
+                                {/* 下載 */}
+                                <a
+                                  href={`http://127.0.0.1:5000/uploads/prescriptions/${appointment.prescription_image}`}
+                                  download
+                                  className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm transition"
+                                >
+                                  下載
+                                </a>
+
+                                {/* 更換 */}
+                                <label className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg text-sm transition cursor-pointer">
+                                  更換
+                                  <input
+                                    type="file"
+                                    accept="image/*,.pdf"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      if (e.target.files[0]) {
+                                        uploadPrescription(
+                                          appointment.appointment_id,
+                                          e.target.files[0]
+                                        );
+                                      }
+                                    }}
+                                  />
+                                </label>
+
+                                {/* 刪除 */}
+                                <button
+                                  onClick={() =>
+                                    deletePrescription(
+                                      appointment.appointment_id
+                                    )
+                                  }
+                                  className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm transition"
+                                >
+                                  刪除
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            /* 尚未上傳 */
+                            <label className="flex flex-col items-center justify-center border-2 border-dashed border-blue-300 rounded-2xl p-10 bg-blue-50 hover:bg-blue-100 transition cursor-pointer">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="w-10 h-10 text-blue-500 mb-3"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                                />
+                              </svg>
+
+                              <p className="text-sm font-medium text-blue-700">
+                                點擊上傳處方箋
+                              </p>
+
+                              <p className="text-xs text-blue-500 mt-1">
+                                支援 JPG、PNG、PDF
+                              </p>
+
+                              <input
+                                type="file"
+                                accept="image/*,.pdf"
+                                className="hidden"
+                                onChange={(e) => {
+                                  if (e.target.files[0]) {
+                                    uploadPrescription(
+                                      appointment.appointment_id,
+                                      e.target.files[0]
+                                    );
+                                  }
+                                }}
+                              />
+                            </label>
+                          )}
+                        </div>
+
+                        
                       </div>
                     </div>
 

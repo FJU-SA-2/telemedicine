@@ -1121,9 +1121,20 @@ def update_doctor_profile():
         cursor.close()
         db.close()
 
+# 處方箋上傳資料夾
+PRESCRIPTION_FOLDER = os.path.join(
+    app.root_path,
+    'uploads',
+    'prescriptions'
+)
+
+os.makedirs(PRESCRIPTION_FOLDER, exist_ok=True)
+
+
 @app.route('/api/upload-prescription/<int:appointment_id>', methods=['POST'])
 def upload_prescription(appointment_id):
     try:
+
         if 'prescription' not in request.files:
             return jsonify({
                 "success": False,
@@ -1138,23 +1149,59 @@ def upload_prescription(appointment_id):
                 "message": "未選擇檔案"
             }), 400
 
-        if not allowed_photo_file(file.filename):
+        # 允許格式
+        allowed_extensions = {
+            'png',
+            'jpg',
+            'jpeg',
+            'pdf'
+        }
+
+        extension = file.filename.rsplit('.', 1)[1].lower()
+
+        if extension not in allowed_extensions:
             return jsonify({
                 "success": False,
-                "message": "只允許 JPG、JPEG、PNG"
+                "message": "僅支援 JPG、PNG、PDF"
             }), 400
 
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        # 先查舊檔案
+        cursor.execute("""
+            SELECT prescription_image
+            FROM appointments
+            WHERE appointment_id = %s
+        """, (appointment_id,))
+
+        old_data = cursor.fetchone()
+
+        # 如果舊檔案存在 → 刪除
+        if old_data and old_data['prescription_image']:
+
+            old_file_path = os.path.join(
+                PRESCRIPTION_FOLDER,
+                old_data['prescription_image']
+            )
+
+            if os.path.exists(old_file_path):
+                os.remove(old_file_path)
+
+        # 新檔名
         filename = secure_filename(
-            f"prescription_{appointment_id}_{int(datetime.now().timestamp())}_{file.filename}"
+            f"prescription_{appointment_id}.{extension}"
         )
 
-        filepath = os.path.join(PRESCRIPTION_FOLDER, filename)
+        filepath = os.path.join(
+            PRESCRIPTION_FOLDER,
+            filename
+        )
 
+        # 儲存檔案
         file.save(filepath)
 
-        db = get_db()
-        cursor = db.cursor()
-
+        # 更新 DB
         cursor.execute("""
             UPDATE appointments
             SET prescription_image = %s
@@ -1168,26 +1215,82 @@ def upload_prescription(appointment_id):
 
         return jsonify({
             "success": True,
-            "filename": filename,
-            "image_url": f"/uploads/prescriptions/{filename}"
+            "filename": filename
         })
 
     except Exception as e:
         print(f"❌ 上傳處方箋失敗: {str(e)}")
+
+        import traceback
+        traceback.print_exc()
+
         return jsonify({
             "success": False,
             "message": str(e)
         }), 500
     
 @app.route('/uploads/prescriptions/<filename>')
-def get_prescription_image(filename):
-    return send_from_directory('uploads/prescriptions', filename)
+def uploaded_prescription(filename):
+    return send_from_directory(
+        PRESCRIPTION_FOLDER,
+        filename
+    )
+
+@app.route('/api/delete-prescription/<int:appointment_id>', methods=['DELETE'])
+def delete_prescription(appointment_id):
+
+    try:
+
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT prescription_image
+            FROM appointments
+            WHERE appointment_id = %s
+        """, (appointment_id,))
+
+        data = cursor.fetchone()
+
+        if data and data['prescription_image']:
+
+            filepath = os.path.join(
+                PRESCRIPTION_FOLDER,
+                data['prescription_image']
+            )
+
+            if os.path.exists(filepath):
+                os.remove(filepath)
+
+        cursor.execute("""
+            UPDATE appointments
+            SET prescription_image = NULL
+            WHERE appointment_id = %s
+        """, (appointment_id,))
+
+        db.commit()
+
+        cursor.close()
+        db.close()
+
+        return jsonify({
+            "success": True
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        }), 500
 
 @app.route("/uploads/profile_pictures/<filename>", methods=["GET"])
 def get_doctor_photo(filename):
-    """從 profile_pictures 資料夾提供醫師照片檔案"""
-    return send_from_directory(PROFILE_PICTURE_FOLDER, filename)
-# app.py (新增 /api/doctor/upload-photo 路由)
+
+    return send_from_directory(
+        PROFILE_PICTURE_FOLDER,
+        filename
+    )
 
 @app.route("/api/doctor/upload-photo", methods=["POST"])
 def upload_doctor_photo():
@@ -1338,6 +1441,7 @@ def get_record():
                 "status": a["status"] or "",
                 "cancellation_reason": a["cancellation_reason"] or "",
                 "doctor_advice": a["doctor_advice"] or "",
+                "prescription_image": a["prescription_image"] or "",
                 "first_name": a["first_name"] or "",
                 "last_name": a["last_name"] or "",
                 "doctor_specialty": a["doctor_specialty"] or "",
@@ -1387,6 +1491,7 @@ def get_recordoc():
                 a.cancellation_reason,
                 a.status,
                 a.doctor_advice,
+                a.prescription_image,
                 p.first_name,
                 p.last_name
             FROM appointments a
@@ -1408,6 +1513,7 @@ def get_recordoc():
                 "status": a["status"] or "",
                 "cancellation_reason": a["cancellation_reason"] or "",
                 "doctor_advice": a["doctor_advice"] or "",
+                "prescription_image": a["prescription_image"] or "",
                 "first_name": a["first_name"] or "",
                 "last_name": a["last_name"] or ""
             })
@@ -1460,6 +1566,7 @@ def get_recordmech():
                 a.cancellation_reason,
                 a.status,
                 a.doctor_advice,
+                a.prescription_image,
                 p.first_name  AS patient_first_name,
                 p.last_name   AS patient_last_name,
                 d.first_name  AS doctor_first_name,
@@ -1485,6 +1592,7 @@ def get_recordmech():
                 "status":             a["status"] or "",
                 "cancellation_reason": a["cancellation_reason"] or "",
                 "doctor_advice":      a["doctor_advice"] or "",
+                "prescription_image": a["prescription_image"] or "",
                 "patient_first_name": a["patient_first_name"] or "",
                 "patient_last_name":  a["patient_last_name"] or "",
                 "doctor_first_name":  a["doctor_first_name"] or "",
@@ -1684,6 +1792,7 @@ def generate_weekly_summary():
                 a.appointment_time,
                 a.status,
                 a.doctor_advice,
+                a.prescription_image,
                 a.transcript,
                 p.first_name,
                 p.last_name
@@ -4114,6 +4223,7 @@ def get_patient_medical_records(patient_id):
                 a.symptoms,
                 a.consultation_notes,
                 a.doctor_advice,
+                a.prescription_image,
                 a.recording_url,
                 a.recording_duration,
                 d.doctor_id,
@@ -5109,6 +5219,7 @@ def get_mechanism_patient_appointments(patient_id):
             SELECT
                 a.appointment_id, a.appointment_date, a.appointment_time,
                 a.status, a.symptoms, a.consultation_notes, a.doctor_advice,
+                a.prescription_image,
                 a.amount, a.payment_method,
                 CONCAT(d.first_name, d.last_name) AS doctor_name,
                 d.specialty
@@ -5850,7 +5961,6 @@ def internal_line_feedback_received():
     except Exception as e:
         print(f"⚠️ 回報通知推播失敗: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
-
 
 if __name__ == "__main__":
     from line_notifier import start_scheduler
