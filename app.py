@@ -765,77 +765,126 @@ def verify_code():
 @app.route("/api/login", methods=["POST"])
 def login_user():
     data = request.get_json()
-    email = data.get("email")
-    password = data.get("password")
+    email    = data.get("email", "").strip()
+    password = data.get("password", "").strip()   # mech 用
+    id_number = data.get("id_number", "").strip()  # patient 用
+    role_hint = data.get("role", "")               # 前端傳入：'patient' | 'mech'
 
-    if not email or not password:
-        return jsonify({"message": "請輸入帳號與密碼"}), 400
+    if not email:
+        return jsonify({"success": False, "message": "請輸入電子信箱"}), 400
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
 
     try:
+        # ── 查 users 表 ──────────────────────────────────────────────
         cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
         user = cursor.fetchone()
 
         if not user:
-            return jsonify({"message": "帳號不存在"}), 401
+            return jsonify({"success": False, "message": "帳號不存在"}), 401
 
-        if user["password_hash"] != password:
-            return jsonify({"message": "密碼錯誤"}), 401
-
-        role = user["role"]
+        role    = user["role"]
         user_id = user["user_id"]
 
-        patient_id = None
-        doctor_id = None  
-        first_name = ""
-        last_name = ""
+        # ── 角色與前端 hint 不符時拒絕，避免越權 ─────────────────────
+        # patient 入口只允許 patient；mech 入口允許 mech 與 doctor（共用密碼登入）
+        if role_hint == "patient" and role != "patient":
+            return jsonify({"success": False, "message": "此帳號非病患身份，請選擇正確的登入方式"}), 403
+
+        # ── 依角色驗證憑證 ────────────────────────────────────────────
+        patient_id  = None
+        doctor_id   = None
+        first_name  = ""
+        last_name   = ""
 
         if role == "patient":
-            cursor.execute("SELECT * FROM patient WHERE user_id = %s", (user_id,))
+            # 複診病患：以 id_number（patient 表）作為憑證
+            if not id_number:
+                return jsonify({"success": False, "message": "請輸入身份證字號"}), 400
+
+            cursor.execute(
+                "SELECT * FROM patient WHERE user_id = %s", (user_id,)
+            )
             profile = cursor.fetchone()
-            if profile:
-                patient_id = profile.get("patient_id")
-                first_name = profile.get("first_name", "")
-                last_name = profile.get("last_name", "")
-        
+
+            if not profile:
+                return jsonify({"success": False, "message": "找不到病患資料"}), 401
+
+            if profile.get("id_number", "") != id_number:
+                return jsonify({"success": False, "message": "身份證字號錯誤"}), 401
+
+            patient_id = profile.get("patient_id")
+            first_name = profile.get("first_name", "")
+            last_name  = profile.get("last_name", "")
+
+        elif role == "mech":
+            # 機構：以 password_hash（users 表）驗證
+            if not password:
+                return jsonify({"success": False, "message": "請輸入密碼"}), 400
+
+            # 若日後改用 bcrypt，換成 bcrypt.check_password_hash(user["password_hash"], password)
+            if user["password_hash"] != password:
+                return jsonify({"success": False, "message": "密碼錯誤"}), 401
+
+            # 讀取機構名稱（可選）
+            cursor.execute(
+                "SELECT mechanism_id, mechanism_name FROM mechanism WHERE user_id = %s", (user_id,)
+            )
+            mech = cursor.fetchone()
+            if mech:
+                first_name = mech.get("mechanism_name", "")
+
         elif role == "doctor":
-            cursor.execute("SELECT * FROM doctor WHERE user_id = %s", (user_id,))
+            # 醫師保留原有 password 驗證邏輯
+            if not password:
+                return jsonify({"success": False, "message": "請輸入密碼"}), 400
+
+            if user["password_hash"] != password:
+                return jsonify({"success": False, "message": "密碼錯誤"}), 401
+
+            cursor.execute(
+                "SELECT * FROM doctor WHERE user_id = %s", (user_id,)
+            )
             profile = cursor.fetchone()
             if profile:
-                doctor_id = profile.get("doctor_id")
+                doctor_id  = profile.get("doctor_id")
                 first_name = profile.get("first_name", "")
-                last_name = profile.get("last_name", "")
+                last_name  = profile.get("last_name", "")
 
-        # ✅ 新增這兩行
-        session.permanent = True  # 設定為永久 session
-        app.permanent_session_lifetime = timedelta(days=7)  # 設定 7 天有效期
-        
-        # 儲存到 session
-        session['user_id'] = user_id
-        session['email'] = email
-        session['role'] = role
-        session['username'] = user["username"]
-        session['patient_id'] = patient_id
-        session['doctor_id'] = doctor_id
-        session['first_name'] = first_name
-        session['last_name'] = last_name
+        else:
+            # admin 或其他角色，保留 password 驗證
+            if not password or user["password_hash"] != password:
+                return jsonify({"success": False, "message": "密碼錯誤"}), 401
 
-        print(f"✅ 登入成功 - Role: {role}, doctor_id: {doctor_id}, patient_id: {patient_id}")
+        # ── 寫入 session ──────────────────────────────────────────────
+        session.permanent = True
+        app.permanent_session_lifetime = timedelta(days=7)
+
+        session["user_id"]    = user_id
+        session["email"]      = email
+        session["role"]       = role
+        session["username"]   = user.get("username", "")
+        session["patient_id"] = patient_id
+        session["doctor_id"]  = doctor_id
+        session["first_name"] = first_name
+        session["last_name"]  = last_name
+
+        print(f"✅ 登入成功 - Role: {role}, user_id: {user_id}, "
+              f"doctor_id: {doctor_id}, patient_id: {patient_id}")
 
         return jsonify({
             "success": True,
             "message": "登入成功",
             "user": {
-                "user_id": user_id,
-                "username": user["username"],
-                "role": role,
-                "email": email,
+                "user_id":    user_id,
+                "username":   user.get("username", ""),
+                "role":       role,
+                "email":      email,
                 "patient_id": patient_id,
-                "doctor_id": doctor_id,
-                "firstName": first_name,
-                "lastName": last_name
+                "doctor_id":  doctor_id,
+                "firstName":  first_name,
+                "lastName":   last_name,
             }
         }), 200
 
@@ -843,7 +892,8 @@ def login_user():
         print(f"❌ 登入錯誤: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({"message": f"登入失敗: {str(e)}"}), 500
+        return jsonify({"success": False, "message": f"登入失敗: {str(e)}"}), 500
+
     finally:
         cursor.close()
         db.close()
@@ -1924,13 +1974,16 @@ def upload_certificate():
 #管理者相關
 @app.route("/api/admin/login", methods=["POST"])
 def admin_login():
-    """管理者登入"""
-    data = request.get_json()
-    email = data.get("email")
-    password = data.get("password")
+    data = request.get_json(silent=True)
+
+    if not data:
+        return jsonify({"success": False, "message": "無法解析請求內容"}), 400
+
+    email = data.get("email", "").strip()
+    password = data.get("password", "").strip()
 
     if not email or not password:
-        return jsonify({"message": "請輸入帳號與密碼"}), 400
+        return jsonify({"success": False, "message": "請輸入帳號與密碼"}), 400
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
@@ -1940,17 +1993,17 @@ def admin_login():
         admin = cursor.fetchone()
 
         if not admin or admin["password_hash"] != password:
-            return jsonify({"message": "帳號或密碼錯誤"}), 401
+            return jsonify({"success": False, "message": "帳號或密碼錯誤"}), 401
 
-        # ✅ 新增這兩行
         session.permanent = True
         app.permanent_session_lifetime = timedelta(days=7)
-        
+
         session['user_id'] = admin["admin_id"]
         session['admin_id'] = admin["admin_id"]
         session['admin_email'] = email
-        session['user_id'] = admin["admin_id"]
         session['is_admin'] = True
+
+        print(f"✅ 管理者登入成功: {email}")
 
         return jsonify({
             "success": True,
@@ -1963,7 +2016,8 @@ def admin_login():
         }), 200
 
     except Exception as e:
-        return jsonify({"message": f"登入失敗: {str(e)}"}), 500
+        print(f"❌ 管理者登入錯誤: {str(e)}")
+        return jsonify({"success": False, "message": f"登入失敗: {str(e)}"}), 500
     finally:
         cursor.close()
         db.close()
@@ -1971,7 +2025,7 @@ def admin_login():
 @app.route("/api/admin/pending-doctors", methods=["GET"])
 def get_pending_doctors():
     """取得待審核醫師列表"""
-    if not session.get('is_admin'):
+    if session.get('role') != 'admin':
         return jsonify({"message": "無權限"}), 403
 
     db = get_db()
@@ -1999,7 +2053,7 @@ def get_pending_doctors():
 @app.route("/api/admin/approve-doctor/<int:doctor_id>", methods=["POST"])
 def approve_doctor(doctor_id):
     """核准醫師註冊"""
-    if not session.get('is_admin'):
+    if session.get('role') != 'admin':
         return jsonify({"message": "無權限"}), 403
 
     db = get_db()
@@ -2045,7 +2099,7 @@ def approve_doctor(doctor_id):
 @app.route("/api/admin/reject-doctor/<int:doctor_id>", methods=["POST"])
 def reject_doctor(doctor_id):
     """拒絕醫師註冊"""
-    if not session.get('is_admin'):
+    if session.get('role') != 'admin':
         return jsonify({"message": "無權限"}), 403
 
     data = request.get_json()
@@ -2079,7 +2133,7 @@ def reject_doctor(doctor_id):
 @app.route("/api/admin/users", methods=["GET"])
 def get_users():
     """獲取已審核的醫師或註冊患者列表"""
-    if not session.get('is_admin'):
+    if session.get('role') != 'admin':
         return jsonify({"message": "無權限"}), 403
 
     user_type = request.args.get('type', 'doctor')
@@ -2180,7 +2234,7 @@ def get_users():
 @app.route("/api/admin/toggle-user-status/<int:user_id>", methods=["PATCH"])
 def toggle_user_status(user_id):
     """啟用或停用使用者帳號"""
-    if not session.get('is_admin'):
+    if session.get('role') != 'admin':
         return jsonify({"message": "無權限"}), 403
 
     data = request.get_json()
@@ -2237,7 +2291,7 @@ def toggle_user_status(user_id):
 @app.route("/api/admin/delete-user/<int:user_id>", methods=["DELETE"])
 def delete_user(user_id):
     """刪除使用者（包含所有相關資料）"""
-    if not session.get('is_admin'):
+    if session.get('role') != 'admin':
         return jsonify({"message": "無權限"}), 403
 
     data = request.get_json()
@@ -2582,7 +2636,7 @@ def get_certificate(filename):
     print("=" * 60)
 
 
-    if not session.get('is_admin'):
+    if session.get('role') != 'admin':
         return jsonify({"message": "無權限"}), 403
     
     print(f"📂 請求檔案: {filename}")
@@ -2602,7 +2656,7 @@ def get_certificate(filename):
 @app.route("/api/admin/feedback/read", methods=["PATCH"])
 def mark_feedback_read():
     """管理員標記回報為已處理"""
-    if not session.get('is_admin'):
+    if session.get('role') != 'admin':
         return jsonify({"message": "無權限"}), 403
     
     data = request.get_json()
@@ -5037,14 +5091,76 @@ def get_mechanism_doctors():
 @require_mechanism
 def update_mechanism_doctor(doctor_id):
     data = request.get_json() or {}
-    allowed = ['first_name', 'last_name', 'specialty', 'phone_number', 'gender', 'practice_hospital']
-    updates = {k: v for k, v in data.items() if k in allowed}
-    if not updates:
+
+    # doctor 表允許更新的欄位
+    doctor_allowed = ['first_name', 'last_name', 'gender', 'specialty']
+    
+    # doctor_info 表允許更新的欄位
+    doctor_info_allowed = ['photo_url', 'education', 'descriptions', 'experience', 'qualifications']
+
+    doctor_updates = {k: v for k, v in data.items() if k in doctor_allowed}
+    doctor_info_updates = {k: v for k, v in data.items() if k in doctor_info_allowed}
+
+    if not doctor_updates and not doctor_info_updates:
         return jsonify({'error': '無可更新的欄位'}), 400
 
     db = get_db()
     cursor = db.cursor(dictionary=True)
+
     try:
+        # 確認此醫師屬於目前機構
+        cursor.execute(
+            """
+            SELECT doctor_id FROM doctor
+            WHERE doctor_id = %s AND mechanism_id = %s
+            """,
+            (doctor_id, request.mechanism_id)
+        )
+        if not cursor.fetchone():
+            return jsonify({'error': '醫師不存在或無權限'}), 404
+
+        # 更新 doctor 表
+        if doctor_updates:
+            set_clause = ', '.join([f"`{k}` = %s" for k in doctor_updates])
+            set_clause += ", updated_at = NOW()"
+            cursor.execute(
+                f"UPDATE doctor SET {set_clause} WHERE doctor_id = %s",
+                list(doctor_updates.values()) + [doctor_id]
+            )
+
+        # Upsert doctor_info 表（INSERT … ON DUPLICATE KEY UPDATE）
+        if doctor_info_updates:
+            columns = ['doctor_id'] + list(doctor_info_updates.keys())
+            placeholders = ', '.join(['%s'] * len(columns))
+            update_clause = ', '.join([f"`{k}` = VALUES(`{k}`)" for k in doctor_info_updates])
+            
+            cursor.execute(
+                f"""
+                INSERT INTO doctor_info ({', '.join(f'`{c}`' for c in columns)})
+                VALUES ({placeholders})
+                ON DUPLICATE KEY UPDATE {update_clause}
+                """,
+                [doctor_id] + list(doctor_info_updates.values())
+            )
+
+        db.commit()
+        return jsonify({'message': '醫師資料更新成功'})
+
+    except Exception as e:
+        db.rollback()
+        return jsonify({'error': str(e)}), 500
+
+    finally:
+        cursor.close()
+        db.close()
+
+@app.route('/api/mechanism/doctors/<int:doctor_id>/info', methods=['GET'])
+@require_mechanism
+def get_doctor_info(doctor_id):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        # 確認醫師屬於此機構
         cursor.execute(
             "SELECT doctor_id FROM doctor WHERE doctor_id = %s AND mechanism_id = %s",
             (doctor_id, request.mechanism_id)
@@ -5052,13 +5168,12 @@ def update_mechanism_doctor(doctor_id):
         if not cursor.fetchone():
             return jsonify({'error': '醫師不存在或無權限'}), 404
 
-        set_clause = ', '.join([f"`{k}` = %s" for k in updates])
         cursor.execute(
-            f"UPDATE doctor SET {set_clause} WHERE doctor_id = %s",
-            list(updates.values()) + [doctor_id]
+            "SELECT photo_url, education, descriptions, experience, qualifications FROM doctor_info WHERE doctor_id = %s",
+            (doctor_id,)
         )
-        db.commit()
-        return jsonify({'message': '更新成功'})
+        row = cursor.fetchone()
+        return jsonify(row or {})
     finally:
         cursor.close()
         db.close()
