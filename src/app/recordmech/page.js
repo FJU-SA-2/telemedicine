@@ -255,7 +255,7 @@ export default function MechAppointmentRecords() {
             <img
               src={`http://127.0.0.1:5000/uploads/prescriptions/${appointment.prescription_image}`}
               alt="處方箋"
-              className="max-h-80 rounded-xl border shadow-sm object-contain cursor-pointer hover:scale-[1.01] transition"
+              className="max-h-65 rounded-xl border shadow-sm object-contain cursor-pointer hover:scale-[1.01] transition"
               onClick={() =>
                 window.open(
                   `http://127.0.0.1:5000/uploads/prescriptions/${appointment.prescription_image}`,
@@ -527,9 +527,11 @@ export default function MechAppointmentRecords() {
                           </div>
                         </div>
 
-                        {/* 處方箋（完整版，含預覽/下載/更換/刪除） */}
-                        <PrescriptionSection appointment={appointment} />
-
+                        {/* 已完成才顯示處方箋 */}
+                        {appointment.status === '已完成' && (
+                          <PrescriptionSection appointment={appointment} />
+                        )}
+                        
                         {/* 取消原因 */}
                         {appointment.status === '已取消' && appointment.cancellation_reason && (
                           <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">

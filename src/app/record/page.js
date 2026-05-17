@@ -380,26 +380,104 @@ export default function AppointmentRecords() {
                           </div>
                         )}
 
-                        {appointment.status === "已完成" && appointment.doctor_advice && (
-                          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mt-2">
-                            <p className="text-xs text-blue-800">
-                              <span className="font-semibold">醫生建議：</span>
-                              {appointment.doctor_advice}
+                        {/* 醫生建議 */}
+                        {appointment.status === "已完成" && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mt-2">
+
+                            <p className="text-sm font-semibold text-blue-800 mb-2">
+                              醫生建議 :
                             </p>
+
+                            {appointment.doctor_advice ? (
+                              <p className="text-sm text-blue-900 whitespace-pre-wrap leading-relaxed">
+                                {appointment.doctor_advice}
+                              </p>
+                            ) : (
+                              <div className="border-2 border-dashed border-blue-200 rounded-xl p-1 text-center bg-white">
+
+                                <div className="flex flex-col items-center">
+                                  
+                                  <p className="text-blue-500 font-medium">
+                                    醫生尚未上傳建議
+                                  </p>
+                                  
+                                </div>
+                              </div>
+                            )}
+
                           </div>
                         )}
                         {/* 處方箋 */}
-                        {appointment.prescription_image && (
-                          <div className="bg-white border border-gray-200 rounded-xl p-3 mt-3">
-                            <p className="text-sm font-semibold text-gray-700 mb-2">
+                        {appointment.status === "已完成" && (
+                          <div className="bg-white border border-gray-200 rounded-xl p-4 mt-3">
+
+                            <p className="text-sm font-semibold text-gray-700 mb-3">
                               處方箋
                             </p>
 
-                            <img
-                              src={`http://127.0.0.1:5000/uploads/prescriptions/${appointment.prescription_image}`}
-                              alt="處方箋"
-                              className="rounded-lg border w-full max-h-96 object-contain"
-                            />
+                            {appointment.prescription_image ? (
+                              <div className="flex flex-col items-center">
+
+                                <img
+                                  src={`http://127.0.0.1:5000/uploads/prescriptions/${appointment.prescription_image}`}
+                                  alt="處方箋"
+                                  className="rounded-xl border shadow-sm w-full max-h-65 object-contain cursor-pointer hover:scale-[1.01] transition"
+                                  onClick={() =>
+                                    window.open(
+                                      `http://127.0.0.1:5000/uploads/prescriptions/${appointment.prescription_image}`,
+                                      "_blank"
+                                    )
+                                  }
+                                />
+                                
+                                <div className="flex gap-2 mt-3">
+
+                                  {/* 查看 */}
+                                  <button
+                                    onClick={() =>
+                                      window.open(
+                                        `http://127.0.0.1:5000/uploads/prescriptions/${appointment.prescription_image}`,
+                                        "_blank"
+                                      )
+                                    }
+                                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition"
+                                  >
+                                    查看
+                                  </button>
+
+                                  {/* 下載 */}
+                                  <a
+                                    href={`http://127.0.0.1:5000/uploads/prescriptions/${appointment.prescription_image}`}
+                                    download
+                                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm transition"
+                                  >
+                                    下載
+                                  </a>
+
+                                </div>
+                              </div>
+                            ) : (
+                              /* 尚未上傳 */
+                              <div className="border-2 border-dashed border-gray-300 rounded-xl p-15 text-center bg-gray-50">
+
+                                <div className="flex flex-col items-center">
+
+                                  <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                                    <Stethoscope className="text-gray-400" size={30} />
+                                  </div>
+
+                                  <p className="text-gray-500 font-medium">
+                                    尚未上傳處方箋
+                                  </p>
+
+                                  <p className="text-xs text-gray-400 mt-1">
+                                    機構管理者尚未提供處方箋檔案
+                                  </p>
+
+                                </div>
+                              </div>
+                            )}
+
                           </div>
                         )}
                       </div>
