@@ -274,6 +274,410 @@ def start_scheduler():
     print("[排程器啟動] 每分鐘檢查看診提醒（開始前 5 分鐘）")
     return scheduler
 
+# ═══════════════════════════════════════════════════════════════════
+# 新增：回診偏好詢問（加在 line_notifier.py 現有函式的最後面）
+# ═══════════════════════════════════════════════════════════════════
+
+def notify_followup_request(patient_id: int, patient_name: str,
+                             doctor_name: str, specialty: str,
+                             suggested_weeks: int, note: str,
+                             followup_request_id: int) -> bool:
+    """
+    醫師按下「建議回診」後，透過 LINE Flex Message
+    詢問患者偏好時段（早 / 午 / 晚），患者點選後
+    app.py 的 webhook 會收到 postback data 並存入 DB。
+    """
+    line_id = get_patient_line_id(patient_id)
+    if not line_id:
+        print(f"[notify_followup_request] patient_id={patient_id} 無 LINE 綁定")
+        return False
+
+    note_section = f"\n📝 醫師備註：{note}" if note else ""
+
+    flex_message = {
+        "type": "flex",
+        "altText": f"【回診通知】{doctor_name} 醫師建議您約 {suggested_weeks} 週後回診，請選擇偏好時段",
+        "contents": {
+            "type": "bubble",
+            "size": "mega",
+            "header": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "🗓 回診預約邀請",
+                        "weight": "bold",
+                        "size": "xl",
+                        "color": "#FFFFFF"
+                    },
+                    {
+                        "type": "text",
+                        "text": f"{doctor_name} 醫師（{specialty}）",
+                        "size": "sm",
+                        "color": "#FFE0C0",
+                        "margin": "sm"
+                    }
+                ],
+                "backgroundColor": "#F97316",
+                "paddingAll": "20px"
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "md",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": f"您好，{patient_name}！",
+                        "weight": "bold",
+                        "size": "md",
+                        "color": "#1F2937"
+                    },
+                    {
+                        "type": "text",
+                        "text": f"{doctor_name} 醫師建議您約 {suggested_weeks} 週後回診。{note_section}",
+                        "size": "sm",
+                        "color": "#4B5563",
+                        "wrap": True
+                    },
+                    {
+                        "type": "separator",
+                        "margin": "md"
+                    },
+                    {
+                        "type": "text",
+                        "text": "請選擇您方便的時段：",
+                        "weight": "bold",
+                        "size": "sm",
+                        "color": "#374151",
+                        "margin": "md"
+                    },
+                    # 早診
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "contents": [
+                            {
+                                "type": "text",
+                                "text": "🌅  早診",
+                                "size": "sm",
+                                "color": "#92400E",
+                                "flex": 1,
+                                "gravity": "center"
+                            },
+                            {
+                                "type": "text",
+                                "text": "09:00 – 11:30",
+                                "size": "xs",
+                                "color": "#78350F",
+                                "flex": 1,
+                                "gravity": "center",
+                                "align": "end"
+                            }
+                        ],
+                        "backgroundColor": "#FEF3C7",
+                        "paddingAll": "12px",
+                        "cornerRadius": "8px",
+                        "action": {
+                            "type": "postback",
+                            "label": "早診",
+                            "data": f"action=followup_pref&request_id={followup_request_id}&pref=morning&patient_id={patient_id}",
+                            "displayText": "我偏好早診時段"
+                        }
+                    },
+                    # 午診
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "contents": [
+                            {
+                                "type": "text",
+                                "text": "☀️  午診",
+                                "size": "sm",
+                                "color": "#7C3AED",
+                                "flex": 1,
+                                "gravity": "center"
+                            },
+                            {
+                                "type": "text",
+                                "text": "14:00 – 17:00",
+                                "size": "xs",
+                                "color": "#6D28D9",
+                                "flex": 1,
+                                "gravity": "center",
+                                "align": "end"
+                            }
+                        ],
+                        "backgroundColor": "#EDE9FE",
+                        "paddingAll": "12px",
+                        "cornerRadius": "8px",
+                        "action": {
+                            "type": "postback",
+                            "label": "午診",
+                            "data": f"action=followup_pref&request_id={followup_request_id}&pref=afternoon&patient_id={patient_id}",
+                            "displayText": "我偏好午診時段"
+                        }
+                    },
+                    # 晚診
+                    {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "contents": [
+                            {
+                                "type": "text",
+                                "text": "🌙  晚診",
+                                "size": "sm",
+                                "color": "#1E40AF",
+                                "flex": 1,
+                                "gravity": "center"
+                            },
+                            {
+                                "type": "text",
+                                "text": "18:00 – 21:00",
+                                "size": "xs",
+                                "color": "#1D4ED8",
+                                "flex": 1,
+                                "gravity": "center",
+                                "align": "end"
+                            }
+                        ],
+                        "backgroundColor": "#DBEAFE",
+                        "paddingAll": "12px",
+                        "cornerRadius": "8px",
+                        "action": {
+                            "type": "postback",
+                            "label": "晚診",
+                            "data": f"action=followup_pref&request_id={followup_request_id}&pref=evening&patient_id={patient_id}",
+                            "displayText": "我偏好晚診時段"
+                        }
+                    },
+                    # 不限
+                    {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": [
+                            {
+                                "type": "text",
+                                "text": "🕐  皆可（不限時段）",
+                                "size": "sm",
+                                "color": "#374151",
+                                "gravity": "center",
+                                "align": "center"
+                            }
+                        ],
+                        "backgroundColor": "#F3F4F6",
+                        "paddingAll": "12px",
+                        "cornerRadius": "8px",
+                        "action": {
+                            "type": "postback",
+                            "label": "皆可",
+                            "data": f"action=followup_pref&request_id={followup_request_id}&pref=any&patient_id={patient_id}",
+                            "displayText": "我任何時段皆可"
+                        }
+                    }
+                ],
+                "paddingAll": "20px"
+            },
+            "footer": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "點選時段後，機構將為您安排回診預約 📋",
+                        "size": "xs",
+                        "color": "#9CA3AF",
+                        "align": "center",
+                        "wrap": True
+                    }
+                ],
+                "paddingAll": "12px"
+            }
+        }
+    }
+
+    url = "https://api.line.me/v2/bot/message/push"
+    headers = {
+        "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "to": line_id,
+        "messages": [flex_message],
+    }
+    import requests as _req
+    resp = _req.post(url, headers=headers, json=payload)
+    if resp.status_code != 200:
+        print(f"[回診通知推播失敗] status={resp.status_code}, body={resp.text}")
+        return False
+
+    print(f"[回診通知] patient_id={patient_id}, request_id={followup_request_id}")
+    return True
+
+def notify_available_slots(line_id: str, patient_name: str,
+                            doctor_name: str, specialty: str,
+                            slots: list, request_id: int) -> bool:
+    """
+    推播醫師可用時段給患者選擇。
+    slots: [{"date": "2026-05-20", "time": "09:00", "schedule_id": 12}, ...]
+    最多顯示 5 個時段（LINE Flex bubble 限制）
+    """
+    if not slots:
+        return False
+ 
+    WEEKDAY_MAP = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"]
+ 
+    def slot_label(s):
+        try:
+            d = datetime.strptime(s["date"], "%Y-%m-%d")
+            wd = WEEKDAY_MAP[d.weekday() + 1] if d.weekday() < 6 else "週日"
+            # weekday() 0=Mon, 6=Sun；轉成中文
+            wd = WEEKDAY_MAP[d.isoweekday() % 7]
+            return f"{s['date']} ({wd}) {s['time'][:5]}"
+        except Exception:
+            return f"{s['date']} {s['time'][:5]}"
+ 
+    # 最多 5 個時段
+    display_slots = slots[:5]
+ 
+    # 每個時段做一個可點選的 box
+    slot_boxes = []
+    for i, s in enumerate(display_slots):
+        label = slot_label(s)
+        slot_boxes.append({
+            "type": "box",
+            "layout": "horizontal",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": f"🕐  {label}",
+                    "size": "sm",
+                    "color": "#1E40AF",
+                    "flex": 1,
+                    "gravity": "center"
+                }
+            ],
+            "backgroundColor": "#EFF6FF",
+            "paddingAll": "12px",
+            "cornerRadius": "8px",
+            "margin": "sm",
+            "action": {
+                "type": "postback",
+                "label": label,
+                "data": (
+                    f"action=followup_slot"
+                    f"&request_id={request_id}"
+                    f"&schedule_id={s['schedule_id']}"
+                    f"&date={s['date']}"
+                    f"&time={s['time'][:5]}"
+                ),
+                "displayText": f"我選擇 {label}"
+            }
+        })
+ 
+    flex_message = {
+        "type": "flex",
+        "altText": f"【回診時段】請選擇您的回診時段",
+        "contents": {
+            "type": "bubble",
+            "size": "mega",
+            "header": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "📅 請選擇回診時段",
+                        "weight": "bold",
+                        "size": "xl",
+                        "color": "#FFFFFF"
+                    },
+                    {
+                        "type": "text",
+                        "text": f"{doctor_name} 醫師（{specialty}）",
+                        "size": "sm",
+                        "color": "#BFDBFE",
+                        "margin": "sm"
+                    }
+                ],
+                "backgroundColor": "#2563EB",
+                "paddingAll": "20px"
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "spacing": "sm",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": f"{patient_name}，以下是符合您偏好的可預約時段：",
+                        "size": "sm",
+                        "color": "#374151",
+                        "wrap": True
+                    },
+                    {
+                        "type": "separator",
+                        "margin": "md"
+                    },
+                    *slot_boxes
+                ],
+                "paddingAll": "16px"
+            },
+            "footer": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "點選時段後將送交機構審核，確認後通知您 ✅",
+                        "size": "xs",
+                        "color": "#9CA3AF",
+                        "align": "center",
+                        "wrap": True
+                    }
+                ],
+                "paddingAll": "12px"
+            }
+        }
+    }
+ 
+    url = "https://api.line.me/v2/bot/message/push"
+    headers = {
+        "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    payload = {"to": line_id, "messages": [flex_message]}
+ 
+    import requests as _req
+    resp = _req.post(url, headers=headers, json=payload)
+    if resp.status_code != 200:
+        print(f"[notify_available_slots 失敗] status={resp.status_code}, {resp.text}")
+        return False
+    print(f"[可選時段推播] request_id={request_id}, slots={len(display_slots)}")
+    return True
+ 
+ 
+def notify_followup_pending_review(line_id: str, patient_name: str,
+                                    doctor_name: str, specialty: str,
+                                    date_str: str, time_str: str) -> bool:
+    """患者選完時段後，通知患者等待機構審核"""
+    message = (
+        f"✅ 已收到您的回診預約申請！\n\n"
+        f"👨‍⚕️ 醫師：{doctor_name}（{specialty}）\n"
+        f"🗓 預約時段：{date_str} {time_str}\n\n"
+        f"目前狀態：⏳ 等待機構確認\n"
+        f"確認後將再通知您，請耐心等候 🙏"
+    )
+    url = "https://api.line.me/v2/bot/message/push"
+    headers = {
+        "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    payload = {"to": line_id, "messages": [{"type": "text", "text": message}]}
+    import requests as _req
+    resp = _req.post(url, headers=headers, json=payload)
+    return resp.status_code == 200
 
 if __name__ == "__main__":
     import time

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, User, RefreshCw, Menu, LayoutGrid, List, X, Sparkles, FileText } from 'lucide-react';
+import { Calendar, Clock, User, RefreshCw, Menu, LayoutGrid, List, X, Sparkles, FileText, CalendarPlus } from 'lucide-react';
 import DoctorSidebar from "../components/DoctorSidebar";
 import Navbar from "../components/Navbar";
 
@@ -33,6 +33,14 @@ export default function AppointmentRecords() {
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [summaryWeekStart, setSummaryWeekStart] = useState("");
   const [summaryWeekEnd, setSummaryWeekEnd] = useState("");
+
+  // ── 回診彈窗 ────────────────────────────────────────────────
+  const [showFollowUpModal, setShowFollowUpModal] = useState(false);
+  const [followUpAppointment, setFollowUpAppointment] = useState(null);
+  const [followUpWeeks, setFollowUpWeeks] = useState("2");
+  const [followUpNote, setFollowUpNote] = useState("");
+  const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
+  const [followUpSentIds, setFollowUpSentIds] = useState(new Set());
 
   // 預設本週範圍
   useEffect(() => {
@@ -97,9 +105,9 @@ export default function AppointmentRecords() {
         appointment_time: item.appointment_time,
         status: item.status,
         cancellation_reason: item.cancellation_reason || null,
-        prescription_image: item.prescription_image || null,
         doctor_advice: item.doctor_advice || "",
         transcript: item.transcript || "",
+        patient_id: item.patient_id,  // 回診需要
         patient: { first_name: item.first_name, last_name: item.last_name },
         isEditing: false,
         tempAdvice: item.doctor_advice || "",
@@ -140,7 +148,6 @@ export default function AppointmentRecords() {
     setTranscriptText(appointment.transcript || "");
     setShowTranscriptModal(true);
 
-    // 如果本地沒有，再從 API 拉最新的
     if (!appointment.transcript) {
       setTranscriptLoading(true);
       try {
@@ -168,7 +175,6 @@ export default function AppointmentRecords() {
         body: JSON.stringify({ transcript: transcriptText }),
       });
       if (res.ok) {
-        // 同步更新 appointments 列表裡的 transcript
         setAppointments(prev =>
           prev.map(a =>
             a.appointment_id === transcriptAppointment.appointment_id
@@ -185,6 +191,47 @@ export default function AppointmentRecords() {
       alert("儲存發生錯誤。");
     } finally {
       setIsSavingTranscript(false);
+    }
+  };
+
+  // ── 回診邏輯 ─────────────────────────────────────────────────
+  const openFollowUpModal = (appointment) => {
+    setFollowUpAppointment(appointment);
+    setFollowUpWeeks("2");
+    setFollowUpNote("");
+    setShowFollowUpModal(true);
+  };
+
+  const handleSendFollowUp = async () => {
+    if (!followUpAppointment) return;
+    setIsSendingFollowUp(true);
+    try {
+      console.log("followUpAppointment:", followUpAppointment);
+      // 直接打 Flask 5000，不走 Next.js route（避免 HTML 404）
+      const res = await fetch("http://localhost:5000/api/doctor/followup-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          appointment_id: followUpAppointment.appointment_id,
+          patient_id: followUpAppointment.patient_id,
+          suggested_weeks: parseInt(followUpWeeks),
+          note: followUpNote.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setFollowUpSentIds(prev => new Set([...prev, followUpAppointment.appointment_id]));
+        setShowFollowUpModal(false);
+        alert(`✅ 已透過 LINE 通知 ${followUpAppointment.patient.first_name}${followUpAppointment.patient.last_name} 填寫回診偏好時段`);
+      } else {
+        alert(data.message || "發送失敗，請稍後再試");
+      }
+    } catch (e) {
+      console.error("回診發送錯誤:", e);
+      alert("發送失敗，請確認伺服器連線正常");
+    } finally {
+      setIsSendingFollowUp(false);
     }
   };
 
@@ -342,7 +389,6 @@ export default function AppointmentRecords() {
             {/* 篩選列 */}
             <div className="bg-white rounded-lg shadow-md p-3 sm:p-4 mb-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                {/* 狀態篩選 */}
                 <div className="flex flex-wrap gap-2">
                   {['all', '已確認', '已完成', '已取消'].map((status) => (
                     <button
@@ -359,9 +405,7 @@ export default function AppointmentRecords() {
                   ))}
                 </div>
 
-                {/* 右側按鈕群 */}
                 <div className="flex items-center gap-2">
-                  {/* 週摘要按鈕 */}
                   <button
                     onClick={() => { setShowWeeklySummaryModal(true); setWeeklySummary(""); }}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 transition shadow-sm"
@@ -370,7 +414,6 @@ export default function AppointmentRecords() {
                     <span className="hidden sm:inline">週摘要</span>
                   </button>
 
-                  {/* 視圖切換 */}
                   <div className="flex gap-2 bg-gray-100 rounded-lg p-1">
                     <button
                       onClick={() => setViewMode("card")}
@@ -444,14 +487,28 @@ export default function AppointmentRecords() {
 
                       {appointment.status === '已完成' && (
                         <div className="mt-4 space-y-3">
-                          {/* 逐字稿按鈕 */}
-                          <button
-                            onClick={() => openTranscriptModal(appointment)}
-                            className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white text-sm font-medium rounded-lg transition"
-                          >
-                            <FileText size={15} />
-                            {appointment.transcript ? '查看逐字稿' : '查看逐字稿（待生成）'}
-                          </button>
+                          {/* 逐字稿 + 回診按鈕並排 */}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => openTranscriptModal(appointment)}
+                              className="flex items-center justify-center gap-1.5 flex-1 px-3 py-2 bg-teal-500 hover:bg-teal-600 text-white text-sm font-medium rounded-lg transition"
+                            >
+                              <FileText size={14} />
+                              {appointment.transcript ? '逐字稿' : '逐字稿（待生成）'}
+                            </button>
+                            <button
+                              onClick={() => openFollowUpModal(appointment)}
+                              disabled={followUpSentIds.has(appointment.appointment_id)}
+                              className={`flex items-center justify-center gap-1.5 flex-1 px-3 py-2 text-sm font-medium rounded-lg transition ${
+                                followUpSentIds.has(appointment.appointment_id)
+                                  ? 'bg-green-100 text-green-700 border border-green-300 cursor-default'
+                                  : 'bg-orange-500 hover:bg-orange-600 text-white'
+                              }`}
+                            >
+                              <CalendarPlus size={14} />
+                              {followUpSentIds.has(appointment.appointment_id) ? '已通知回診' : '建議回診'}
+                            </button>
+                          </div>
 
                           {/* 醫師建議 */}
                           <div>
@@ -524,21 +581,6 @@ export default function AppointmentRecords() {
                         </div>
                       )}
 
-                    {/* 處方箋 */}
-                    {appointment.prescription_image && (
-                      <div className="mt-4">
-                        <h4 className="font-semibold text-gray-800 mb-2">
-                          處方箋
-                        </h4>
-
-                        <img
-                          src={`http://127.0.0.1:5000/uploads/prescriptions/${appointment.prescription_image}`}
-                          alt="處方箋"
-                          className="rounded-lg border w-full max-h-96 object-contain"
-                        />
-                      </div>
-                    )}
-                    
                       {appointment.status === '已確認' && (
                         isAppointmentExpired(appointment.appointment_date, appointment.appointment_time) ? (
                           <div className="w-full bg-gray-100 text-gray-500 font-medium py-2 rounded-lg mt-4 text-sm text-center border border-gray-300">
@@ -667,6 +709,18 @@ export default function AppointmentRecords() {
                                   >
                                     <FileText size={12} />
                                     逐字稿
+                                  </button>
+                                  <button
+                                    onClick={() => openFollowUpModal(appointment)}
+                                    disabled={followUpSentIds.has(appointment.appointment_id)}
+                                    className={`flex items-center justify-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg transition w-full ${
+                                      followUpSentIds.has(appointment.appointment_id)
+                                        ? 'bg-green-100 text-green-700 border border-green-300 cursor-default'
+                                        : 'bg-orange-500 hover:bg-orange-600 text-white'
+                                    }`}
+                                  >
+                                    <CalendarPlus size={12} />
+                                    {followUpSentIds.has(appointment.appointment_id) ? '已通知' : '建議回診'}
                                   </button>
                                 </>
                               )}
@@ -802,6 +856,100 @@ export default function AppointmentRecords() {
                 className="flex-1 bg-teal-500 hover:bg-teal-600 text-white font-medium py-2.5 rounded-lg transition text-sm disabled:opacity-50"
               >
                 {isSavingTranscript ? "儲存中..." : "儲存修改"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 建議回診彈窗 ── */}
+      {showFollowUpModal && followUpAppointment && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md border border-gray-200">
+            <div className="flex justify-between items-center p-5 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <CalendarPlus className="text-orange-500" size={20} />
+                建議回診通知
+              </h3>
+              <button onClick={() => setShowFollowUpModal(false)} className="text-gray-400 hover:text-gray-600 transition">
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              {/* 患者資訊 */}
+              <div className="bg-gray-50 rounded-lg p-3 flex items-center gap-3">
+                <div className="bg-blue-100 rounded-full p-2 shrink-0">
+                  <User className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-800">
+                    {followUpAppointment.patient.first_name}{followUpAppointment.patient.last_name} 患者
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    上次看診：{formatDate(followUpAppointment.appointment_date)}
+                  </p>
+                </div>
+              </div>
+
+              {/* 建議幾週後回診 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">建議回診時間</label>
+                <div className="flex gap-2 flex-wrap">
+                  {["1", "2", "4", "8", "12"].map((w) => (
+                    <button
+                      key={w}
+                      onClick={() => setFollowUpWeeks(w)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
+                        followUpWeeks === w
+                          ? 'bg-orange-500 text-white border-orange-500'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-orange-400 hover:text-orange-600'
+                      }`}
+                    >
+                      {w} 週後
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 備註 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  給患者的備註 <span className="text-gray-400 font-normal">（選填）</span>
+                </label>
+                <textarea
+                  className="w-full border border-gray-300 rounded-lg p-3 text-gray-700 text-sm resize-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                  rows="3"
+                  placeholder="例如：請記得空腹抽血、帶上藥袋..."
+                  value={followUpNote}
+                  onChange={(e) => setFollowUpNote(e.target.value)}
+                />
+              </div>
+
+              {/* 說明文字 */}
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                <p className="text-xs text-orange-700">
+                  📲 系統將透過 LINE 詢問患者偏好時段（早診 / 午診 / 晚診），機構收到後安排回診預約。
+                </p>
+              </div>
+            </div>
+
+            <div className="p-5 border-t border-gray-200 flex gap-3">
+              <button
+                onClick={() => setShowFollowUpModal(false)}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-lg transition text-sm"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSendFollowUp}
+                disabled={isSendingFollowUp}
+                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-medium py-2.5 rounded-lg transition text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isSendingFollowUp
+                  ? <><RefreshCw size={15} className="animate-spin" /> 發送中...</>
+                  : <><CalendarPlus size={15} /> 發送 LINE 通知</>
+                }
               </button>
             </div>
           </div>
