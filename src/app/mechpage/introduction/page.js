@@ -32,7 +32,7 @@ const patientSteps = [
     id: 2,
     icon: Calendar,
     title: "瀏覽與收藏醫師",
-    color: "from-purple-500 to-purple-600",
+    color: "from-blue-500 to-blue-600",
     description: "找到最適合您的專業醫師",
     images: ["/images/5.png", "/images/6.png", "/images/7.png"],
     details: [
@@ -47,7 +47,7 @@ const patientSteps = [
     id: 3,
     icon: CreditCard,
     title: "預約與線上付款",
-    color: "from-green-500 to-green-600",
+    color: "from-blue-500 to-blue-600",
     description: "簡單三步驟完成看診預約",
     images: [
       "/images/11.png", "/images/12.png", "/images/13.png",
@@ -65,7 +65,7 @@ const patientSteps = [
     id: 4,
     icon: Calendar,
     title: "取消預約",
-    color: "from-orange-500 to-orange-600",
+    color: "from-blue-500 to-blue-600",
     description: "彈性調整您的看診安排",
     images: ["/images/17.png", "/images/18.png"],
     details: [
@@ -80,7 +80,7 @@ const patientSteps = [
     id: 5,
     icon: Video,
     title: "視訊看診與評分",
-    color: "from-red-500 to-red-600",
+    color: "from-blue-500 to-blue-600",
     description: "享受便利的線上醫療服務",
     images: ["/images/8.png", "/images/19.png", "/images/20.png"],
     details: [
@@ -94,21 +94,6 @@ const patientSteps = [
   },
   {
     id: 6,
-    icon: FileText,
-    title: "經驗分享區",
-    color: "from-indigo-500 to-indigo-600",
-    description: "與社群分享您的就醫經驗",
-    images: ["/images/9.png", "/images/21.png", "/images/22.png"],
-    details: [
-      "點擊「發布」按鈕開始撰寫您的經驗分享",
-      "輸入標題與內容,分享您的就醫心得",
-      "可選擇「匿名發布」保護個人隱私",
-      "在他人的文章下方發表留言互動交流",
-      "留言時也可選擇匿名,自由表達想法",
-    ],
-  },
-  {
-    id: 7,
     icon: User,
     title: "問題回報",
     color: "from-blue-500 to-blue-600",
@@ -123,10 +108,10 @@ const patientSteps = [
     ],
   },
   {
-    id: 8,
+    id: 7,
     icon: MessageCircle,
     title: "AI聊天室",
-    color: "from-indigo-500 to-indigo-600",
+    color: "from-blue-500 to-blue-600",
     description: "系統在每個頁面的右下角皆設有 AI 聊天室，方便使用者隨時進行線上視訊看診相關的諮詢與協助。",
     images: ["/images/37.png", "/images/38.png"],
     details: [
@@ -147,7 +132,7 @@ const doctorSteps = [
     id: 1,
     icon: UserCheck,
     title: "醫師註冊與審核",
-    color: "from-blue-500 to-blue-600",
+    color: "from-green-500 to-green-600",
     description: "快速完成專業醫師認證,開啟線上診療之旅",
     images: ["/images/1.png", "/images/23.png", "/images/24.png", "/images/4.png"],
     details: [
@@ -162,7 +147,7 @@ const doctorSteps = [
     id: 2,
     icon: Calendar,
     title: "設定看診時間表",
-    color: "from-purple-500 to-purple-600",
+    color: "from-green-500 to-green-600",
     description: "彈性安排門診時段,掌握工作節奏",
     images: ["/images/26.png"],
     details: [
@@ -191,7 +176,7 @@ const doctorSteps = [
     id: 4,
     icon: Calendar,
     title: "取消預約",
-    color: "from-orange-500 to-orange-600",
+    color: "from-green-500 to-green-600",
     description: "妥善處理突發狀況,維護醫病關係",
     images: ["/images/27.png", "/images/28.png"],
     details: [
@@ -206,7 +191,7 @@ const doctorSteps = [
     id: 5,
     icon: Video,
     title: "查看預約紀錄",
-    color: "from-red-500 to-red-600",
+    color: "from-green-500 to-green-600",
     description: "完整追蹤所有診療歷程",
     images: ["/images/31.png"],
     details: [
@@ -220,7 +205,7 @@ const doctorSteps = [
     id: 6,
     icon: FileText,
     title: "查看患者病歷",
-    color: "from-indigo-500 to-indigo-600",
+    color: "from-green-500 to-green-600",
     description: "完整病歷系統,提供更精準的診療",
     images: ["/images/32.png", "/images/33.png"],
     details: [
@@ -236,7 +221,7 @@ const doctorSteps = [
     id: 7,
     icon: Video,
     title: "視訊看診",
-    color: "from-pink-500 to-pink-600",
+    color: "from-green-500 to-green-600",
     description: "高品質視訊系統,如同面對面問診",
     images: ["/images/35.png", "/images/34.png"],
     details: [
@@ -251,7 +236,7 @@ const doctorSteps = [
     id: 8,
     icon: MessageSquare,
     title: "問題回報",
-    color: "from-teal-500 to-teal-600",
+    color: "from-green-500 to-green-600",
     description: "您的回饋幫助我們做得更好",
     images: ["/images/36.png"],
     details: [
