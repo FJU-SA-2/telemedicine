@@ -678,21 +678,6 @@ export default function IntroductionPage() {
               </div>
             </div>
           )}
-
-          {/* ── CTA ── */}
-          <div className={`text-center bg-gradient-to-br ${themeGradient} rounded-3xl p-12 text-white shadow-2xl`}>
-            <h3 className="text-4xl font-bold mb-4">準備好開始了嗎？</h3>
-            <p className="text-xl mb-8 text-blue-100">
-              立即註冊，體驗便捷的線上醫療服務
-            </p>
-            <a
-              href="/doctorlist"
-              className="inline-flex bg-white text-blue-600 px-10 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg items-center gap-3"
-            >
-              立即開始
-              <ArrowRight className="w-6 h-6" />
-            </a>
-          </div>
         </div>
       </div>
 
