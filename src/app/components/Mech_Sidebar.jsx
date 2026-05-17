@@ -22,6 +22,7 @@ export default function DoctorSidebar({ isOpen, setIsOpen, approvalStatus }) {
 
   const menuItems = [
     { id: "/mechpage", label: "首頁", icon: House, href: "/mechpage" },
+    { id: "/introduction", label: "使用流程", icon: FileText, href: "/mechpage/introduction" }, 
     { id: "/doctors", label: "醫師列表", icon: UserRoundCheck, href: "/mechpage/doctorlist" }, 
     { id: "/schedules", label: "排班管理", icon: CalendarClock, href: "/mechpage/schedule", },
     { id: "/record", label: "預約紀錄", icon: ClipboardList, href: "/recordmech",},
