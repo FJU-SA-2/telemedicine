@@ -116,7 +116,7 @@ const DoctorEditModal = ({ doctor, onClose, onSaved }) => {
             <p className="text-gray-800 font-medium">{doctor.first_name}{doctor.last_name}</p>
           </div>
           {[
-            { key: "specialty", label: "專科" },
+            { key: "specialty", label: "科別" },
             { key: "phone_number", label: "聯絡電話" },
             { key: "practice_hospital", label: "執業院所" },
           ].map(({ key, label }) => (
@@ -560,6 +560,166 @@ const AddPatientModal = ({ onClose, onSaved }) => {
     </div>
   );
 };
+//  醫師介紹新增 
+const DoctorProfileModal = ({ doctor, onClose, onSaved }) => {
+  const [form, setForm] = useState({
+    first_name: doctor.first_name || "",
+    last_name: doctor.last_name || "",
+    gender: doctor.gender || "male",
+    specialty: doctor.specialty || "",
+    photo_url: "",
+    education: "",
+    descriptions: "",
+    experience: "",
+    qualifications: "",
+  });
+  const [loading, setLoading] = useState(true);  // ← this is what was missing
+  const [saving, setSaving] = useState(false);
+  const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
+   useEffect(() => {
+    (async () => {
+      try {
+        const data = await apiFetch(`/api/mechanism/doctors/${doctor.doctor_id}/info`);
+        setForm(prev => ({
+          ...prev,
+          photo_url: data.photo_url || "",
+          education: data.education || "",
+          descriptions: data.descriptions || "",
+          experience: data.experience || "",
+          qualifications: data.qualifications || "",
+        }));
+      } catch {
+        // doctor_info 尚無資料時忽略錯誤，保持空值
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [doctor.doctor_id]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await apiFetch(`/api/mechanism/doctors/${doctor.doctor_id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      onSaved("醫師資料已更新");
+    } catch (e) {
+      onSaved(e.message, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputCls = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400";
+  const textareaCls = `${inputCls} resize-none`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+          <h3 className="font-semibold text-gray-800">編輯醫師資料</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center py-16">
+            <Loader2 size={28} className="animate-spin text-blue-400" />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+            {/* ── 基本資料 ── */}
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">基本資料</p>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm text-gray-600 mb-1 block">姓</label>
+                    <input value={form.first_name} onChange={e => set("first_name", e.target.value)} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-600 mb-1 block">名</label>
+                    <input value={form.last_name} onChange={e => set("last_name", e.target.value)} className={inputCls} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm text-gray-600 mb-1 block">性別</label>
+                    <select value={form.gender} onChange={e => set("gender", e.target.value)} className={`${inputCls} bg-white`}>
+                      <option value="male">男</option>
+                      <option value="female">女</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-600 mb-1 block">科別</label>
+                    <input value={form.specialty} onChange={e => set("specialty", e.target.value)} className={inputCls} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── 個人頁面資訊（doctor_info） ── */}
+            <div className="pt-3 border-t border-gray-100">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">個人頁面資訊</p>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm text-gray-600 mb-1 block">頭像網址</label>
+                  <input value={form.photo_url} onChange={e => set("photo_url", e.target.value)}
+                    placeholder="https://..." className={inputCls} />
+                  {form.photo_url && (
+                    <img src={form.photo_url} alt="預覽"
+                      className="mt-2 w-16 h-16 rounded-full object-cover border border-gray-200" />
+                  )}
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600 mb-1 block">學歷</label>
+                  <textarea value={form.education} onChange={e => set("education", e.target.value)}
+                    rows={2} placeholder="例：國立臺灣大學醫學系" className={textareaCls} />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600 mb-1 block">醫師簡介</label>
+                  <textarea value={form.descriptions} onChange={e => set("descriptions", e.target.value)}
+                    rows={3} placeholder="簡短介紹醫師專長與服務理念" className={textareaCls} />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600 mb-1 block">專業經歷</label>
+                  <textarea value={form.experience} onChange={e => set("experience", e.target.value)}
+                    rows={3} placeholder="例：台大醫院內科主治醫師 2010–2020" className={textareaCls} />
+                </div>
+                <div>
+                  <label className="text-sm text-gray-600 mb-1 block">學位與認證</label>
+                  <textarea value={form.qualifications} onChange={e => set("qualifications", e.target.value)}
+                    rows={2} placeholder="例：內科專科醫師、老年醫學次專科" className={textareaCls} />
+                </div>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 flex-shrink-0">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition">
+            取消
+          </button>
+          <button onClick={handleSave} disabled={saving || loading}
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-60 transition">
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+            儲存
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 // ════════════════════════════════════════════════════════════════════
 //  主元件
@@ -589,7 +749,9 @@ const TelemedicineDashboard = () => {
   const [addingPatient, setAddingPatient] = useState(false);
   const [removingDoctorId, setRemovingDoctorId] = useState(null);
   const [toast, setToast] = useState(null);
+  const [editingDoctorProfile, setEditingDoctorProfile] = useState(null);
 
+  
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -743,6 +905,7 @@ const TelemedicineDashboard = () => {
                   <h2 className="font-semibold text-gray-800">醫師管理</h2>
                   <span className="bg-blue-50 text-blue-600 text-xs font-medium px-2 py-0.5 rounded-full">{doctors.length} 位</span>
                 </div>
+              
                 <button onClick={() => setAddingDoctor(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">
                   <Plus size={14} /> 新增醫師
@@ -775,8 +938,11 @@ const TelemedicineDashboard = () => {
                           <p className="text-xs text-gray-400">今日診次</p>
                         </div>
                         <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-all">
-                          <button onClick={() => setEditingDoctor(doc)}
-                            className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-400 hover:text-blue-600 transition" title="編輯">
+                          <button
+                            onClick={() => setEditingDoctorProfile(doc)}
+                            className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-400 hover:text-blue-600 transition"
+                            title="編輯醫師資料"
+                          >
                             <Edit2 size={15} />
                           </button>
                           <button onClick={() => handleRemoveDoctor(doc.doctor_id)}
@@ -881,6 +1047,21 @@ const TelemedicineDashboard = () => {
         <AddPatientModal onClose={() => setAddingPatient(false)}
           onSaved={(msg) => { setAddingPatient(false); showToast(msg); fetchPatients(); fetchStats(); }} />
       )}
+     {editingDoctorProfile && (
+      <DoctorProfileModal
+        doctor={editingDoctorProfile}
+        onClose={() => setEditingDoctorProfile(null)}
+        onSaved={(msg, type = "success") => {
+          setEditingDoctorProfile(null);
+
+          showToast(msg, type);
+
+          if (type === "success") {
+            fetchDoctors(mechanismId);
+          }
+        }}
+      />
+    )}
 
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </div>
