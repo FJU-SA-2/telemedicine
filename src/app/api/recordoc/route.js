@@ -42,6 +42,7 @@ export async function GET(request) {
         a.status,
         a.doctor_advice,
         a.transcript,
+        a.ai_summary,
         a.prescription_image,
         p.first_name,
         p.last_name
@@ -65,6 +66,7 @@ export async function GET(request) {
       cancellation_reason: a.cancellation_reason || "",
       doctor_advice: a.doctor_advice || "",
       transcript: a.transcript || "",
+      ai_summary: a.ai_summary || "",
       prescription_image: a.prescription_image || "",
       first_name: a.first_name || "",
       last_name: a.last_name || "",

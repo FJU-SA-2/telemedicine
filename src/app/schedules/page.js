@@ -166,7 +166,10 @@ export default function DoctorSchedulePage() {
                         if (h.length === 1) h = '0' + h;
                         const timeSlot = `${h}:${m}`;
                         if (newSchedules[date] && timeSlots.includes(timeSlot)) {
-                            newSchedules[date][timeSlot] = !!item.is_available && item.is_available !== 0 && item.is_available !== "0";
+                            const isAvail = !!item.is_available && item.is_available !== 0 && item.is_available !== "0";
+                            newSchedules[date][timeSlot] = isAvail
+                                ? (item.schedule_type === "physical" ? "physical" : "online")
+                                : false;
                         }
                     });
                 }
@@ -302,6 +305,12 @@ export default function DoctorSchedulePage() {
     };
 
     const isSlotAvailable = (date, time) => schedules[date]?.[time] ?? false;
+    const getSlotType = (date, time) => {
+        const v = schedules[date]?.[time];
+        if (v === "online")   return "online";
+        if (v === "physical") return "physical";
+        return null;
+    };
     const isSlotBooked = (date, time) => !!appointments[date]?.[time];
 
     const previousWeek = () => {
@@ -327,9 +336,11 @@ export default function DoctorSchedulePage() {
         const isPast = isTimeSlotPast(date, time);
         const isBooked = isSlotBooked(date, time);
         const isAvailable = isSlotAvailable(date, time);
+        const slotType = getSlotType(date, time);
 
         if (isPast) return "bg-gray-100 text-gray-400 cursor-not-allowed opacity-50";
         if (isBooked) return "bg-red-500 text-white cursor-pointer hover:bg-red-600";
+        if (isAvailable && slotType === "physical") return `bg-blue-500 text-white ${viewOnly ? 'cursor-default' : 'hover:bg-blue-600 cursor-pointer'}`;
         if (isAvailable) return `bg-green-500 text-white ${viewOnly ? 'cursor-default' : 'hover:bg-green-600 cursor-pointer'}`;
         return `bg-gray-200 text-gray-600 ${viewOnly ? 'cursor-default' : 'hover:bg-gray-300 cursor-pointer'}`;
     };
@@ -338,10 +349,12 @@ export default function DoctorSchedulePage() {
         const isPast = isTimeSlotPast(date, time);
         const isBooked = isSlotBooked(date, time);
         const isAvailable = isSlotAvailable(date, time);
+        const slotType = getSlotType(date, time);
 
         if (isPast) return "過期";
         if (isBooked) return "已約";
-        if (isAvailable) return "開診";
+        if (isAvailable && slotType === "physical") return "實體";
+        if (isAvailable) return "線上";
         return "休診";
     };
 
@@ -418,21 +431,25 @@ export default function DoctorSchedulePage() {
 
                     {/* 圖例 */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-3 sm:p-4 mb-4">
-                        <div className="flex items-center justify-center flex-wrap gap-3 sm:gap-8 text-xs sm:text-base">
+                        <div className="flex items-center justify-center flex-wrap gap-3 sm:gap-6 text-xs sm:text-sm">
                             <div className="flex items-center gap-1.5 sm:gap-2">
-                                <div className="w-3 h-3 sm:w-5 sm:h-5 bg-green-500 rounded"></div>
-                                <span className="text-gray-600">開診</span>
+                                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded"></div>
+                                <span className="text-gray-600">線上診</span>
                             </div>
                             <div className="flex items-center gap-1.5 sm:gap-2">
-                                <div className="w-3 h-3 sm:w-5 sm:h-5 bg-gray-200 rounded"></div>
-                                <span className="text-gray-600">休診</span>
+                                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-blue-500 rounded"></div>
+                                <span className="text-gray-600">實體診</span>
                             </div>
                             <div className="flex items-center gap-1.5 sm:gap-2">
-                                <div className="w-3 h-3 sm:w-5 sm:h-5 bg-red-500 rounded"></div>
+                                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded"></div>
                                 <span className="text-gray-600">已預約</span>
                             </div>
                             <div className="flex items-center gap-1.5 sm:gap-2">
-                                <div className="w-3 h-3 sm:w-5 sm:h-5 bg-gray-100 border border-gray-200 rounded"></div>
+                                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-gray-200 rounded"></div>
+                                <span className="text-gray-600">休診</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 sm:gap-2">
+                                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-gray-100 border border-gray-200 rounded"></div>
                                 <span className="text-gray-600">已過期</span>
                             </div>
                         </div>

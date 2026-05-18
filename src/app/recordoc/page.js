@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, User, RefreshCw, Menu, LayoutGrid, List, X, Sparkles, FileText, CalendarPlus } from 'lucide-react';
+import { Calendar, Clock, User, RefreshCw, Menu, LayoutGrid, List, X, Sparkles, FileText, CalendarPlus, BookOpen, Save } from 'lucide-react';
 import DoctorSidebar from "../components/DoctorSidebar";
 import Navbar from "../components/Navbar";
 
@@ -27,12 +27,22 @@ export default function AppointmentRecords() {
   const [isSavingTranscript, setIsSavingTranscript] = useState(false);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
 
+  // ── 單筆 AI 摘要 ─────────────────────────────────────────────
+  const [transcriptTab, setTranscriptTab] = useState("transcript"); // "transcript" | "summary"
+  const [appointmentSummary, setAppointmentSummary] = useState("");
+  const [isGeneratingAISummary, setIsGeneratingAISummary] = useState(false);
+  const [isSavingSummary, setIsSavingSummary] = useState(false);
+
   // ── 週摘要彈窗 ──────────────────────────────────────────────
   const [showWeeklySummaryModal, setShowWeeklySummaryModal] = useState(false);
+  const [weeklySummaryTab, setWeeklySummaryTab] = useState("generate");
   const [weeklySummary, setWeeklySummary] = useState("");
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [summaryWeekStart, setSummaryWeekStart] = useState("");
   const [summaryWeekEnd, setSummaryWeekEnd] = useState("");
+  const [summaryHistory, setSummaryHistory] = useState([]);
+  const [summaryHistoryLoading, setSummaryHistoryLoading] = useState(false);
+  const [expandedHistoryId, setExpandedHistoryId] = useState(null);
 
   // ── 回診彈窗 ────────────────────────────────────────────────
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
@@ -107,6 +117,7 @@ export default function AppointmentRecords() {
         cancellation_reason: item.cancellation_reason || null,
         doctor_advice: item.doctor_advice || "",
         transcript: item.transcript || "",
+        ai_summary: item.ai_summary || "",
         prescription_image: item.prescription_image || "",
         patient_id: item.patient_id,  // 回診需要
         patient: { first_name: item.first_name, last_name: item.last_name },
@@ -147,6 +158,8 @@ export default function AppointmentRecords() {
   const openTranscriptModal = async (appointment) => {
     setTranscriptAppointment(appointment);
     setTranscriptText(appointment.transcript || "");
+    setAppointmentSummary(appointment.ai_summary || "");
+    setTranscriptTab("transcript");
     setShowTranscriptModal(true);
 
     if (!appointment.transcript) {
@@ -195,6 +208,60 @@ export default function AppointmentRecords() {
     }
   };
 
+  // ── 單筆 AI 摘要邏輯 ─────────────────────────────────────────
+  const generateAppointmentSummary = async () => {
+    if (!transcriptAppointment) return;
+    if (!transcriptText.trim()) { alert("此看診尚無逐字稿，無法生成摘要"); return; }
+    setIsGeneratingAISummary(true);
+    try {
+      const res = await fetch(`/api/appointments/${transcriptAppointment.appointment_id}/ai-summary`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ transcript: transcriptText }),
+      });
+      const data = await res.json();
+      if (res.ok && data.summary) {
+        setAppointmentSummary(data.summary);
+      } else {
+        alert(data.message || "摘要生成失敗");
+      }
+    } catch (e) {
+      alert("摘要生成失敗，請稍後再試");
+    } finally {
+      setIsGeneratingAISummary(false);
+    }
+  };
+
+  const saveAppointmentSummary = async () => {
+    if (!transcriptAppointment || !appointmentSummary) return;
+    setIsSavingSummary(true);
+    try {
+      const res = await fetch(`/api/appointments/${transcriptAppointment.appointment_id}/ai-summary`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ai_summary: appointmentSummary }),
+      });
+      if (res.ok) {
+        setAppointments(prev =>
+          prev.map(a =>
+            a.appointment_id === transcriptAppointment.appointment_id
+              ? { ...a, ai_summary: appointmentSummary }
+              : a
+          )
+        );
+        alert("✅ 摘要已儲存");
+      } else {
+        alert("儲存失敗，請稍後再試");
+      }
+    } catch (e) {
+      alert("儲存失敗");
+    } finally {
+      setIsSavingSummary(false);
+    }
+  };
+
   // ── 回診邏輯 ─────────────────────────────────────────────────
   const openFollowUpModal = (appointment) => {
     setFollowUpAppointment(appointment);
@@ -237,6 +304,46 @@ export default function AppointmentRecords() {
   };
 
   // ── 週摘要邏輯 ──────────────────────────────────────────────
+  const fetchSummaryHistory = async () => {
+    setSummaryHistoryLoading(true);
+    try {
+      const res = await fetch('/api/doctor/weekly-summary/history', { credentials: 'include' });
+      const data = await res.json();
+      if (res.ok) setSummaryHistory(data.summaries || []);
+    } catch (e) { console.error("取得歷史摘要失敗:", e); }
+    finally { setSummaryHistoryLoading(false); }
+  };
+
+  const [isSavingWeeklySummary, setIsSavingWeeklySummary] = useState(false);
+  const [weeklySummarySaved, setWeeklySummarySaved] = useState(false);
+
+  const saveWeeklySummary = async () => {
+    if (!weeklySummary) return;
+    setIsSavingWeeklySummary(true);
+    try {
+      const res = await fetch("/api/doctor/weekly-summary/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          week_start: summaryWeekStart,
+          week_end: summaryWeekEnd,
+          summary: weeklySummary,
+        }),
+      });
+      if (res.ok) {
+        setWeeklySummarySaved(true);
+        setTimeout(() => setWeeklySummarySaved(false), 3000);
+      } else {
+        alert("儲存失敗，請稍後再試");
+      }
+    } catch (e) {
+      alert("儲存失敗");
+    } finally {
+      setIsSavingWeeklySummary(false);
+    }
+  };
+
   const generateWeeklySummary = async () => {
     if (!summaryWeekStart || !summaryWeekEnd) { alert("請先選擇週期範圍"); return; }
     setIsGeneratingSummary(true);
@@ -894,48 +1001,150 @@ export default function AppointmentRecords() {
               </button>
             </div>
 
-            <div className="p-5 flex-1 overflow-hidden flex flex-col">
-              {transcriptLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <RefreshCw size={24} className="animate-spin text-teal-400 mr-2" />
-                  <span className="text-gray-500 text-sm">載入逐字稿中...</span>
-                </div>
-              ) : (
-                <>
-                  <div className="flex justify-between items-center mb-2">
-                    <p className="text-xs text-gray-500 font-medium">逐字稿內容（可直接編輯）</p>
-                    <span className="text-xs text-gray-400">{transcriptText.length} 字</span>
-                  </div>
-                  <textarea
-                    className="flex-1 w-full border border-gray-300 rounded-lg p-3 text-gray-700 text-sm resize-none focus:ring-2 focus:ring-teal-400 focus:border-transparent min-h-[250px]"
-                    placeholder={transcriptText === "" ? "此看診尚無逐字稿。\n\n逐字稿會在視訊看診結束後由 Whisper AI 自動生成並儲存至此。" : ""}
-                    value={transcriptText}
-                    onChange={(e) => setTranscriptText(e.target.value)}
-                  />
-                  {transcriptText === "" && (
-                    <p className="text-xs text-amber-600 mt-2">
-                      ⚠️ 此看診尚無逐字稿，可能是看診前未開啟音訊錄製功能。
-                    </p>
-                  )}
-                </>
-              )}
+            {/* Tab 切換 */}
+            <div className="flex border-b border-gray-200">
+              <button
+                onClick={() => setTranscriptTab("transcript")}
+                className={`flex items-center gap-1.5 px-5 py-3 text-sm font-medium border-b-2 transition ${
+                  transcriptTab === "transcript"
+                    ? "border-teal-500 text-teal-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <FileText size={15} /> 逐字稿
+              </button>
+              <button
+                onClick={() => setTranscriptTab("summary")}
+                className={`flex items-center gap-1.5 px-5 py-3 text-sm font-medium border-b-2 transition ${
+                  transcriptTab === "summary"
+                    ? "border-purple-500 text-purple-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <Sparkles size={15} /> AI 摘要
+                {appointmentSummary && <span className="w-1.5 h-1.5 rounded-full bg-purple-400 ml-1"></span>}
+              </button>
             </div>
 
-            <div className="p-5 border-t border-gray-200 flex gap-3">
-              <button
-                onClick={() => { setShowTranscriptModal(false); setTranscriptAppointment(null); }}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-lg transition text-sm"
-              >
-                關閉
-              </button>
-              <button
-                onClick={saveTranscript}
-                disabled={isSavingTranscript}
-                className="flex-1 bg-teal-500 hover:bg-teal-600 text-white font-medium py-2.5 rounded-lg transition text-sm disabled:opacity-50"
-              >
-                {isSavingTranscript ? "儲存中..." : "儲存修改"}
-              </button>
-            </div>
+            {/* 逐字稿 tab */}
+            {transcriptTab === "transcript" && (
+              <>
+                <div className="p-5 flex-1 overflow-hidden flex flex-col">
+                  {transcriptLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <RefreshCw size={24} className="animate-spin text-teal-400 mr-2" />
+                      <span className="text-gray-500 text-sm">載入逐字稿中...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-center mb-2">
+                        <p className="text-xs text-gray-500 font-medium">逐字稿內容（可直接編輯）</p>
+                        <span className="text-xs text-gray-400">{transcriptText.length} 字</span>
+                      </div>
+                      <textarea
+                        className="flex-1 w-full border border-gray-300 rounded-lg p-3 text-gray-700 text-sm resize-none focus:ring-2 focus:ring-teal-400 focus:border-transparent min-h-[250px]"
+                        placeholder={transcriptText === "" ? "此看診尚無逐字稿。\n\n逐字稿會在視訊看診結束後由 Whisper AI 自動生成並儲存至此。" : ""}
+                        value={transcriptText}
+                        onChange={(e) => setTranscriptText(e.target.value)}
+                      />
+                      {transcriptText === "" && (
+                        <p className="text-xs text-amber-600 mt-2">
+                          ⚠️ 此看診尚無逐字稿，可能是看診前未開啟音訊錄製功能。
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+                <div className="p-5 border-t border-gray-200 flex gap-3">
+                  <button
+                    onClick={() => { setShowTranscriptModal(false); setTranscriptAppointment(null); }}
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-lg transition text-sm"
+                  >
+                    關閉
+                  </button>
+                  <button
+                    onClick={saveTranscript}
+                    disabled={isSavingTranscript}
+                    className="flex-1 bg-teal-500 hover:bg-teal-600 text-white font-medium py-2.5 rounded-lg transition text-sm disabled:opacity-50"
+                  >
+                    {isSavingTranscript ? "儲存中..." : "儲存修改"}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* AI 摘要 tab */}
+            {transcriptTab === "summary" && (
+              <>
+                <div className="p-5 flex-1 overflow-y-auto flex flex-col gap-3">
+                  {isGeneratingAISummary ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                      <RefreshCw size={28} className="animate-spin mb-3 text-purple-400" />
+                      <p className="text-sm">AI 正在分析看診內容，請稍候...</p>
+                    </div>
+                  ) : appointmentSummary ? (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <p className="text-xs text-gray-500 font-medium">AI 摘要（可直接編輯）</p>
+                        <button
+                          onClick={generateAppointmentSummary}
+                          className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700"
+                        >
+                          <RefreshCw size={11} /> 重新生成
+                        </button>
+                      </div>
+                      <textarea
+                        className="flex-1 w-full border border-gray-300 rounded-lg p-3 text-gray-700 text-sm resize-none focus:ring-2 focus:ring-purple-400 focus:border-transparent min-h-[250px]"
+                        value={appointmentSummary}
+                        onChange={(e) => setAppointmentSummary(e.target.value)}
+                      />
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                      <Sparkles size={40} className="mb-3 text-gray-300" />
+                      <p className="text-sm mb-1">尚未生成此次看診的 AI 摘要</p>
+                      <p className="text-xs text-gray-300 mb-6">AI 會分析逐字稿並整理重點摘要</p>
+                      <button
+                        onClick={generateAppointmentSummary}
+                        disabled={!transcriptText.trim()}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition disabled:opacity-40"
+                      >
+                        <Sparkles size={15} /> 生成 AI 摘要
+                      </button>
+                      {!transcriptText.trim() && (
+                        <p className="text-xs text-amber-500 mt-2">需要先有逐字稿才能生成摘要</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="p-5 border-t border-gray-200 flex gap-3">
+                  <button
+                    onClick={() => { setShowTranscriptModal(false); setTranscriptAppointment(null); }}
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-lg transition text-sm"
+                  >
+                    關閉
+                  </button>
+                  {!appointmentSummary && (
+                    <button
+                      onClick={generateAppointmentSummary}
+                      disabled={isGeneratingAISummary || !transcriptText.trim()}
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-medium py-2.5 rounded-lg transition text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isGeneratingAISummary ? <><RefreshCw size={15} className="animate-spin" /> 生成中...</> : <><Sparkles size={15} /> 生成摘要</>}
+                    </button>
+                  )}
+                  {appointmentSummary && (
+                    <button
+                      onClick={saveAppointmentSummary}
+                      disabled={isSavingSummary}
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-medium py-2.5 rounded-lg transition text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {isSavingSummary ? <><RefreshCw size={15} className="animate-spin" /> 儲存中...</> : <><Save size={15} /> 儲存摘要</>}
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -1038,89 +1247,142 @@ export default function AppointmentRecords() {
       {showWeeklySummaryModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl border border-gray-200 flex flex-col max-h-[85vh]">
+
+            {/* 標題 */}
             <div className="flex justify-between items-center p-5 border-b border-gray-200">
               <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                 <Sparkles className="text-purple-500" size={20} />
-                AI 週摘要生成
+                AI 週摘要
               </h3>
-              <button
-                onClick={() => { setShowWeeklySummaryModal(false); setWeeklySummary(""); }}
-                className="text-gray-400 hover:text-gray-600 transition"
-              >
+              <button onClick={() => { setShowWeeklySummaryModal(false); setWeeklySummary(""); setWeeklySummaryTab("generate"); }} className="text-gray-400 hover:text-gray-600 transition">
                 <X size={24} />
               </button>
             </div>
 
-            <div className="p-5 border-b border-gray-100 bg-gray-50">
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">選擇週期範圍</p>
-              <div className="flex flex-wrap gap-3 items-end">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">開始日期</label>
-                  <input
-                    type="date"
-                    value={summaryWeekStart}
-                    onChange={(e) => setSummaryWeekStart(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-purple-400 focus:border-transparent"
-                  />
+            {/* Tab */}
+            <div className="flex border-b border-gray-200">
+              <button onClick={() => setWeeklySummaryTab("generate")}
+                className={`flex items-center gap-1.5 px-5 py-3 text-sm font-medium border-b-2 transition ${weeklySummaryTab === "generate" ? "border-purple-500 text-purple-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+                <Sparkles size={14} /> 生成摘要
+              </button>
+              <button onClick={() => { setWeeklySummaryTab("history"); fetchSummaryHistory(); }}
+                className={`flex items-center gap-1.5 px-5 py-3 text-sm font-medium border-b-2 transition ${weeklySummaryTab === "history" ? "border-purple-500 text-purple-600" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+                <FileText size={14} /> 歷史紀錄
+                {summaryHistory.length > 0 && <span className="bg-purple-100 text-purple-600 text-xs rounded-full px-1.5 ml-0.5">{summaryHistory.length}</span>}
+              </button>
+            </div>
+
+            {/* 生成摘要 tab */}
+            {weeklySummaryTab === "generate" && (<>
+              <div className="p-5 border-b border-gray-100 bg-gray-50">
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-3">選擇週期範圍</p>
+                <div className="flex flex-wrap gap-3 items-end">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">開始日期</label>
+                    <input type="date" value={summaryWeekStart} onChange={(e) => setSummaryWeekStart(e.target.value)}
+                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-purple-400 focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">結束日期</label>
+                    <input type="date" value={summaryWeekEnd} onChange={(e) => setSummaryWeekEnd(e.target.value)}
+                      className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-purple-400 focus:border-transparent" />
+                  </div>
+                  <button onClick={generateWeeklySummary} disabled={isGeneratingSummary}
+                    className="flex items-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition disabled:opacity-50">
+                    {isGeneratingSummary ? <><RefreshCw size={15} className="animate-spin" /> 生成中...</> : <><Sparkles size={15} /> 生成摘要</>}
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">結束日期</label>
-                  <input
-                    type="date"
-                    value={summaryWeekEnd}
-                    onChange={(e) => setSummaryWeekEnd(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:ring-2 focus:ring-purple-400 focus:border-transparent"
-                  />
-                </div>
-                <button
-                  onClick={generateWeeklySummary}
-                  disabled={isGeneratingSummary}
-                  className="flex items-center gap-2 px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition disabled:opacity-50"
-                >
-                  {isGeneratingSummary
-                    ? <><RefreshCw size={15} className="animate-spin" /> 生成中...</>
-                    : <><Sparkles size={15} /> 生成摘要</>
-                  }
+                <p className="text-xs text-gray-400 mt-2">使用 GPT-4o 分析已完成看診的逐字稿與醫師建議</p>
+              </div>
+              <div className="p-5 flex-1 overflow-y-auto">
+                {isGeneratingSummary ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                    <RefreshCw size={32} className="animate-spin mb-3 text-purple-400" />
+                    <p className="text-sm">GPT-4o 正在分析看診紀錄，請稍候...</p>
+                  </div>
+                ) : weeklySummary ? (
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">{weeklySummary}</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                    <Sparkles size={40} className="mb-3 text-gray-300" />
+                    <p className="text-sm">選擇週期範圍後，點擊「生成摘要」</p>
+                    <p className="text-xs mt-1 text-gray-300">AI 會自動分析看診逐字稿與醫師建議</p>
+                  </div>
+                )}
+              </div>
+              <div className="p-5 border-t border-gray-200 flex gap-2">
+                <button onClick={() => { setShowWeeklySummaryModal(false); setWeeklySummary(""); setWeeklySummaryTab("generate"); }}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-lg transition text-sm">關閉</button>
+                {weeklySummary && (<>
+                  <button onClick={() => { navigator.clipboard.writeText(weeklySummary); alert("已複製到剪貼簿！"); }}
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium py-2.5 rounded-lg transition text-sm">複製</button>
+                  <button onClick={saveWeeklySummary} disabled={isSavingWeeklySummary}
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-medium py-2.5 rounded-lg transition text-sm disabled:opacity-50 flex items-center justify-center gap-1.5">
+                    {weeklySummarySaved ? "✅ 已儲存" : isSavingWeeklySummary ? <><RefreshCw size={14} className="animate-spin" /> 儲存中...</> : <><Save size={14} /> 儲存摘要</>}
+                  </button>
+                </>)}
+              </div>
+            </>)}
+
+            {/* 歷史紀錄 tab */}
+            {weeklySummaryTab === "history" && (<>
+              <div className="p-5 flex-1 overflow-y-auto">
+                {summaryHistoryLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <RefreshCw size={24} className="animate-spin text-purple-400 mr-2" />
+                    <span className="text-gray-500 text-sm">載入中...</span>
+                  </div>
+                ) : summaryHistory.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                    <FileText size={40} className="mb-3 text-gray-300" />
+                    <p className="text-sm">尚無已儲存的週摘要</p>
+                    <p className="text-xs mt-1 text-gray-300">生成摘要後點「儲存摘要」即可保存</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {summaryHistory.map((item) => (
+                      <div key={item.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                        {/* 標題列：改用 div 避免 button 嵌套 */}
+                        <div
+                          onClick={() => setExpandedHistoryId(expandedHistoryId === item.id ? null : item.id)}
+                          className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-purple-50 transition cursor-pointer select-none"
+                        >
+                          <div>
+                            <p className="font-semibold text-gray-800 text-sm">{item.week_start} ～ {item.week_end}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">儲存於 {item.created_at?.slice(0, 16).replace('T', ' ')}</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(item.summary); alert("已複製！"); }}
+                              className="text-xs text-purple-600 hover:text-purple-800 px-2 py-1 rounded hover:bg-purple-100 transition"
+                            >
+                              複製
+                            </button>
+                            <span className={`text-gray-400 text-xs inline-block transition-transform duration-200 ${expandedHistoryId === item.id ? "rotate-180" : ""}`}>▼</span>
+                          </div>
+                        </div>
+                        {expandedHistoryId === item.id && (
+                          <div className="p-4 bg-white border-t border-gray-100">
+                            <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">{item.summary}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="p-5 border-t border-gray-200 flex gap-2">
+                <button onClick={() => { setShowWeeklySummaryModal(false); setWeeklySummaryTab("generate"); }}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-lg transition text-sm">關閉</button>
+                <button onClick={fetchSummaryHistory}
+                  className="flex items-center gap-1.5 px-4 py-2.5 text-sm text-purple-600 hover:bg-purple-50 border border-purple-200 rounded-lg transition">
+                  <RefreshCw size={13} className={summaryHistoryLoading ? "animate-spin" : ""} /> 重新整理
                 </button>
               </div>
-              <p className="text-xs text-gray-400 mt-2">使用 GPT-4o 分析本週已完成看診的逐字稿與醫師建議</p>
-            </div>
+            </>)}
 
-            <div className="p-5 flex-1 overflow-y-auto">
-              {isGeneratingSummary ? (
-                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                  <RefreshCw size={32} className="animate-spin mb-3 text-purple-400" />
-                  <p className="text-sm">GPT-4o 正在分析看診紀錄，請稍候...</p>
-                </div>
-              ) : weeklySummary ? (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">{weeklySummary}</p>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                  <Sparkles size={40} className="mb-3 text-gray-300" />
-                  <p className="text-sm">選擇週期範圍後，點擊「生成摘要」</p>
-                  <p className="text-xs mt-1 text-gray-300">AI 會自動分析看診逐字稿與醫師建議</p>
-                </div>
-              )}
-            </div>
-
-            <div className="p-5 border-t border-gray-200 flex gap-3">
-              <button
-                onClick={() => { setShowWeeklySummaryModal(false); setWeeklySummary(""); }}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-lg transition text-sm"
-              >
-                關閉
-              </button>
-              {weeklySummary && (
-                <button
-                  onClick={() => { navigator.clipboard.writeText(weeklySummary); alert("已複製到剪貼簿！"); }}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-medium py-2.5 rounded-lg transition text-sm"
-                >
-                  複製摘要
-                </button>
-              )}
-            </div>
           </div>
         </div>
       )}

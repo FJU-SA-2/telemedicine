@@ -1921,7 +1921,162 @@ def generate_weekly_summary():
         import traceback
         traceback.print_exc()
         return jsonify({"message": f"摘要生成失敗: {str(e)}"}), 500
+@app.route('/api/appointments/<int:appointment_id>/ai-summary', methods=['POST'])
+def generate_appointment_summary(appointment_id):
+    """根據單筆看診逐字稿，用 GPT-4o 生成重點摘要"""
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return jsonify({"message": "請先以醫師身份登入"}), 401
+ 
+    openai_api_key = os.getenv('OPENAI_API_KEY')
+    if not openai_api_key:
+        return jsonify({"message": "伺服器未設定 OPENAI_API_KEY"}), 500
+ 
+    data = request.get_json()
+    transcript = data.get('transcript', '').strip()
+    if not transcript:
+        return jsonify({"message": "逐字稿內容為空，無法生成摘要"}), 400
+ 
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT a.appointment_date, a.appointment_time, a.doctor_advice,
+                   CONCAT(p.first_name, p.last_name) AS patient_name
+            FROM appointments a
+            JOIN patient p ON a.patient_id = p.patient_id
+            WHERE a.appointment_id = %s AND a.doctor_id = %s
+        """, (appointment_id, session.get('doctor_id')))
+        row = cursor.fetchone()
+        cursor.close()
+        db.close()
+ 
+        if not row:
+            return jsonify({"message": "找不到該看診紀錄"}), 404
+ 
+        prompt = f"""你是一位專業醫療助理，請根據以下看診逐字稿，為醫師生成一份簡潔的單筆看診摘要。
+ 
+患者姓名：{row['patient_name']}
+看診日期：{row['appointment_date']} {str(row['appointment_time'])[:5]}
+醫師建議：{row.get('doctor_advice') or '（未填寫）'}
+ 
+看診逐字稿：
+{transcript}
+ 
+請生成包含以下重點的繁體中文摘要（條列格式）：
+1. 主訴與症狀
+2. 重要病史或用藥資訊
+3. 醫師評估與診斷方向
+4. 處置與衛教重點
+5. 追蹤事項（如有）
+ 
+請保持簡潔專業，每點不超過兩句。"""
+ 
+        client = openai.OpenAI(api_key=openai_api_key)
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=800,
+            temperature=0.3
+        )
+        summary = response.choices[0].message.content.strip()
+        return jsonify({"summary": summary}), 200
+ 
+    except openai.APIError as e:
+        return jsonify({"message": f"摘要生成失敗: {str(e)}"}), 500
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({"message": f"摘要生成失敗: {str(e)}"}), 500
+ 
+ 
+# ─────────────────────────────────────────────────────────────────
+# 單筆看診 AI 摘要：儲存
+# ─────────────────────────────────────────────────────────────────
+@app.route('/api/appointments/<int:appointment_id>/ai-summary', methods=['PUT'])
+def save_appointment_summary(appointment_id):
+    """儲存單筆看診的 AI 摘要到 appointments 表"""
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return jsonify({"message": "請先以醫師身份登入"}), 401
+ 
+    data = request.get_json()
+    ai_summary = data.get('ai_summary', '').strip()
+    if not ai_summary:
+        return jsonify({"message": "摘要內容為空"}), 400
+ 
+    try:
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("""
+            UPDATE appointments
+            SET ai_summary = %s
+            WHERE appointment_id = %s AND doctor_id = %s
+        """, (ai_summary, appointment_id, session.get('doctor_id')))
+        db.commit()
+        cursor.close()
+        db.close()
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+ 
+ 
+# ─────────────────────────────────────────────────────────────────
+# 週摘要：儲存
+# ─────────────────────────────────────────────────────────────────
+@app.route('/api/doctor/weekly-summary/save', methods=['POST'])
+def save_weekly_summary():
+    """儲存週摘要到 weekly_summaries 表"""
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return jsonify({"message": "請先以醫師身份登入"}), 401
+ 
+    data = request.get_json()
+    week_start = data.get('week_start')
+    week_end   = data.get('week_end')
+    summary    = data.get('summary', '').strip()
+ 
+    if not week_start or not week_end or not summary:
+        return jsonify({"message": "缺少必要參數"}), 400
+ 
+    try:
+        doctor_id = session.get('doctor_id')
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("""
+            INSERT INTO weekly_summaries (doctor_id, week_start, week_end, summary, created_at)
+            VALUES (%s, %s, %s, %s, NOW())
+            ON DUPLICATE KEY UPDATE
+                summary    = VALUES(summary),
+                created_at = NOW()
+        """, (doctor_id, week_start, week_end, summary))
+        db.commit()
+        cursor.close()
+        db.close()
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
 
+@app.route('/api/doctor/weekly-summary/history', methods=['GET'])
+def get_weekly_summary_history():
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return jsonify({"message": "請先以醫師身份登入"}), 401
+    try:
+        doctor_id = session.get('doctor_id')
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT id, week_start, week_end, summary,
+                   DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') AS created_at
+            FROM weekly_summaries
+            WHERE doctor_id = %s
+            ORDER BY week_start DESC
+        """, (doctor_id,))
+        rows = cursor.fetchall()
+        for r in rows:
+            r['week_start'] = str(r['week_start'])
+            r['week_end']   = str(r['week_end'])
+        cursor.close()
+        db.close()
+        return jsonify({"summaries": rows}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
 
 #醫師註冊檔案上傳
 @app.route("/api/upload-certificate", methods=["POST"])
@@ -2736,6 +2891,7 @@ def get_appointment_history():
                     a.consultation_notes,
                     a.recording_url,
                     a.recording_duration,
+                    a.ai_summary,
                     a.meeting_started_at,
                     a.meeting_ended_at,
                     d.doctor_id,
@@ -2764,6 +2920,7 @@ def get_appointment_history():
                     a.consultation_notes,
                     a.recording_url,
                     a.recording_duration,
+                    'ai_summary': record['ai_summary'] or '',
                     a.meeting_started_at,
                     a.meeting_ended_at,
                     p.patient_id,
@@ -4291,6 +4448,7 @@ def get_patient_medical_records(patient_id):
                 a.prescription_image,
                 a.recording_url,
                 a.recording_duration,
+                a.ai_summary,
                 d.doctor_id,
                 d.first_name as doctor_first_name,
                 d.last_name as doctor_last_name,
@@ -4317,6 +4475,7 @@ def get_patient_medical_records(patient_id):
                 'doctor_advice': record['doctor_advice'] or '',
                 'recording_url': record['recording_url'],
                 'recording_duration': record['recording_duration'],
+                'ai_summary': record['ai_summary'] or '',
                 'doctor_first_name': record['doctor_first_name'] or '',
                 'doctor_last_name': record['doctor_last_name'] or '',
                 'doctor_specialty': record['doctor_specialty']
@@ -4329,6 +4488,107 @@ def get_patient_medical_records(patient_id):
         import traceback
         traceback.print_exc()
         return jsonify({"message": f"獲取病歷記錄失敗: {str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+@app.route("/api/patient/<int:patient_id>/overall-summary", methods=["POST"])
+def generate_patient_overall_summary(patient_id):
+    """根據患者所有就診紀錄，用 GPT-4o 生成整體病歷摘要"""
+    if 'user_id' not in session:
+        return jsonify({"message": "請先登入"}), 401
+    if session.get('role') != 'doctor':
+        return jsonify({"message": "此功能僅供醫師使用"}), 403
+ 
+    openai_api_key = os.getenv('OPENAI_API_KEY')
+    if not openai_api_key:
+        return jsonify({"message": "伺服器未設定 OPENAI_API_KEY"}), 500
+ 
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT
+                a.appointment_id,
+                a.appointment_date,
+                a.appointment_time,
+                a.symptoms,
+                a.doctor_advice,
+                a.consultation_notes,
+                a.ai_summary,
+                d.first_name AS doctor_first_name,
+                d.last_name  AS doctor_last_name,
+                d.specialty  AS doctor_specialty
+            FROM appointments a
+            JOIN doctor d ON a.doctor_id = d.doctor_id
+            WHERE a.patient_id = %s AND a.status = '已完成'
+            ORDER BY a.appointment_date ASC, a.appointment_time ASC
+        """, (patient_id,))
+        records = cursor.fetchall()
+ 
+        # 取得患者姓名
+        cursor.execute("""
+            SELECT CONCAT(first_name, last_name) AS name
+            FROM patient WHERE patient_id = %s
+        """, (patient_id,))
+        patient_row = cursor.fetchone()
+        patient_name = patient_row['name'] if patient_row else f"患者 #{patient_id}"
+ 
+        if not records:
+            return jsonify({"message": "此患者尚無已完成的就診紀錄", "summary": ""}), 200
+ 
+        # 組合內容
+        lines = []
+        for i, r in enumerate(records, 1):
+            date_str = str(r['appointment_date'])
+            time_str = str(r['appointment_time'])[:5]
+            doctor   = f"{r['doctor_first_name']}{r['doctor_last_name']}（{r['doctor_specialty']}）"
+            advice   = r.get('doctor_advice') or '（無）'
+            symptoms = r.get('symptoms') or '（未記錄）'
+            notes    = r.get('consultation_notes') or ''
+            ai_sum   = r.get('ai_summary') or ''
+ 
+            block = f"【第 {i} 次就診】{date_str} {time_str}　{doctor}\n"
+            block += f"  主訴：{symptoms}\n"
+            if notes:
+                block += f"  診斷紀錄：{notes}\n"
+            block += f"  醫師建議：{advice}\n"
+            if ai_sum:
+                block += f"  AI 摘要：{ai_sum}\n"
+            lines.append(block)
+ 
+        all_content = "\n".join(lines)
+ 
+        prompt = f"""你是一位專業醫療助理，以下是患者「{patient_name}」在本平台的所有就診紀錄（共 {len(records)} 次），請為醫師生成一份完整的患者整體病歷摘要，格式如下：
+ 
+1. **患者就診概覽**（就診次數、時間跨度、主要科別）
+2. **主要病史與主訴模式**（反覆出現的症狀、慢性問題）
+3. **用藥與治療摘要**（曾使用的藥物或治療建議）
+4. **病情趨勢分析**（有無改善、惡化或新問題）
+5. **注意事項與後續建議**（醫師需特別留意的事項）
+ 
+就診紀錄如下：
+{all_content}
+ 
+請以正式、簡潔的繁體中文撰寫，每個重點條列清楚。"""
+ 
+        client = openai.OpenAI(api_key=openai_api_key)
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1500,
+            temperature=0.3
+        )
+        summary = response.choices[0].message.content.strip()
+ 
+        print(f"✅ 患者 {patient_id} 整體摘要生成完成（共 {len(records)} 筆）")
+        return jsonify({"summary": summary, "record_count": len(records)}), 200
+ 
+    except openai.APIError as e:
+        return jsonify({"message": f"摘要生成失敗: {str(e)}"}), 500
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        return jsonify({"message": str(e)}), 500
     finally:
         cursor.close()
         db.close()
