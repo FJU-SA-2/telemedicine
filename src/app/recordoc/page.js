@@ -48,6 +48,7 @@ export default function AppointmentRecords() {
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [followUpAppointment, setFollowUpAppointment] = useState(null);
   const [followUpWeeks, setFollowUpWeeks] = useState("2");
+  const [followUpType, setFollowUpType] = useState("online"); // "online" | "physical"
   const [followUpNote, setFollowUpNote] = useState("");
   const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
   const [followUpSentIds, setFollowUpSentIds] = useState(new Set());
@@ -266,6 +267,7 @@ export default function AppointmentRecords() {
   const openFollowUpModal = (appointment) => {
     setFollowUpAppointment(appointment);
     setFollowUpWeeks("2");
+    setFollowUpType("online");
     setFollowUpNote("");
     setShowFollowUpModal(true);
   };
@@ -284,6 +286,7 @@ export default function AppointmentRecords() {
           appointment_id: followUpAppointment.appointment_id,
           patient_id: followUpAppointment.patient_id,
           suggested_weeks: parseInt(followUpWeeks),
+          appointment_type: followUpType,
           note: followUpNote.trim(),
         }),
       });
@@ -1199,6 +1202,33 @@ export default function AppointmentRecords() {
                 </div>
               </div>
 
+              {/* 診療類型 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">診療方式</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setFollowUpType("online")}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium border transition ${
+                      followUpType === "online"
+                        ? 'bg-green-500 text-white border-green-500'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-green-400 hover:text-green-600'
+                    }`}
+                  >
+                    🖥️ 線上診
+                  </button>
+                  <button
+                    onClick={() => setFollowUpType("physical")}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium border transition ${
+                      followUpType === "physical"
+                        ? 'bg-blue-500 text-white border-blue-500'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:text-blue-600'
+                    }`}
+                  >
+                    🏥 實體診
+                  </button>
+                </div>
+              </div>
+
               {/* 備註 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1216,7 +1246,7 @@ export default function AppointmentRecords() {
               {/* 說明文字 */}
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                 <p className="text-xs text-orange-700">
-                  📲 系統將透過 LINE 詢問患者偏好時段（早診 / 午診 / 晚診），機構收到後安排回診預約。
+                  📲 系統將透過 LINE 詢問患者偏好時段，並依照「{followUpType === "online" ? "線上診" : "實體診"}」篩選 {followUpWeeks} 週後的可用時段。
                 </p>
               </div>
             </div>

@@ -6432,11 +6432,13 @@ def create_followup_request():
             return jsonify({"success": False, "message": "找不到該預約"}), 404
  
         # 寫入 followup_requests 資料表
+        appointment_type = data.get("appointment_type", "online")  # online / physical
+
         cursor.execute("""
             INSERT INTO followup_requests
-                (appointment_id, patient_id, doctor_id, suggested_weeks, note, status, created_at)
-            VALUES (%s, %s, %s, %s, %s, 'pending', NOW())
-        """, (appointment_id, patient_id, row["doctor_id"], suggested_weeks, note))
+                (appointment_id, patient_id, doctor_id, suggested_weeks, appointment_type, note, status, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, 'pending', NOW())
+        """, (appointment_id, patient_id, row["doctor_id"], suggested_weeks, appointment_type, note))
         db.commit()
         followup_request_id = cursor.lastrowid
  
@@ -6448,6 +6450,7 @@ def create_followup_request():
             doctor_name         = row["doctor_name"],
             specialty           = row["specialty"],
             suggested_weeks     = suggested_weeks,
+            appointment_type    = appointment_type,
             note                = note,
             followup_request_id = followup_request_id,
         )
@@ -6490,8 +6493,9 @@ def handle_postback(event):
     # ──────────────────────────────────────────────────────────────
     if action == "followup_pref":
         request_id = params.get("request_id", [None])[0]
-        pref       = params.get("pref", [None])[0]
+        pref       = params.get("pref",       [None])[0]
         patient_id = params.get("patient_id", [None])[0]
+        appt_type  = params.get("appt_type",  ["online"])[0]  # online / physical
  
         PREF_LABELS = {
             "morning":   "早診（09:00–11:30）",
@@ -6518,6 +6522,7 @@ def handle_postback(event):
                 SELECT
                     fr.doctor_id,
                     fr.suggested_weeks,
+                    fr.appointment_type,
                     CONCAT(d.first_name, d.last_name) AS doctor_name,
                     d.specialty,
                     CONCAT(p.first_name, p.last_name) AS patient_name,
@@ -6536,28 +6541,33 @@ def handle_postback(event):
                 )
                 return
  
-            # 計算建議回診日期範圍（今天起 suggested_weeks 週內）
+            # 計算建議回診日期範圍（從 suggested_weeks 週後開始算 ±2 週）
             from datetime import date, timedelta
             today      = date.today()
-            date_from  = today + timedelta(days=1)
-            date_to    = today + timedelta(weeks=int(row["suggested_weeks"]) + 2)
- 
-            # 查該醫師在偏好時段的空班
+            date_from  = today + timedelta(weeks=int(row["suggested_weeks"]))
+            date_to    = date_from + timedelta(weeks=2)
+
+            # 查該醫師在偏好時段且符合診療類型的空班
             time_from, time_to = PREF_TIME_RANGE.get(pref, ("00:00:00", "23:59:59"))
+            # appt_type 優先用 postback 帶來的值，fallback 到 DB 的值
+            appt_type = appt_type or row.get("appointment_type", "online")
             cursor.execute("""
                 SELECT schedule_id,
                     DATE_FORMAT(schedule_date, '%Y-%m-%d') AS date,
-                    TIME_FORMAT(time_slot, '%H:%i')        AS time
+                    TIME_FORMAT(time_slot, '%H:%i')        AS time,
+                    schedule_type
                 FROM schedules
-                WHERE doctor_id    = %s
-                  AND is_available = 1
+                WHERE doctor_id     = %s
+                  AND is_available  = 1
+                  AND schedule_type = %s
                   AND schedule_date BETWEEN %s AND %s
                   AND time_slot    BETWEEN %s AND %s
                 ORDER BY schedule_date ASC, time_slot ASC
                 LIMIT 5
-            """, (row["doctor_id"], date_from, date_to, time_from, time_to))
+            """, (row["doctor_id"], appt_type, date_from, date_to, time_from, time_to))
             slots = cursor.fetchall()
- 
+            print(f"[DEBUG followup_pref] doctor_id={row['doctor_id']}, appt_type={appt_type}, date_from={date_from}, date_to={date_to}, time_from={time_from}, time_to={time_to}, slots={slots}")
+
             if not slots:
                 # 該時段沒有空班，告知患者
                 line_bot_api.reply_message(
