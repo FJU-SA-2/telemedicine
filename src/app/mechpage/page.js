@@ -334,7 +334,7 @@ const PatientDetailModal = ({ patientId, onClose }) => {
 // ════════════════════════════════════════════════════════════════════
 //  新增醫師 Modal
 // ════════════════════════════════════════════════════════════════════
-const AddDoctorModal = ({ onClose, onSaved }) => {
+const AddDoctorModal = ({ onClose, onSaved, mechanismId }) => {
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
@@ -361,7 +361,7 @@ const AddDoctorModal = ({ onClose, onSaved }) => {
       await apiFetch("/api/mechanism/doctors", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, mechanism_id: mechanismId }),
       });
       onSaved("醫師已新增");
     } catch (e) {
@@ -412,8 +412,9 @@ const AddDoctorModal = ({ onClose, onSaved }) => {
             </div>
             {[
               { key: "specialty", label: "專科", placeholder: "例：內科、外科" },
+              { key: "Educational qualifications", label: "學歷"},
+              { key: "experience", label: "經歷"},
               { key: "phone_number", label: "聯絡電話", placeholder: "09xx-xxx-xxx" },
-              { key: "certificate_path", label: "證書路徑", placeholder: "上傳後填入路徑（選填）" },
             ].map(({ key, label, placeholder }) => (
               <div key={key}>
                 <label className="text-sm font-medium text-gray-600 block mb-1">{label}</label>
@@ -434,7 +435,7 @@ const AddDoctorModal = ({ onClose, onSaved }) => {
             <div>
               <label className="text-sm font-medium text-gray-600 block mb-1">密碼 <span className="text-rose-500">*</span></label>
               <input type="password" value={form.password} onChange={e => set("password", e.target.value)}
-                placeholder="至少 6 個字元" className={inputCls} />
+                placeholder="請使用身分證" className={inputCls} />
             </div>
           </div>
         </div>
@@ -1036,7 +1037,9 @@ const TelemedicineDashboard = () => {
           onSaved={(msg, type = "success") => { setEditingDoctor(null); showToast(msg, type); if (type === "success") fetchDoctors(mechanismId); }} />
       )}
       {addingDoctor && (
-        <AddDoctorModal onClose={() => setAddingDoctor(false)}
+        <AddDoctorModal
+          mechanismId={mechanismId}
+          onClose={() => setAddingDoctor(false)}
           onSaved={(msg) => { setAddingDoctor(false); showToast(msg); fetchDoctors(mechanismId); fetchStats(); }} />
       )}
       {viewingPatientId && (

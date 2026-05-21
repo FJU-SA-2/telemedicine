@@ -5301,6 +5301,7 @@ def get_mechanism_stats():
 @app.route('/api/mechanism/doctors', methods=['GET'])
 @require_mechanism
 def get_mechanism_doctors():
+    print("GET mechanism_id:", request.mechanism_id)
     search = request.args.get('search', '').strip()
     status_filter = request.args.get('status', '')
 
@@ -5682,7 +5683,8 @@ def add_doctor():
         specialty         = data.get("specialty", "")
         practice_hospital = data.get("practice_hospital", "")
         phone_number      = data.get("phone_number", "")
-        approval_status   = data.get("approval_status", "pending")
+        approval_status   = "approved"
+        approval_date   = datetime.now()
         certificate_path  = data.get("certificate_path", "")
         email             = data.get("email")
         password          = data.get("password")
@@ -5699,7 +5701,7 @@ def add_doctor():
 
         # 1. 從 mechanism 表取得 mechanism_id
         cursor.execute(
-            "SELECT mechanism_id FROM mechanism WHERE user_id = %s",
+            "SELECT mechanism_id, mechanism_name FROM mechanism WHERE user_id = %s",
             (session.get("user_id"),)
         )
         mech = cursor.fetchone()
@@ -5708,6 +5710,7 @@ def add_doctor():
             conn.close()
             return jsonify({"error": "找不到機構資料，請重新登入"}), 403
         mechanism_id = mech["mechanism_id"]
+        practice_hospital = mech["mechanism_name"]  # ← 自動帶入機構名稱
 
         # 2. 檢查 email 是否重複
         cursor.execute("SELECT user_id FROM users WHERE email = %s", (email,))
@@ -5731,12 +5734,12 @@ def add_doctor():
             INSERT INTO doctor
               (user_id, first_name, last_name, gender, specialty,
                practice_hospital, phone_number,
-               approval_status, certificate_path, mechanism_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+               approval_status, approval_date, certificate_path, mechanism_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             user_id, first_name, last_name, gender, specialty,
             practice_hospital, phone_number,
-            approval_status, certificate_path, mechanism_id
+            approval_status, approval_date, certificate_path, mechanism_id
         ))
         doctor_id = cursor.lastrowid
 
