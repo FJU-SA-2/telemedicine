@@ -280,7 +280,8 @@ def start_scheduler():
 
 def notify_followup_request(patient_id: int, patient_name: str,
                              doctor_name: str, specialty: str,
-                             suggested_weeks: int, note: str,
+                             suggested_weeks: int, appointment_type: str,
+                             note: str,
                              followup_request_id: int) -> bool:
     """
     醫師按下「建議回診」後，透過 LINE Flex Message
@@ -294,9 +295,10 @@ def notify_followup_request(patient_id: int, patient_name: str,
 
     note_section = f"\n📝 醫師備註：{note}" if note else ""
 
+    type_label = "線上診 🖥️" if appointment_type == "online" else "實體診 🏥"
     flex_message = {
         "type": "flex",
-        "altText": f"【回診通知】{doctor_name} 醫師建議您約 {suggested_weeks} 週後回診，請選擇偏好時段",
+        "altText": f"【回診通知】{doctor_name} 醫師建議您約 {suggested_weeks} 週後回診（{type_label}），請選擇偏好時段",
         "contents": {
             "type": "bubble",
             "size": "mega",
@@ -317,6 +319,13 @@ def notify_followup_request(patient_id: int, patient_name: str,
                         "size": "sm",
                         "color": "#FFE0C0",
                         "margin": "sm"
+                    },
+                    {
+                        "type": "text",
+                        "text": f"{type_label}｜約 {suggested_weeks} 週後回診",
+                        "size": "xs",
+                        "color": "#FED7AA",
+                        "margin": "xs"
                     }
                 ],
                 "backgroundColor": "#F97316",
@@ -382,7 +391,7 @@ def notify_followup_request(patient_id: int, patient_name: str,
                         "action": {
                             "type": "postback",
                             "label": "早診",
-                            "data": f"action=followup_pref&request_id={followup_request_id}&pref=morning&patient_id={patient_id}",
+                            "data": f"action=followup_pref&request_id={followup_request_id}&pref=morning&patient_id={patient_id}&appt_type={appointment_type}",
                             "displayText": "我偏好早診時段"
                         }
                     },
@@ -415,7 +424,7 @@ def notify_followup_request(patient_id: int, patient_name: str,
                         "action": {
                             "type": "postback",
                             "label": "午診",
-                            "data": f"action=followup_pref&request_id={followup_request_id}&pref=afternoon&patient_id={patient_id}",
+                            "data": f"action=followup_pref&request_id={followup_request_id}&pref=afternoon&patient_id={patient_id}&appt_type={appointment_type}",
                             "displayText": "我偏好午診時段"
                         }
                     },
@@ -448,7 +457,7 @@ def notify_followup_request(patient_id: int, patient_name: str,
                         "action": {
                             "type": "postback",
                             "label": "晚診",
-                            "data": f"action=followup_pref&request_id={followup_request_id}&pref=evening&patient_id={patient_id}",
+                            "data": f"action=followup_pref&request_id={followup_request_id}&pref=evening&patient_id={patient_id}&appt_type={appointment_type}",
                             "displayText": "我偏好晚診時段"
                         }
                     },
@@ -472,7 +481,7 @@ def notify_followup_request(patient_id: int, patient_name: str,
                         "action": {
                             "type": "postback",
                             "label": "皆可",
-                            "data": f"action=followup_pref&request_id={followup_request_id}&pref=any&patient_id={patient_id}",
+                            "data": f"action=followup_pref&request_id={followup_request_id}&pref=any&patient_id={patient_id}&appt_type={appointment_type}",
                             "displayText": "我任何時段皆可"
                         }
                     }
