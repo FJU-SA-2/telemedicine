@@ -44,11 +44,15 @@ export async function GET(request) {
         a.transcript,
         a.ai_summary,
         a.prescription_image,
-        a.schedule_type,
+        COALESCE(s.schedule_type, 'online') AS schedule_type,
         p.first_name,
         p.last_name
       FROM appointments a
       INNER JOIN patient p ON a.patient_id = p.patient_id
+      LEFT JOIN schedules s
+        ON s.doctor_id     = a.doctor_id
+       AND s.schedule_date = a.appointment_date
+       AND s.time_slot     = a.appointment_time
       WHERE a.doctor_id = ?
       ORDER BY a.appointment_date DESC, a.appointment_time DESC`,
       [doctor_id]
