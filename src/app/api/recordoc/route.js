@@ -67,11 +67,8 @@ export async function GET(request) {
       cancellation_reason: a.cancellation_reason || "",
       doctor_advice: a.doctor_advice || "",
       transcript: a.transcript || "",
-<<<<<<< HEAD
       schedule_type: a.schedule_type || "online",
-=======
       ai_summary: a.ai_summary || "",
->>>>>>> b2134d2cef361e6ce607955a752363a180571ba2
       prescription_image: a.prescription_image || "",
       first_name: a.first_name || "",
       last_name: a.last_name || "",

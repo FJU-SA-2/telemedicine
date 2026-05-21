@@ -2920,6 +2920,7 @@ def get_appointment_history():
                     a.consultation_notes,
                     a.recording_url,
                     a.recording_duration,
+                    'ai_summary': record['ai_summary'] or '',
                     a.meeting_started_at,
                     a.meeting_ended_at,
                     p.patient_id,
@@ -4474,6 +4475,7 @@ def get_patient_medical_records(patient_id):
                 'doctor_advice': record['doctor_advice'] or '',
                 'recording_url': record['recording_url'],
                 'recording_duration': record['recording_duration'],
+                'ai_summary': record['ai_summary'] or '',
                 'doctor_first_name': record['doctor_first_name'] or '',
                 'doctor_last_name': record['doctor_last_name'] or '',
                 'doctor_specialty': record['doctor_specialty']
