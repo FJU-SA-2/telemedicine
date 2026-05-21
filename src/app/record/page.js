@@ -64,6 +64,7 @@ export default function AppointmentRecords() {
         cancellation_reason: item.cancellation_reason || null,
         doctor_advice: item.doctor_advice || null,
         prescription_image: item.prescription_image || "",
+        schedule_type: item.schedule_type || "online",
         doctor: {
           first_name: item.first_name,
           last_name: item.last_name,
@@ -224,6 +225,30 @@ export default function AppointmentRecords() {
     }
   };
 
+  const getScheduleTypeText = (type) => {
+  switch (type) {
+    case "online":
+      return "線上";
+    case "physical":
+      return "實體";
+    default:
+      return type;
+  }
+};
+
+  const getScheduleTypeColor = (type) => {
+    switch (type) {
+      case "online":
+        return "bg-purple-100 text-purple-800 border-purple-300";
+
+      case "physical":
+        return "bg-orange-100 text-orange-800 border-orange-300";
+
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-300";
+    }
+  };
+
   const filteredAppointments = appointments.filter(
     (apt) => filter === "all" || apt.status === filter
   );
@@ -327,12 +352,21 @@ export default function AppointmentRecords() {
                       className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 overflow-hidden"
                     >
                       <div className="p-4 sm:p-5">
-                        {/* 狀態 badge */}
-                        <div className="flex justify-between items-start mb-3">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(appointment.status)}`}>
-                            {appointment.status}
-                          </span>
-                        </div>
+                        <div className="flex gap-2">
+                        {/* 狀態 */}
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(appointment.status)}`}
+                        >
+                          {appointment.status}
+                        </span>
+
+                        {/* 預約類型 */}
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm font-semibold border ${getScheduleTypeColor(appointment.schedule_type)}`}
+                        >
+                          {getScheduleTypeText(appointment.schedule_type)}
+                        </span>
+                      </div>
 
                         {/* 醫師資訊 */}
                         <div className="flex items-center mb-3">
@@ -491,7 +525,7 @@ export default function AppointmentRecords() {
                     <table className="w-full min-w-[600px]">
                       <thead className="bg-gray-50 border-b border-gray-200">
                         <tr>
-                          {["狀態", "醫師", "科別", "日期", "時間", "備註", "操作"].map(h => (
+                          {["狀態","看診方式", "醫師", "科別", "日期", "時間", "備註", "操作"].map(h => (
                             <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 whitespace-nowrap">{h}</th>
                           ))}
                         </tr>
@@ -502,6 +536,13 @@ export default function AppointmentRecords() {
                             <td className="px-4 py-3 whitespace-nowrap">
                               <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(appointment.status)}`}>
                                 {appointment.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs font-semibold border ${getScheduleTypeColor(appointment.schedule_type)}`}
+                              >
+                                {getScheduleTypeText(appointment.schedule_type)}
                               </span>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap">

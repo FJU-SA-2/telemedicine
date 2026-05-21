@@ -108,6 +108,7 @@ export default function AppointmentRecords() {
         doctor_advice: item.doctor_advice || "",
         transcript: item.transcript || "",
         prescription_image: item.prescription_image || "",
+        schedule_type: item.schedule_type || "online",
         patient_id: item.patient_id,  // 回診需要
         patient: { first_name: item.first_name, last_name: item.last_name },
         isEditing: false,
@@ -162,6 +163,30 @@ export default function AppointmentRecords() {
       } finally {
         setTranscriptLoading(false);
       }
+    }
+  };
+
+  const getScheduleTypeText = (type) => {
+    switch (type) {
+      case "online":
+        return "線上";
+      case "physical":
+        return "實體";
+      default:
+        return type;
+    }
+  };
+
+    const getScheduleTypeColor = (type) => {
+    switch (type) {
+      case "online":
+        return "bg-purple-100 text-purple-800 border-purple-300";
+
+      case "physical":
+        return "bg-orange-100 text-orange-800 border-orange-300";
+
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-300";
     }
   };
 
@@ -452,9 +477,21 @@ export default function AppointmentRecords() {
                   <div key={appointment.appointment_id} className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden">
                     <div className="p-4 sm:p-6">
                       <div className="flex justify-between items-start mb-4">
-                        <span className={`px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(appointment.status)}`}>
+                        <div className="flex gap-2">
+                        {/* 狀態 */}
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(appointment.status)}`}
+                        >
                           {appointment.status}
                         </span>
+
+                        {/* 預約類型 */}
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm font-semibold border ${getScheduleTypeColor(appointment.schedule_type)}`}
+                        >
+                          {getScheduleTypeText(appointment.schedule_type)}
+                        </span>
+                      </div>
                       </div>
 
                       <div className="flex items-center mb-4">
@@ -685,6 +722,7 @@ export default function AppointmentRecords() {
                     <thead className="bg-gray-50 border-b-2 border-gray-200">
                       <tr>
                         <th className="px-3 sm:px-6 py-4 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">狀態</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">看診方式</th>
                         <th className="px-3 sm:px-6 py-4 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">患者姓名</th>
                         <th className="px-3 sm:px-6 py-4 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">日期</th>
                         <th className="px-3 sm:px-6 py-4 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">時間</th>
@@ -702,6 +740,13 @@ export default function AppointmentRecords() {
                           <td className="px-3 sm:px-6 py-4">
                             <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${getStatusColor(appointment.status)}`}>
                               {appointment.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-semibold border ${getScheduleTypeColor(appointment.schedule_type)}`}
+                            >
+                              {getScheduleTypeText(appointment.schedule_type)}
                             </span>
                           </td>
                           <td className="px-3 sm:px-6 py-4">

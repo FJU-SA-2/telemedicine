@@ -43,6 +43,7 @@ export async function GET(request) {
         a.doctor_advice,
         a.transcript,
         a.prescription_image,
+        a.schedule_type,
         p.first_name,
         p.last_name
       FROM appointments a
@@ -65,6 +66,7 @@ export async function GET(request) {
       cancellation_reason: a.cancellation_reason || "",
       doctor_advice: a.doctor_advice || "",
       transcript: a.transcript || "",
+      schedule_type: a.schedule_type || "online",
       prescription_image: a.prescription_image || "",
       first_name: a.first_name || "",
       last_name: a.last_name || "",
