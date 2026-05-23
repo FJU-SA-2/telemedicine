@@ -98,23 +98,6 @@ function EditDoctorModal({ doctor, onClose, onSaved }) {
   );
 }
 
-// ==================== 審核狀態 Badge ====================
-function StatusBadge({ status }) {
-  const map = {
-    approved: { label: "已核准", color: "bg-green-100 text-green-700", Icon: CheckCircle },
-    pending:  { label: "審核中", color: "bg-yellow-100 text-yellow-700", Icon: Clock },
-    rejected: { label: "已拒絕", color: "bg-red-100 text-red-600", Icon: XCircle },
-  };
-  const cfg = map[status] || map.pending;
-  const Icon = cfg.Icon;
-  return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${cfg.color}`}>
-      <Icon size={11} />
-      {cfg.label}
-    </span>
-  );
-}
-
 // ==================== 排班列表（重新設計）====================
 function ScheduleList({ schedules }) {
   const grouped = schedules.reduce((acc, s) => {
@@ -269,11 +252,6 @@ function DoctorCard({ doctor, onEdit }) {
 
         {/* 院所 */}
         <p className="mt-1.5 text-sm text-gray-500">{doctor.practice_hospital || "未填寫"}</p>
-
-        {/* 審核狀態 */}
-        <div className="mt-2">
-          <StatusBadge status={doctor.approval_status} />
-        </div>
       </div>
 
       {/* ── 中段：學經歷 ── */}

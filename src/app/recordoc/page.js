@@ -48,6 +48,7 @@ export default function AppointmentRecords() {
   const [showFollowUpModal, setShowFollowUpModal] = useState(false);
   const [followUpAppointment, setFollowUpAppointment] = useState(null);
   const [followUpWeeks, setFollowUpWeeks] = useState("2");
+  const [followUpType, setFollowUpType] = useState("online"); // "online" | "physical"
   const [followUpNote, setFollowUpNote] = useState("");
   const [isSendingFollowUp, setIsSendingFollowUp] = useState(false);
   const [followUpSentIds, setFollowUpSentIds] = useState(new Set());
@@ -119,6 +120,7 @@ export default function AppointmentRecords() {
         transcript: item.transcript || "",
         ai_summary: item.ai_summary || "",
         prescription_image: item.prescription_image || "",
+        schedule_type: item.schedule_type || "online",
         patient_id: item.patient_id,  // 回診需要
         patient: { first_name: item.first_name, last_name: item.last_name },
         isEditing: false,
@@ -175,6 +177,30 @@ export default function AppointmentRecords() {
       } finally {
         setTranscriptLoading(false);
       }
+    }
+  };
+
+  const getScheduleTypeText = (type) => {
+    switch (type) {
+      case "online":
+        return "線上";
+      case "physical":
+        return "實體";
+      default:
+        return type;
+    }
+  };
+
+    const getScheduleTypeColor = (type) => {
+    switch (type) {
+      case "online":
+        return "bg-purple-100 text-purple-800 border-purple-300";
+
+      case "physical":
+        return "bg-orange-100 text-orange-800 border-orange-300";
+
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-300";
     }
   };
 
@@ -266,6 +292,7 @@ export default function AppointmentRecords() {
   const openFollowUpModal = (appointment) => {
     setFollowUpAppointment(appointment);
     setFollowUpWeeks("2");
+    setFollowUpType("online");
     setFollowUpNote("");
     setShowFollowUpModal(true);
   };
@@ -284,6 +311,7 @@ export default function AppointmentRecords() {
           appointment_id: followUpAppointment.appointment_id,
           patient_id: followUpAppointment.patient_id,
           suggested_weeks: parseInt(followUpWeeks),
+          appointment_type: followUpType,
           note: followUpNote.trim(),
         }),
       });
@@ -559,9 +587,21 @@ export default function AppointmentRecords() {
                   <div key={appointment.appointment_id} className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden">
                     <div className="p-4 sm:p-6">
                       <div className="flex justify-between items-start mb-4">
-                        <span className={`px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(appointment.status)}`}>
+                        <div className="flex gap-2">
+                        {/* 狀態 */}
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(appointment.status)}`}
+                        >
                           {appointment.status}
                         </span>
+
+                        {/* 預約類型 */}
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm font-semibold border ${getScheduleTypeColor(appointment.schedule_type)}`}
+                        >
+                          {getScheduleTypeText(appointment.schedule_type)}
+                        </span>
+                      </div>
                       </div>
 
                       <div className="flex items-center mb-4">
@@ -792,6 +832,7 @@ export default function AppointmentRecords() {
                     <thead className="bg-gray-50 border-b-2 border-gray-200">
                       <tr>
                         <th className="px-3 sm:px-6 py-4 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">狀態</th>
+                        <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">看診方式</th>
                         <th className="px-3 sm:px-6 py-4 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">患者姓名</th>
                         <th className="px-3 sm:px-6 py-4 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">日期</th>
                         <th className="px-3 sm:px-6 py-4 text-left text-sm font-semibold text-gray-700 whitespace-nowrap">時間</th>
@@ -809,6 +850,13 @@ export default function AppointmentRecords() {
                           <td className="px-3 sm:px-6 py-4">
                             <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${getStatusColor(appointment.status)}`}>
                               {appointment.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-semibold border ${getScheduleTypeColor(appointment.schedule_type)}`}
+                            >
+                              {getScheduleTypeText(appointment.schedule_type)}
                             </span>
                           </td>
                           <td className="px-3 sm:px-6 py-4">
@@ -1199,6 +1247,33 @@ export default function AppointmentRecords() {
                 </div>
               </div>
 
+              {/* 診療類型 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">診療方式</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setFollowUpType("online")}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium border transition ${
+                      followUpType === "online"
+                        ? 'bg-green-500 text-white border-green-500'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-green-400 hover:text-green-600'
+                    }`}
+                  >
+                    🖥️ 線上診
+                  </button>
+                  <button
+                    onClick={() => setFollowUpType("physical")}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium border transition ${
+                      followUpType === "physical"
+                        ? 'bg-blue-500 text-white border-blue-500'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400 hover:text-blue-600'
+                    }`}
+                  >
+                    🏥 實體診
+                  </button>
+                </div>
+              </div>
+
               {/* 備註 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1216,7 +1291,7 @@ export default function AppointmentRecords() {
               {/* 說明文字 */}
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
                 <p className="text-xs text-orange-700">
-                  📲 系統將透過 LINE 詢問患者偏好時段（早診 / 午診 / 晚診），機構收到後安排回診預約。
+                  📲 系統將透過 LINE 詢問患者偏好時段，並依照「{followUpType === "online" ? "線上診" : "實體診"}」篩選 {followUpWeeks} 週後的可用時段。
                 </p>
               </div>
             </div>
