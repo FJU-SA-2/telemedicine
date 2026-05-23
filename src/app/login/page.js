@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  User, UserCheck, ArrowLeft, Mail, Lock, Phone, Calendar,
-  House, Shield, Building2, ChevronDown, AlertCircle, Clock, CheckCircle
+  User, UserCheck, ArrowLeft, Mail, Lock, Phone,
+  Shield, Building2, ChevronDown, Clock, CheckCircle
 } from 'lucide-react';
 
 /* ─────────────────────────── helpers ─────────────────────────── */
@@ -111,14 +111,14 @@ export default function TelemedicineAuth() {
 
   /* ── login fields ── */
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState(''); // patient uses id_number; mech uses password_hash
-  const [idNumber, setIdNumber] = useState(''); // patient login: id_number field
+  const [password, setPassword] = useState(''); // 所有角色統一用 password 欄位
 
   /* ── guest registration fields ── */
   const [guestForm, setGuestForm] = useState({
     first_name: '',
     last_name: '',
     gender: '',
+    email: '',
     phone: '',
     id_number: '',
     smoking_status: 'no',
@@ -133,34 +133,10 @@ export default function TelemedicineAuth() {
   });
 
   /* ── schedules ── */
-  const [schedules, setSchedules] = useState([]);
-  const [selectedScheduleId, setSelectedScheduleId] = useState(null);
-  const [schedulesLoading, setSchedulesLoading] = useState(false);
+  // schedules 已移至 reserve 頁面處理
 
   /* ── verify ── */
   const [verificationCode, setVerificationCode] = useState('');
-
-  /* ─── fetch schedules when guest form is shown ─── */
-  useEffect(() => {
-    if (currentStep === 'guest-form') {
-      fetchSchedules();
-    }
-  }, [currentStep]);
-
-  const fetchSchedules = async () => {
-    setSchedulesLoading(true);
-    try {
-      const res = await fetch('/api/schedules');
-      if (res.ok) {
-        const data = await res.json();
-        setSchedules(data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch schedules:', err);
-    } finally {
-      setSchedulesLoading(false);
-    }
-  };
 
   /* ─── theme ─── */
   const theme = {
@@ -201,25 +177,26 @@ export default function TelemedicineAuth() {
 
   /* ─── submit handlers ─── */
 
-  // 複診病患 login: email (users) + id_number (patient table)
+  // 複診病患 login: email + password（預設為身份證字號，可自行修改）
   const handlePatientLogin = async (e) => {
     e.preventDefault();
-    if (!email || !idNumber) { alert('請輸入電子信箱與身份證字號'); return; }
+    if (!email || !password) { alert('請輸入電子信箱與密碼'); return; }
     setIsLoading(true);
     try {
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, id_number: idNumber, role: 'patient' }),
+        body: JSON.stringify({ email, password, role: 'patient' }),
       });
       const data = await res.json();
-      if (!res.ok || data.success === false) { alert(data.message || '登入失敗，請確認帳號或身份證字號'); return; }
+      if (!res.ok || data.success === false) { alert(data.message || '登入失敗，請確認帳號或密碼'); return; }
       const { user } = data;
       if (user) {
         localStorage.setItem('user_id', user.user_id);
         localStorage.setItem('user_type', user.role);
         localStorage.setItem('email', user.email);
+        localStorage.setItem('account_status', user.account_status || 'active');
       }
       router.push('/PatientPage');
     } catch (err) {
@@ -267,29 +244,27 @@ export default function TelemedicineAuth() {
     }
   };
 
-  // 初診 guest submit (no account needed)
+  // 初診病患：只建立帳號與病患資料，預約到 reserve 頁面進行
   const handleGuestSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedScheduleId) { alert('請選擇預約時段'); return; }
     if (!guestForm.first_name || !guestForm.last_name) { alert('請填寫姓名'); return; }
     if (!guestForm.id_number) { alert('請填寫身份證字號'); return; }
+    if (!guestForm.email) { alert('請填寫電子信箱（作為登入帳號）'); return; }
     setIsLoading(true);
     try {
-      const res = await fetch('/api/guest-appointment', {
+      const res = await fetch('/api/register/guest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...guestForm,
-          schedule_id: selectedScheduleId,
-        }),
+        body: JSON.stringify(guestForm),
       });
       const data = await res.json();
-      if (res.ok) {
-        alert(data.message || '預約成功！');
-        setCurrentStep('role');
-        setSelectedRole('');
+      if (res.ok && data.success) {
+        localStorage.setItem('account_status', 'unverified');
+        localStorage.setItem('user_id', data.user_id);
+        alert(`帳號建立成功！\n\n登入帳號：${guestForm.email}\n初始密碼：您的身份證字號\n\n即將前往預約頁面。`);
+        router.push('/reserve');
       } else {
-        alert(data.message || '預約失敗，請稍後再試');
+        alert(data.message || '建立失敗，請稍後再試');
       }
     } catch (err) {
       console.error(err);
@@ -368,7 +343,7 @@ export default function TelemedicineAuth() {
                       </div>
                       <div className="text-left">
                         <p className="font-semibold text-gray-800">機構 / 醫師</p>
-                        <p className="text-gray-500 text-xs"></p>
+                        <p className="text-gray-500 text-xs">使用電子信箱與密碼登入</p>
                       </div>
                     </div>
                   </button>
@@ -391,10 +366,9 @@ export default function TelemedicineAuth() {
                       value={email} onChange={e => setEmail(e.target.value)} required />
                   </FieldWrapper>
 
-                  <FieldWrapper label="身份證字號">
-                    <TextInput icon={Shield} type="text" placeholder="A123456789（存於病患資料表）"
-                      value={idNumber} onChange={e => setIdNumber(e.target.value.toUpperCase())} required
-                      maxLength={10} />
+                  <FieldWrapper label="密碼">
+                    <TextInput icon={Lock} type="password" placeholder="初次登入請以身份證字號作為密碼"
+                      value={password} onChange={e => setPassword(e.target.value)} required />
                   </FieldWrapper>
 
                   <div className="flex items-center justify-between text-xs pt-1">
@@ -403,7 +377,7 @@ export default function TelemedicineAuth() {
                       記住我
                     </label>
                     <button type="button" className="text-blue-600 hover:text-blue-700 font-medium">
-                      忘記身份證？
+                      忘記密碼？
                     </button>
                   </div>
 
@@ -446,7 +420,7 @@ export default function TelemedicineAuth() {
 
                   <button type="submit" disabled={isLoading}
                     className={`w-full py-3 rounded-lg text-white font-medium text-sm transition-all bg-gradient-to-r ${theme.btn} disabled:opacity-60`}>
-                    {isLoading ? '登入中...' : '登入'}
+                    {isLoading ? '登入中...' : '機構登入'}
                   </button>
                 </form>
               </div>
@@ -482,6 +456,11 @@ export default function TelemedicineAuth() {
                     </SelectInput>
                   </FieldWrapper>
 
+                  <FieldWrapper label="電子信箱（作為登入帳號）">
+                    <TextInput icon={Mail} type="email" placeholder="your@email.com"
+                      value={guestForm.email} onChange={e => setGuest('email', e.target.value)} required />
+                  </FieldWrapper>
+
                   <FieldWrapper label="手機號碼">
                     <TextInput icon={Phone} type="tel" placeholder="09xxxxxxxx"
                       value={guestForm.phone} onChange={e => setGuest('phone', e.target.value)} />
@@ -501,7 +480,7 @@ export default function TelemedicineAuth() {
                       <FieldWrapper label="吸菸狀況">
                         <SelectInput value={guestForm.smoking_status} onChange={e => setGuest('smoking_status', e.target.value)}>
                           <option value="no">不吸菸</option>
-                          <option value="former">曾吸菸（已戒）</option>
+                          <option value="quit">曾吸菸（已戒）</option>
                           <option value="yes">目前吸菸</option>
                         </SelectInput>
                       </FieldWrapper>
@@ -574,40 +553,13 @@ export default function TelemedicineAuth() {
                     </div>
                   </div>
 
-                  {/* ── 選擇診次 (schedules) ── */}
-                  <div className="border-t pt-3">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">選擇診次</p>
-
-                    {schedulesLoading ? (
-                      <div className="text-center py-6 text-gray-400 text-sm">載入診次中…</div>
-                    ) : schedules.length === 0 ? (
-                      <div className="flex items-center gap-2 text-gray-400 text-sm py-4 justify-center">
-                        <AlertCircle size={16} />
-                        <span>目前無可預約診次</span>
-                      </div>
-                    ) : (
-                      <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                        {schedules.map(s => (
-                          <ScheduleCard
-                            key={s.schedule_id}
-                            schedule={s}
-                            selected={selectedScheduleId === s.schedule_id}
-                            onSelect={setSelectedScheduleId}
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    {!selectedScheduleId && (
-                      <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
-                        <AlertCircle size={12} /> 請選擇一個可用診次
-                      </p>
-                    )}
+                  <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-xs text-green-700">
+                    完成後將建立您的帳號，並導向預約頁面進行實體診預約。
                   </div>
 
-                  <button type="submit" disabled={isLoading || !selectedScheduleId}
+                  <button type="submit" disabled={isLoading}
                     className={`w-full py-3 rounded-lg text-white font-medium text-sm transition-all bg-gradient-to-r ${theme.btn} disabled:opacity-50 disabled:cursor-not-allowed`}>
-                    {isLoading ? '送出中...' : '確認預約'}
+                    {isLoading ? '建立中...' : '建立帳號並前往預約'}
                   </button>
                 </form>
               </div>

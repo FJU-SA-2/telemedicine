@@ -761,6 +761,105 @@ def verify_code():
         cursor.close()
         db.close()
 
+@app.route("/api/register/guest", methods=["POST"])
+def register_guest():
+    import json as _json
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"success": False, "message": "無法解析請求內容"}), 400
+
+    first_name = (data.get("first_name") or "").strip()
+    last_name  = (data.get("last_name")  or "").strip()
+    gender     = data.get("gender", "")
+    phone      = (data.get("phone") or "").strip()
+    email      = (data.get("email") or "").strip()
+    id_number  = (data.get("id_number") or "").strip().upper()
+
+    if not first_name or not last_name:
+        return jsonify({"success": False, "message": "請填寫姓名"}), 400
+    if not id_number:
+        return jsonify({"success": False, "message": "請填寫身份證字號"}), 400
+    if not email:
+        return jsonify({"success": False, "message": "請填寫電子信箱"}), 400
+
+    smoking_status          = data.get("smoking_status", "no")
+    drug_allergies          = data.get("drug_allergies", "")
+    medical_history         = data.get("medical_history", "")
+    chronic_disease         = data.get("chronic_disease", [])
+    other_chronic_disease   = data.get("other_chronic_disease", "")
+    # height/weight 轉 int，空字串或 None 存 NULL
+    try:
+        height = int(data.get("height")) if data.get("height") not in (None, "", 0, "0") else None
+    except (ValueError, TypeError):
+        height = None
+    try:
+        weight = int(data.get("weight")) if data.get("weight") not in (None, "", 0, "0") else None
+    except (ValueError, TypeError):
+        weight = None
+    emergency_contact_name  = data.get("emergency_contact_name", "")
+    emergency_contact_phone = data.get("emergency_contact_phone", "")
+
+    # smoking_status 只允許 DB ENUM 值
+    if smoking_status not in ("yes", "no", "quit"):
+        smoking_status = "no"
+    chronic_disease_str = _json.dumps(chronic_disease, ensure_ascii=False) if isinstance(chronic_disease, list) else chronic_disease
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT user_id FROM users WHERE email = %s", (email,))
+        if cursor.fetchone():
+            return jsonify({"success": False, "message": "此 Email 已被註冊，請直接登入"}), 400
+
+        cursor.execute("SELECT patient_id FROM patient WHERE id_number = %s", (id_number,))
+        if cursor.fetchone():
+            return jsonify({"success": False, "message": "此身份證字號已有帳號，請直接登入"}), 400
+
+        username = first_name + last_name
+        cursor.execute("""
+            INSERT INTO users (username, email, password_hash, role, account_status)
+            VALUES (%s, %s, %s, 'patient', 'unverified')
+        """, (username, email, id_number))
+        user_id = cursor.lastrowid
+
+        cursor.execute("""
+            INSERT INTO patient (
+                user_id, first_name, last_name, gender, phone_number, id_number,
+                smoking_status, drug_allergies, medical_history,
+                chronic_disease, other_chronic_disease, height, weight,
+                emergency_contact_name, emergency_contact_phone
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            user_id, first_name, last_name, gender, phone or None, id_number,
+            smoking_status, drug_allergies or None, medical_history or None,
+            chronic_disease_str or None, other_chronic_disease or None,
+            height, weight, emergency_contact_name or None, emergency_contact_phone or None
+        ))
+        patient_id = cursor.lastrowid
+        db.commit()
+
+        session.permanent = True
+        app.permanent_session_lifetime = timedelta(days=7)
+        session["user_id"]        = user_id
+        session["email"]          = email
+        session["role"]           = "patient"
+        session["username"]       = username
+        session["patient_id"]     = patient_id
+        session["doctor_id"]      = None
+        session["first_name"]     = first_name
+        session["last_name"]      = last_name
+        session["account_status"] = "unverified"
+
+        print(f"✅ 初診註冊成功 - user_id: {user_id}, patient_id: {patient_id}")
+        return jsonify({"success": True, "message": "帳號建立成功！", "user_id": user_id, "patient_id": patient_id}), 201
+
+    except Exception as e:
+        db.rollback()
+        import traceback; traceback.print_exc()
+        return jsonify({"success": False, "message": f"註冊失敗：{str(e)}"}), 500
+    finally:
+        cursor.close()
+        db.close()
 
 @app.route("/api/login", methods=["POST"])
 def login_user():
@@ -788,9 +887,8 @@ def login_user():
         user_id = user["user_id"]
 
         # ── 角色與前端 hint 不符時拒絕，避免越權 ─────────────────────
-        # patient 入口只允許 patient；mech 入口允許 mech 與 doctor（共用密碼登入）
-        if role_hint == "patient" and role != "patient":
-            return jsonify({"success": False, "message": "此帳號非病患身份，請選擇正確的登入方式"}), 403
+        if role_hint and role != role_hint:
+            return jsonify({"success": False, "message": "身份不符，請確認選擇的登入角色"}), 403
 
         # ── 依角色驗證憑證 ────────────────────────────────────────────
         patient_id  = None
@@ -799,20 +897,18 @@ def login_user():
         last_name   = ""
 
         if role == "patient":
-            # 複診病患：以 id_number（patient 表）作為憑證
-            if not id_number:
-                return jsonify({"success": False, "message": "請輸入身份證字號"}), 400
+            # 複診病患：以 password_hash（users 表）驗證，預設密碼為身份證字號
+            if not password:
+                return jsonify({"success": False, "message": "請輸入密碼"}), 400
 
-            cursor.execute(
-                "SELECT * FROM patient WHERE user_id = %s", (user_id,)
-            )
+            if user["password_hash"] != password:
+                return jsonify({"success": False, "message": "密碼錯誤，初次使用請以身份證字號作為密碼"}), 401
+
+            cursor.execute("SELECT * FROM patient WHERE user_id = %s", (user_id,))
             profile = cursor.fetchone()
 
             if not profile:
                 return jsonify({"success": False, "message": "找不到病患資料"}), 401
-
-            if profile.get("id_number", "") != id_number:
-                return jsonify({"success": False, "message": "身份證字號錯誤"}), 401
 
             patient_id = profile.get("patient_id")
             first_name = profile.get("first_name", "")
@@ -914,7 +1010,7 @@ def get_current_user():
     
     try:
         cursor.execute("""
-            SELECT username, email, role, created_at
+            SELECT username, email, role, created_at, account_status
             FROM users
             WHERE user_id = %s
         """, (user_id,))
@@ -924,16 +1020,16 @@ def get_current_user():
             return jsonify({"authenticated": False}), 404
         
         user_data = {
-            "user_id": user_id,
-            "username": session.get('username'),
-            "email": session.get('email'),
-            "role": role,
-            "created_at": user_row["created_at"],
-            "patient_id": session.get('patient_id'),
-            "doctor_id": session.get('doctor_id'), 
-            "first_name": session.get('first_name'), 
-            "last_name": session.get('last_name')
-
+            "user_id":        user_id,
+            "username":       session.get('username'),
+            "email":          session.get('email'),
+            "role":           role,
+            "created_at":     user_row["created_at"],
+            "patient_id":     session.get('patient_id'),
+            "doctor_id":      session.get('doctor_id'), 
+            "first_name":     session.get('first_name'), 
+            "last_name":      session.get('last_name'),
+            "account_status": user_row.get("account_status", "active"),
         } 
     
     
@@ -5778,7 +5874,7 @@ def add_patient():
             return jsonify({"error": "姓名為必填"}), 400
         if not email:
             return jsonify({"error": "Email 為必填"}), 400
-        if not password or len(password) < 6:
+        if not password_hash or len(password_hash) < 6:
             return jsonify({"error": "密碼至少 6 個字元"}), 400
 
         conn   = get_db()

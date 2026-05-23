@@ -9,7 +9,7 @@ import FloatingChat from "../components/FloatingChat";
 import LockedPageOverlay from "../components/LockedPageOverlay";
 
 
-function BookingPage({ doctors, schedules, setSchedules }) {
+function BookingPage({ doctors, schedules, setSchedules, isUnverified }) {
   const [selectedSpecialty, setSelectedSpecialty] = useState("all");
   const [selectedDate, setSelectedDate] = useState("");
   const [searchName, setSearchName] = useState("");
@@ -20,8 +20,8 @@ function BookingPage({ doctors, schedules, setSchedules }) {
   const [showAlert, setShowAlert] = useState(true);
   const [selectedHospital, setSelectedHospital] = useState("all");
   const [selectedPaymentType, setSelectedPaymentType] = useState("all");
-  // ✅ 新增：線上/實體篩選，預設不限制（all）
-  const [selectedScheduleType, setSelectedScheduleType] = useState("all");
+  // 初診患者強制鎖定為 physical，一般使用者預設 all
+  const [selectedScheduleType, setSelectedScheduleType] = useState(isUnverified ? "physical" : "all");
 
   const availableHospitals = [...new Set(doctors.map(d => d.practice_hospital))].filter(Boolean);
   const paymentTypes = [...new Set(doctors.map(d => d.consultation_type))].filter(Boolean);
@@ -32,12 +32,9 @@ function BookingPage({ doctors, schedules, setSchedules }) {
     return slotDateTime < now;
   };
 
-  // ✅ 修改：validSchedules 依 schedule_type 過濾
+  // 有效排班：未過期且可預約
   const validSchedules = schedules.filter(
-    s =>
-      s.is_available === 1 &&
-      !isTimeSlotExpired(s.schedule_date, s.time_slot) &&
-      (selectedScheduleType === "all" || s.schedule_type === selectedScheduleType)
+    s => s.is_available === 1 && !isTimeSlotExpired(s.schedule_date, s.time_slot)
   );
 
   // 只顯示「有排班的醫師」，沒排班的直接不出現
@@ -56,6 +53,15 @@ function BookingPage({ doctors, schedules, setSchedules }) {
     if (selectedSpecialty !== "all" && doctor.specialty !== selectedSpecialty) return false;
     if (selectedHospital !== "all" && doctor.practice_hospital !== selectedHospital) return false;
     if (selectedPaymentType !== "all" && doctor.consultation_type !== selectedPaymentType) return false;
+
+    // 初診患者只顯示實體看診醫師；一般使用者依 tab 篩選
+    if (isUnverified) {
+      if (doctor.consultation_type !== "現場看診") return false;
+    } else if (selectedScheduleType === "online") {
+      if (doctor.consultation_type === "現場看診") return false;
+    } else if (selectedScheduleType === "physical") {
+      if (doctor.consultation_type !== "現場看診") return false;
+    }
 
     if (selectedDate) {
       const hasAvailableSlot = validSchedules.some(
@@ -171,7 +177,8 @@ function BookingPage({ doctors, schedules, setSchedules }) {
     setSearchName("");
     setSelectedHospital("all");
     setSelectedPaymentType("all");
-    setSelectedScheduleType("all");
+    // 初診患者清除篩選時保持 physical 鎖定
+    if (!isUnverified) setSelectedScheduleType("all");
   };
 
   const hasActiveFilter =
@@ -186,32 +193,48 @@ function BookingPage({ doctors, schedules, setSchedules }) {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
 
-        {/* ✅ 新增：線上/實體切換 Tab（放在最上方，最顯眼） */}
+        {/* 看診方式切換 Tab */}
         <div className="mb-4">
           <label className="block text-xs text-gray-500 mb-2 ml-0.5">看診方式</label>
+
+          {/* 初診患者提示 */}
+          {isUnverified && (
+            <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
+              <CircleAlert size={14} className="shrink-0" />
+              <span>初診患者僅可預約<strong>實體看診</strong>，完成首次看診後即可使用全部功能。</span>
+            </div>
+          )}
+
           <div className="flex gap-2">
             {[
               { value: "all", label: "全部", icon: null },
               { value: "online", label: "線上看診", icon: Monitor },
               { value: "physical", label: "實體看診", icon: MapPin },
-            ].map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                onClick={() => setSelectedScheduleType(value)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-sm font-semibold border-2 transition-all ${
-                  selectedScheduleType === value
-                    ? value === "online"
-                      ? "border-blue-500 bg-blue-500 text-white shadow-md"
-                      : value === "physical"
-                      ? "border-green-500 bg-green-500 text-white shadow-md"
-                      : "border-gray-700 bg-gray-700 text-white shadow-md"
-                    : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-gray-100"
-                }`}
-              >
-                {Icon && <Icon size={15} />}
-                {label}
-              </button>
-            ))}
+            ].map(({ value, label, icon: Icon }) => {
+              // 初診患者：「全部」和「線上看診」鎖定不可點
+              const locked = isUnverified && value !== "physical";
+              return (
+                <button
+                  key={value}
+                  onClick={() => !locked && setSelectedScheduleType(value)}
+                  disabled={locked}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-sm font-semibold border-2 transition-all ${
+                    locked
+                      ? "border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed"
+                      : selectedScheduleType === value
+                      ? value === "online"
+                        ? "border-blue-500 bg-blue-500 text-white shadow-md"
+                        : value === "physical"
+                        ? "border-green-500 bg-green-500 text-white shadow-md"
+                        : "border-gray-700 bg-gray-700 text-white shadow-md"
+                      : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-gray-100"
+                  }`}
+                >
+                  {Icon && <Icon size={15} />}
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -414,8 +437,8 @@ function BookingPage({ doctors, schedules, setSchedules }) {
         <BookingModal
           doctor={selectedDoctor}
           schedules={schedules}
-          // ✅ 新增：把目前選擇的看診類型傳進 Modal，方便預設篩選
-          defaultScheduleType={selectedScheduleType === "all" ? null : selectedScheduleType}
+          defaultScheduleType={isUnverified ? "physical" : (selectedScheduleType === "all" ? null : selectedScheduleType)}
+          isUnverified={isUnverified}
           onClose={() => { setShowModal(false); setSelectedDoctor(null); }}
           onConfirm={handleBooking}
         />
@@ -447,6 +470,12 @@ export default function HomePage() {
         if (res.ok) {
           const data = await res.json();
           setUser(data.user);
+        } else {
+          // 未登入時也檢查 localStorage（初診患者剛完成表單後跳轉）
+          const accountStatus = localStorage.getItem('account_status');
+          if (accountStatus) {
+            setUser({ account_status: accountStatus });
+          }
         }
       } catch (err) {
         console.error('檢查登入狀態失敗:', err);
@@ -456,6 +485,9 @@ export default function HomePage() {
     }
     checkAuth();
   }, []);
+
+  // 是否為初診未認證患者
+  const isUnverified = user?.account_status === 'unverified';
 
   useEffect(() => {
     async function fetchData() {
@@ -527,9 +559,15 @@ export default function HomePage() {
               </div>
             </div>
           ) : (
-            <BookingPage doctors={doctors} schedules={schedules} setSchedules={setSchedules} />
+            <BookingPage
+              doctors={doctors}
+              schedules={schedules}
+              setSchedules={setSchedules}
+              isUnverified={isUnverified}
+            />
           )}
           
+          {/* 未登入才顯示鎖定；初診未認證患者已登入，允許進入但限制為實體診 */}
           {!user && <LockedPageOverlay pageName="線上預約" icon={Calendar} />}
         </div>
       </div>

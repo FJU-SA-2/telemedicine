@@ -2,71 +2,66 @@
 import { useState } from "react";
 import { Calendar, CheckCircle, Clock, X, ArrowRight, ArrowLeft, FileText, Monitor, MapPin } from "lucide-react";
 
-// 預約彈窗 - 多步驟流程 (調整順序: 時間 -> 症狀 -> 確認 -> 支付)
-export default function BookingModal({ doctor, schedules, onClose, onConfirm, defaultScheduleType }) {
-  const [step, setStep] = useState(1); // 1=選時間, 2=症狀, 3=確認, 4=支付
+// 預約彈窗 - 多步驟流程
+// isUnverified: 初診患者，強制鎖定實體看診
+export default function BookingModal({ doctor, schedules, onClose, onConfirm, defaultScheduleType, isUnverified }) {
+  const [step, setStep] = useState(1);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [appointmentType] = useState("一般看診");
   const [symptoms, setSymptoms] = useState("");
   const [processing, setProcessing] = useState(false);
 
-  // ✅ 新增：看診類型選擇，預設帶入來自篩選頁的選擇
-  // 若外層沒傳 defaultScheduleType，則先不預設（讓使用者選）
-  const [selectedScheduleType, setSelectedScheduleType] = useState(defaultScheduleType || "");
+  // 初診患者強制 physical，否則帶入外層選擇或空
+  const [selectedScheduleType, setSelectedScheduleType] = useState(
+    isUnverified ? "physical" : (defaultScheduleType || "")
+  );
 
   const isTimeSlotExpired = (dateStr, timeStr) => {
     const now = new Date();
-    const slotDateTime = new Date(`${dateStr}T${timeStr}`);
-    return slotDateTime < now;
+    return new Date(`${dateStr}T${timeStr}`) < now;
   };
 
-  // ✅ 修改：依 schedule_type 過濾此醫師的排班
-  const availableSchedules = schedules.filter(
-    s =>
-      s.doctor_id === doctor.doctor_id &&
-      s.is_available === 1 &&
-      !isTimeSlotExpired(s.schedule_date, s.time_slot) &&
-      (selectedScheduleType === "" || s.schedule_type === selectedScheduleType)
-  );
+  // schedules 表沒有 schedule_type 欄位
+  // 改用 doctor.consultation_type 判斷此醫師支援哪些方式：
+  //   "現場看診" → physical only
+  //   其他（線上）→ online only
+  //   若日後有兩種，可再擴充
+  const consultationType = doctor.consultation_type || "";
+  const hasOnline   = !isUnverified && consultationType !== "現場看診";
+  const hasPhysical = consultationType === "現場看診" || isUnverified;
 
-  // ✅ 新增：取得此醫師擁有哪些看診類型（線上/實體）
-  const allDoctorSchedules = schedules.filter(
+  // 此醫師所有可用排班（不依 schedule_type 過濾，因為資料表沒有這欄）
+  const availableSchedules = schedules.filter(
     s =>
       s.doctor_id === doctor.doctor_id &&
       s.is_available === 1 &&
       !isTimeSlotExpired(s.schedule_date, s.time_slot)
   );
-  const doctorScheduleTypes = [...new Set(allDoctorSchedules.map(s => s.schedule_type))];
-  const hasOnline = doctorScheduleTypes.includes("online");
-  const hasPhysical = doctorScheduleTypes.includes("physical");
 
   const uniqueDates = [...new Set(availableSchedules.map(s => s.schedule_date))].sort();
 
   const weekDates = uniqueDates.map(dateStr => {
     const date = new Date(dateStr + "T00:00:00");
     const dayNames = ["週日","週一","週二","週三","週四","週五","週六"];
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
     return {
       dayName: dayNames[date.getDay()],
-      month: month,
-      day: day,
+      month: date.getMonth() + 1,
+      day: date.getDate(),
       fullDate: dateStr,
-      displayDate: `${month}/${day}`
     };
   });
 
   const timeSlots = selectedDate
     ? availableSchedules
         .filter(s => s.schedule_date === selectedDate)
-        .sort((a,b)=>a.time_slot.localeCompare(b.time_slot))
+        .sort((a, b) => a.time_slot.localeCompare(b.time_slot))
     : [];
 
   const doctorFullName = `${doctor.first_name}${doctor.last_name}`;
 
-  // ✅ 修改：切換看診類型時重置日期與時段
   const handleScheduleTypeChange = (type) => {
+    if (isUnverified && type !== "physical") return; // 初診鎖定
     setSelectedScheduleType(type);
     setSelectedDate("");
     setSelectedTime("");
@@ -74,47 +69,39 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
 
   const handleNextStep = () => {
     if (step === 1) {
-      if (!selectedScheduleType) {
-        alert("請先選擇看診方式（線上或實體）");
+      if (!selectedScheduleType) { alert("請先選擇看診方式（線上或實體）"); return; }
+      if (!selectedDate || !selectedTime) return;
+      if (isTimeSlotExpired(selectedDate, selectedTime)) {
+        alert("此時段已過期，請重新選擇");
+        setSelectedTime("");
         return;
       }
-      if (selectedDate && selectedTime) {
-        if (isTimeSlotExpired(selectedDate, selectedTime)) {
-          alert('此時段已過期,請重新選擇');
-          setSelectedTime("");
-          return;
-        }
-        setStep(2);
-      }
-    } else if (step === 2 && symptoms.trim()) {
+      setStep(2);
+    } else if (step === 2) {
+      if (!symptoms.trim()) return;
       setStep(3);
     } else if (step === 3) {
       setProcessing(true);
-      setTimeout(() => {
-        setProcessing(false);
-        handleConfirm();
-      }, 1000);
+      setTimeout(() => { setProcessing(false); handleConfirm(); }, 1000);
     }
   };
 
   const formatDate = (dateStr) => {
-    const date = new Date(dateStr + "T00:00:00");
-    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+    const d = new Date(dateStr + "T00:00:00");
+    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
   };
 
   const getDayName = (dateStr) => {
-    const date = new Date(dateStr + "T00:00:00");
     const dayNames = ["週日","週一","週二","週三","週四","週五","週六"];
-    return dayNames[date.getDay()];
+    return dayNames[new Date(dateStr + "T00:00:00").getDay()];
   };
 
   const handleConfirm = () => {
-    onConfirm({ 
-      doctor, 
-      date: selectedDate, 
+    onConfirm({
+      doctor,
+      date: selectedDate,
       time: selectedTime,
       symptoms,
-      // ✅ 新增：把 scheduleType 傳出給 handleBooking
       scheduleType: selectedScheduleType,
     });
   };
@@ -122,6 +109,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 bg-white/30 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl w-full max-w-3xl sm:max-w-3xl md:max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+
         {/* 頂部進度條 */}
         <div className="sticky top-0 bg-white border-b border-gray-200 p-4 sm:p-6 rounded-t-2xl z-10">
           <button onClick={onClose} className="absolute top-3 right-3 sm:top-4 sm:right-4 text-gray-400 hover:text-gray-600 transition">
@@ -130,17 +118,14 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
 
           <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6 pr-8">
             <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl sm:text-2xl shadow-lg flex-shrink-0">
-              {doctor.last_name.charAt(0)}
+              {doctor.last_name?.charAt(0) || "醫"}
             </div>
             <div className="min-w-0">
               <h3 className="font-bold text-base sm:text-xl text-gray-800 truncate">{doctorFullName} 醫師</h3>
               <p className="text-xs sm:text-sm text-blue-600 font-medium">{doctor.specialty}</p>
-              {/* ✅ 新增：顯示已選的看診方式 */}
               {selectedScheduleType && (
                 <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
-                  selectedScheduleType === "online"
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-green-100 text-green-700"
+                  selectedScheduleType === "online" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
                 }`}>
                   {selectedScheduleType === "online" ? <Monitor size={11} /> : <MapPin size={11} />}
                   {selectedScheduleType === "online" ? "線上看診" : "實體看診"}
@@ -179,62 +164,75 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
         </div>
 
         <div className="p-4 sm:p-6">
+
           {/* 步驟 1: 選擇時間 */}
           {step === 1 && (
             <div>
-              {/* ✅ 新增：看診方式選擇（只顯示此醫師有的類型） */}
+              {/* 看診方式 */}
               <div className="mb-6">
                 <h4 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
                   <Monitor size={22} className="text-blue-600" />
                   選擇看診方式
                 </h4>
-                {doctorScheduleTypes.length === 0 ? (
-                  <p className="text-sm text-gray-500">此醫師目前無可預約時段</p>
-                ) : (
-                  <div className="flex gap-3">
-                    {hasOnline && (
-                      <button
-                        onClick={() => handleScheduleTypeChange("online")}
-                        className={`flex-1 flex flex-col items-center gap-2 py-4 px-3 rounded-xl border-2 transition-all ${
-                          selectedScheduleType === "online"
-                            ? "border-blue-500 bg-blue-50 shadow-md"
-                            : "border-gray-200 bg-gray-50 hover:border-blue-300 hover:bg-blue-50"
-                        }`}
-                      >
-                        <Monitor size={28} className={selectedScheduleType === "online" ? "text-blue-600" : "text-gray-400"} />
-                        <span className={`font-semibold text-sm ${selectedScheduleType === "online" ? "text-blue-700" : "text-gray-600"}`}>
-                          線上看診
-                        </span>
-                        <span className="text-xs text-gray-400">視訊遠端諮詢</span>
-                        {selectedScheduleType === "online" && (
-                          <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">已選擇</span>
-                        )}
-                      </button>
-                    )}
-                    {hasPhysical && (
-                      <button
-                        onClick={() => handleScheduleTypeChange("physical")}
-                        className={`flex-1 flex flex-col items-center gap-2 py-4 px-3 rounded-xl border-2 transition-all ${
-                          selectedScheduleType === "physical"
-                            ? "border-green-500 bg-green-50 shadow-md"
-                            : "border-gray-200 bg-gray-50 hover:border-green-300 hover:bg-green-50"
-                        }`}
-                      >
-                        <MapPin size={28} className={selectedScheduleType === "physical" ? "text-green-600" : "text-gray-400"} />
-                        <span className={`font-semibold text-sm ${selectedScheduleType === "physical" ? "text-green-700" : "text-gray-600"}`}>
-                          實體看診
-                        </span>
-                        <span className="text-xs text-gray-400">至診所現場就診</span>
-                        {selectedScheduleType === "physical" && (
-                          <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">已選擇</span>
-                        )}
-                      </button>
-                    )}
+
+                {/* 初診提示 */}
+                {isUnverified && (
+                  <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+                    <MapPin size={13} className="shrink-0" />
+                    初診患者僅可預約實體看診，完成首次看診後即可解鎖線上看診。
                   </div>
                 )}
+
+                <div className="flex gap-3">
+                  {/* 線上看診 */}
+                  <button
+                    onClick={() => handleScheduleTypeChange("online")}
+                    disabled={isUnverified || !hasOnline}
+                    className={`flex-1 flex flex-col items-center gap-2 py-4 px-3 rounded-xl border-2 transition-all
+                      ${isUnverified || !hasOnline
+                        ? "border-gray-100 bg-gray-50 opacity-40 cursor-not-allowed"
+                        : selectedScheduleType === "online"
+                          ? "border-blue-500 bg-blue-50 shadow-md"
+                          : "border-gray-200 bg-gray-50 hover:border-blue-300 hover:bg-blue-50"
+                      }`}
+                  >
+                    <Monitor size={28} className={selectedScheduleType === "online" && !isUnverified ? "text-blue-600" : "text-gray-400"} />
+                    <span className={`font-semibold text-sm ${selectedScheduleType === "online" && !isUnverified ? "text-blue-700" : "text-gray-500"}`}>
+                      線上看診
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      {isUnverified ? "初診不開放" : "視訊遠端諮詢"}
+                    </span>
+                    {selectedScheduleType === "online" && !isUnverified && (
+                      <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">已選擇</span>
+                    )}
+                  </button>
+
+                  {/* 實體看診 */}
+                  <button
+                    onClick={() => handleScheduleTypeChange("physical")}
+                    disabled={!hasPhysical}
+                    className={`flex-1 flex flex-col items-center gap-2 py-4 px-3 rounded-xl border-2 transition-all
+                      ${!hasPhysical
+                        ? "border-gray-100 bg-gray-50 opacity-40 cursor-not-allowed"
+                        : selectedScheduleType === "physical"
+                          ? "border-green-500 bg-green-50 shadow-md"
+                          : "border-gray-200 bg-gray-50 hover:border-green-300 hover:bg-green-50"
+                      }`}
+                  >
+                    <MapPin size={28} className={selectedScheduleType === "physical" ? "text-green-600" : "text-gray-400"} />
+                    <span className={`font-semibold text-sm ${selectedScheduleType === "physical" ? "text-green-700" : "text-gray-500"}`}>
+                      實體看診
+                    </span>
+                    <span className="text-xs text-gray-400">至診所現場就診</span>
+                    {selectedScheduleType === "physical" && (
+                      <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">已選擇</span>
+                    )}
+                  </button>
+                </div>
               </div>
 
-              {/* 選擇日期（只在選完看診方式後顯示） */}
+              {/* 選擇日期 */}
               {selectedScheduleType && (
                 <div className="mb-6">
                   <h4 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -244,7 +242,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
                   {weekDates.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                       <Calendar size={48} className="mx-auto mb-3 text-gray-300" />
-                      <p>此看診方式目前沒有可預約的日期</p>
+                      <p>目前沒有可預約的日期</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-3">
@@ -253,8 +251,8 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
                           key={item.fullDate}
                           onClick={() => { setSelectedDate(item.fullDate); setSelectedTime(""); }}
                           className={`py-3 px-2 rounded-xl text-center transition-all ${
-                            selectedDate === item.fullDate 
-                              ? "bg-blue-500 text-white shadow-lg scale-105" 
+                            selectedDate === item.fullDate
+                              ? "bg-blue-500 text-white shadow-lg scale-105"
                               : "bg-gray-50 border-2 border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50"
                           }`}
                         >
@@ -268,6 +266,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
                 </div>
               )}
 
+              {/* 選擇時段 */}
               {selectedDate && (
                 <div className="mb-6">
                   <h4 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -285,8 +284,8 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
                           key={slot.schedule_id}
                           onClick={() => setSelectedTime(slot.time_slot)}
                           className={`py-3 px-2 rounded-xl text-sm font-semibold transition-all ${
-                            selectedTime === slot.time_slot 
-                              ? "bg-blue-500 text-white shadow-lg scale-105" 
+                            selectedTime === slot.time_slot
+                              ? "bg-blue-500 text-white shadow-lg scale-105"
                               : "bg-gray-50 border-2 border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50"
                           }`}
                         >
@@ -303,11 +302,11 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
                 disabled={!selectedScheduleType || !selectedDate || !selectedTime}
                 className={`w-full py-4 rounded-xl font-semibold text-lg transition-all flex items-center justify-center gap-2 ${
                   selectedScheduleType && selectedDate && selectedTime
-                    ? "bg-blue-500 text-white hover:bg-blue-600 shadow-lg" 
+                    ? "bg-blue-500 text-white hover:bg-blue-600 shadow-lg"
                     : "bg-gray-200 text-gray-400 cursor-not-allowed"
                 }`}
               >
-                下一步:填寫症狀
+                下一步：填寫症狀
                 <ArrowRight size={20} />
               </button>
             </div>
@@ -328,9 +327,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
                       {selectedScheduleType === "online" ? "線上看診" : "實體看診"}
                     </span>
                   </div>
-                  <button onClick={() => setStep(1)} className="text-blue-600 text-sm hover:underline">
-                    修改
-                  </button>
+                  <button onClick={() => setStep(1)} className="text-blue-600 text-sm hover:underline">修改</button>
                 </div>
               </div>
 
@@ -346,12 +343,12 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
                 <textarea
                   value={symptoms}
                   onChange={e => setSymptoms(e.target.value)}
-                  placeholder="請詳細描述您的症狀,例如:&#10;• 發燒 38.5°C,已持續 2 天&#10;• 喉嚨痛、咳嗽有痰&#10;• 頭痛、全身無力"
+                  placeholder={"請詳細描述您的症狀，例如：\n• 發燒 38.5°C，已持續 2 天\n• 喉嚨痛、咳嗽有痰\n• 頭痛、全身無力"}
                   rows={6}
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-sm resize-none text-gray-700"
                 />
                 <p className="text-xs text-gray-500 mt-2">
-                  💡 提示:請包含症狀開始時間、嚴重程度、已採取的處理方式等
+                  💡 提示：請包含症狀開始時間、嚴重程度、已採取的處理方式等
                 </p>
               </div>
 
@@ -368,7 +365,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
                   disabled={!symptoms.trim()}
                   className={`flex-1 py-3 rounded-xl font-semibold transition-all flex flex-col items-center justify-center ${
                     symptoms.trim()
-                      ? "bg-blue-500 text-white hover:bg-blue-600 shadow-lg" 
+                      ? "bg-blue-500 text-white hover:bg-blue-600 shadow-lg"
                       : "bg-gray-200 text-gray-400 cursor-not-allowed"
                   }`}
                 >
@@ -393,7 +390,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 mb-6">
                 <div className="flex items-start gap-4 mb-6 pb-6 border-b border-blue-200">
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg">
-                    {doctor.first_name.charAt(0)}
+                    {doctor.first_name?.charAt(0) || "醫"}
                   </div>
                   <div className="flex-1">
                     <h5 className="font-bold text-xl text-gray-800 mb-1">{doctorFullName} 醫師</h5>
@@ -403,7 +400,6 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
                 </div>
 
                 <div className="space-y-4">
-                  {/* ✅ 新增：確認頁顯示看診方式 */}
                   <div className="flex items-start gap-3">
                     {selectedScheduleType === "online"
                       ? <Monitor size={20} className="text-blue-600 mt-1 flex-shrink-0" />
@@ -416,7 +412,6 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
                       </p>
                     </div>
                   </div>
-
                   <div className="flex items-start gap-3">
                     <Calendar size={20} className="text-blue-600 mt-1 flex-shrink-0" />
                     <div>
@@ -424,7 +419,6 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
                       <p className="font-bold text-gray-800">{formatDate(selectedDate)} {getDayName(selectedDate)}</p>
                     </div>
                   </div>
-
                   <div className="flex items-start gap-3">
                     <Clock size={20} className="text-blue-600 mt-1 flex-shrink-0" />
                     <div>
@@ -432,7 +426,6 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
                       <p className="font-bold text-gray-800">{selectedTime}</p>
                     </div>
                   </div>
-
                   <div className="flex items-start gap-3">
                     <FileText size={20} className="text-blue-600 mt-1 flex-shrink-0" />
                     <div className="flex-1">
