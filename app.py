@@ -7054,6 +7054,213 @@ def get_followup_requests():
         cursor.close()
         db.close()
 
+# ════════════════════════════════════════════════════════════════
+#  GET /api/mechanism/feedbacks
+#  query params: status (unread/read/resolved), user_role, search
+# ════════════════════════════════════════════════════════════════
+@app.route("/api/mechanism/feedbacks", methods=["GET"])
+def get_feedbacks():
+    if 'user_id' not in session or session.get('role') != 'mech':
+        return jsonify({"error": "未授權"}), 401
+
+    db_temp = get_db()
+    cur_temp = db_temp.cursor(dictionary=True)
+    cur_temp.execute("SELECT mechanism_id FROM mechanism WHERE user_id = %s", (session['user_id'],))
+    mech_row = cur_temp.fetchone()
+    cur_temp.close()
+    db_temp.close()
+    if not mech_row:
+        return jsonify({"error": "找不到機構資料"}), 404
+    mechanism_id = mech_row['mechanism_id']
+
+    status    = request.args.get("status")
+    user_role = request.args.get("user_role")
+    search    = request.args.get("search")
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        sql = """
+            SELECT
+                f.feedback_id,
+                f.patient_id,
+                f.doctor_id,
+                f.mechanism_id,
+                f.user_role,
+                f.categories,
+                f.feedback_text,
+                f.status,
+                f.created_at,
+                f.updated_at,
+                CASE
+                    WHEN f.user_role = 'patient' THEN CONCAT(p.first_name, p.last_name)
+                    WHEN f.user_role = 'doctor'  THEN CONCAT(d.first_name, d.last_name)
+                    ELSE NULL
+                END AS user_name
+            FROM feedback f
+            LEFT JOIN patient p ON f.patient_id = p.patient_id
+            LEFT JOIN doctor  d ON f.doctor_id  = d.doctor_id
+            WHERE (f.mechanism_id = %s OR f.user_role IN ('patient', 'doctor'))
+        """
+        args = [mechanism_id]
+
+        if status:
+            sql += " AND f.status = %s"
+            args.append(status)
+        if user_role:
+            sql += " AND f.user_role = %s"
+            args.append(user_role)
+        if search:
+            sql += " AND f.feedback_text LIKE %s"
+            args.append(f"%{search}%")
+
+        sql += " ORDER BY f.created_at DESC"
+
+        cursor.execute(sql, args)
+        feedbacks = cursor.fetchall()
+
+        for fb in feedbacks:
+            if fb.get("created_at"):
+                fb["created_at"] = str(fb["created_at"])
+            if fb.get("updated_at"):
+                fb["updated_at"] = str(fb["updated_at"])
+
+        return jsonify({"feedbacks": feedbacks}), 200
+
+    except Exception as e:
+        print(f"[get_feedbacks 錯誤] {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+# ════════════════════════════════════════════════════════════════
+#  PATCH /api/mechanism/feedbacks/<feedback_id>
+#  body: { "status": "unread" | "read" | "resolved" }
+# ════════════════════════════════════════════════════════════════
+@app.route("/api/mechanism/feedbacks/<int:feedback_id>", methods=["PATCH"])
+def update_feedback_status(feedback_id):
+    if 'user_id' not in session or session.get('role') != 'mech':
+        return jsonify({"error": "未授權"}), 401
+
+    db_temp = get_db()
+    cur_temp = db_temp.cursor(dictionary=True)
+    cur_temp.execute("SELECT mechanism_id FROM mechanism WHERE user_id = %s", (session['user_id'],))
+    mech_row = cur_temp.fetchone()
+    cur_temp.close()
+    db_temp.close()
+    if not mech_row:
+        return jsonify({"error": "找不到機構資料"}), 404
+    mechanism_id = mech_row['mechanism_id']
+
+    body   = request.get_json() or {}
+    status = body.get("status")
+
+    if status not in {"unread", "read", "resolved"}:
+        return jsonify({"error": "status 必須是 unread / read / resolved"}), 400
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        cursor.execute(
+            """SELECT feedback_id FROM feedback 
+                WHERE feedback_id = %s 
+                AND (mechanism_id = %s OR user_role IN ('patient', 'doctor'))""",
+            (feedback_id, mechanism_id)
+        ) 
+             
+        if not cursor.fetchone():
+            return jsonify({"error": "找不到此回報或無權限"}), 404
+
+        cursor.execute(
+            "UPDATE feedback SET status = %s WHERE feedback_id = %s",
+            (status, feedback_id)
+        )
+        db.commit()
+        return jsonify({"message": "狀態已更新", "status": status}), 200
+
+    except Exception as e:
+        db.rollback()
+        print(f"[update_feedback_status 錯誤] {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+# ════════════════════════════════════════════════════════════════
+#  GET /api/mechanism/ratings
+#  query params: rating (1-5), search (醫師姓名或留言)
+# ════════════════════════════════════════════════════════════════
+@app.route("/api/mechanism/ratings", methods=["GET"])
+def get_ratings():
+    if 'user_id' not in session or session.get('role') != 'mech':
+        return jsonify({"error": "未授權"}), 401
+
+    db_temp = get_db()
+    cur_temp = db_temp.cursor(dictionary=True)
+    cur_temp.execute("SELECT mechanism_id FROM mechanism WHERE user_id = %s", (session['user_id'],))
+    mech_row = cur_temp.fetchone()
+    cur_temp.close()
+    db_temp.close()
+    if not mech_row:
+        return jsonify({"error": "找不到機構資料"}), 404
+    mechanism_id = mech_row['mechanism_id']
+
+    rating_filter = request.args.get("rating")
+    search        = request.args.get("search")
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        sql = """
+            SELECT
+                r.rating_id,
+                r.appointment_id,
+                r.patient_id,
+                r.doctor_id,
+                r.rating,
+                r.comment,
+                r.created_at,
+                r.updated_at,
+                CONCAT(d.first_name, d.last_name) AS doctor_name,
+                d.specialty,
+                CONCAT(p.first_name, p.last_name) AS patient_name
+            FROM ratings r
+            JOIN doctor  d ON r.doctor_id  = d.doctor_id
+            JOIN patient p ON r.patient_id = p.patient_id
+            WHERE d.mechanism_id = %s
+        """
+        args = [mechanism_id]
+
+        if rating_filter:
+            sql += " AND r.rating = %s"
+            args.append(int(rating_filter))
+        if search:
+            sql += " AND (CONCAT(d.first_name, d.last_name) LIKE %s OR r.comment LIKE %s)"
+            args.extend([f"%{search}%", f"%{search}%"])
+
+        sql += " ORDER BY r.created_at DESC"
+
+        cursor.execute(sql, args)
+        ratings = cursor.fetchall()
+
+        for r in ratings:
+            if r.get("created_at"):
+                r["created_at"] = str(r["created_at"])
+            if r.get("updated_at"):
+                r["updated_at"] = str(r["updated_at"])
+
+        return jsonify({"ratings": ratings}), 200
+
+    except Exception as e:
+        print(f"[get_ratings 錯誤] {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
 if __name__ == "__main__":
     from line_notifier import start_scheduler
     start_scheduler()
