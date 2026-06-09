@@ -109,7 +109,7 @@ export async function POST(request) {
 
     await connection.commit();
 
-    // ✅ 即時 LINE 推播（非同步，不影響回應速度）
+    // ✅ 即時 LINE 推播給病患（預約成功，非同步，不影響回應速度）
     fetch("http://localhost:5000/api/internal/line/booking-success", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -121,7 +121,22 @@ export async function POST(request) {
         date_str:     appointment_date,
         time_str:     String(appointment_time).slice(0, 5),
       }),
-    }).catch(err => console.warn("LINE 推播呼叫失敗:", err));
+    }).catch(err => console.warn("LINE 病患推播呼叫失敗:", err));
+
+    // ✅ 即時 LINE 推播給醫師（新預約通知，非同步）
+    fetch("http://localhost:5000/api/internal/line/doctor-new-booking", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        doctor_id:    doctor_id,
+        doctor_name:  doctorName,
+        patient_name: patientName,
+        specialty:    doctor.specialty,
+        date_str:     appointment_date,
+        time_str:     String(appointment_time).slice(0, 5),
+        symptoms:     symptoms || "",
+      }),
+    }).catch(err => console.warn("LINE 醫師新預約推播失敗:", err));
 
     console.log(`✅ 預約成功 - ID: ${appointmentId}, 患者: ${patient_id}`);
 
@@ -257,7 +272,7 @@ export async function PATCH(request) {
 
     await connection.commit();
 
-    // ✅ 即時 LINE 推播（非同步）
+    // ✅ 即時 LINE 推播給病患（預約取消，非同步）
     fetch("http://localhost:5000/api/internal/line/booking-cancelled", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -271,7 +286,22 @@ export async function PATCH(request) {
         cancel_reason:  cancellation_reason,
         refund_message: refundMessage,
       }),
-    }).catch(err => console.warn("LINE 取消推播呼叫失敗:", err));
+    }).catch(err => console.warn("LINE 病患取消推播失敗:", err));
+
+    // ✅ 即時 LINE 推播給醫師（預約取消通知，非同步）
+    fetch("http://localhost:5000/api/internal/line/doctor-booking-cancelled", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        doctor_id:      appointment.doctor_id,
+        doctor_name:    doctorName,
+        patient_name:   patientName,
+        specialty:      appointment.specialty,
+        date_str:       String(appointment.appointment_date),
+        time_str:       String(appointment.appointment_time).slice(0, 5),
+        cancel_reason:  cancellation_reason,
+      }),
+    }).catch(err => console.warn("LINE 醫師取消推播失敗:", err));
 
     console.log(`✅ 預約已取消 - ID: ${appointment_id}`);
     return NextResponse.json({ success: true, message: `取消成功,${refundMessage}`, refund_percentage: refundPercentage }, { status: 200 });

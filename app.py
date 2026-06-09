@@ -4672,7 +4672,7 @@ def generate_patient_overall_summary(patient_id):
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=1500,
+            max_tokens=3000,
             temperature=0.3
         )
         summary = response.choices[0].message.content.strip()
@@ -5062,7 +5062,22 @@ def cancel_appointment():
                 refund_message = refund_message,
             )
         except Exception as line_err:
-            print(f"⚠️ LINE 取消通知推播失敗: {line_err}")
+            print(f"⚠️ LINE 病患取消通知推播失敗: {line_err}")
+
+        # ✅ 即時 LINE 推播給醫師
+        try:
+            from line_notifier import notify_doctor_booking_cancelled
+            notify_doctor_booking_cancelled(
+                doctor_id     = appt["doctor_id"],
+                doctor_name   = doctor_name,
+                patient_name  = patient_name,
+                specialty     = appt["specialty"],
+                date_str      = appointment_date.strftime('%Y年%m月%d日'),
+                time_str      = str(appointment_time)[:5],
+                cancel_reason = cancel_reason,
+            )
+        except Exception as line_err:
+            print(f"⚠️ LINE 醫師取消通知推播失敗: {line_err}")
 
         return jsonify({
             "success": True, 
@@ -5175,9 +5190,12 @@ def check_consultation_reminder():
                     a.appointment_id, a.doctor_id,
                     a.meeting_ended_at,
                     p.first_name as patient_first_name,
-                    p.last_name as patient_last_name
+                    p.last_name as patient_last_name,
+                    d.first_name as doctor_first_name,
+                    d.last_name as doctor_last_name
                 FROM appointments a
                 INNER JOIN patient p ON a.patient_id = p.patient_id
+                INNER JOIN doctor  d ON a.doctor_id  = d.doctor_id
                 WHERE a.status = '已完成'
                 AND a.meeting_ended_at IS NOT NULL
                 AND (a.doctor_advice IS NULL OR a.doctor_advice = '')
@@ -5193,6 +5211,7 @@ def check_consultation_reminder():
             
             for apt in appointments:
                 patient_name = f"{apt['patient_last_name']}{apt['patient_first_name']}"
+                doctor_name  = f"{apt['doctor_last_name']}{apt['doctor_first_name']}"
                 
                 notification_message = f"""請記得填寫醫囑建議
 
@@ -5208,6 +5227,19 @@ def check_consultation_reminder():
                     notification_message,
                     apt['appointment_id']
                 )
+                
+                # ✅ LINE 推播給醫師
+                try:
+                    from line_notifier import notify_doctor_consultation_reminder
+                    notify_doctor_consultation_reminder(
+                        doctor_id      = apt['doctor_id'],
+                        doctor_name    = doctor_name,
+                        patient_name   = patient_name,
+                        appointment_id = apt['appointment_id'],
+                        ended_time_str = apt['meeting_ended_at'].strftime('%H:%M'),
+                    )
+                except Exception as line_err:
+                    print(f"⚠️ 醫囑提醒 LINE 推播失敗: {line_err}")
                 
                 print(f"✅ 已發送填寫醫囑提醒給醫師 {apt['doctor_id']}")
             
@@ -6488,6 +6520,125 @@ def internal_line_feedback_received():
     except Exception as e:
         print(f"⚠️ 回報通知推播失敗: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ─────────────────────────────────────────
+# 醫師端 LINE 推播 API（供 Next.js route.js 呼叫）
+# ─────────────────────────────────────────
+
+@app.route("/api/internal/line/doctor-new-booking", methods=["POST"])
+def internal_line_doctor_new_booking():
+    """新預約時即時推播給醫師"""
+    try:
+        data = request.get_json()
+        from line_notifier import notify_doctor_new_booking
+        notify_doctor_new_booking(
+            doctor_id    = data["doctor_id"],
+            doctor_name  = data["doctor_name"],
+            patient_name = data["patient_name"],
+            specialty    = data["specialty"],
+            date_str     = data["date_str"],
+            time_str     = data["time_str"],
+            symptoms     = data.get("symptoms", ""),
+        )
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        print(f"⚠️ 醫師新預約 LINE 推播失敗: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/internal/line/doctor-booking-cancelled", methods=["POST"])
+def internal_line_doctor_booking_cancelled():
+    """預約取消時即時推播給醫師"""
+    try:
+        data = request.get_json()
+        from line_notifier import notify_doctor_booking_cancelled
+        notify_doctor_booking_cancelled(
+            doctor_id     = data["doctor_id"],
+            doctor_name   = data["doctor_name"],
+            patient_name  = data["patient_name"],
+            specialty     = data["specialty"],
+            date_str      = data["date_str"],
+            time_str      = data["time_str"],
+            cancel_reason = data.get("cancel_reason", ""),
+        )
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        print(f"⚠️ 醫師取消預約 LINE 推播失敗: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ─────────────────────────────────────────
+# 醫師 LINE 綁定狀態查詢 / 解綁 / 測試推播
+# ─────────────────────────────────────────
+
+@app.route('/api/doctor/line/binding-status', methods=['GET'])
+def get_doctor_line_binding_status():
+    """檢查醫師的 LINE 綁定狀態"""
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return jsonify({'error': '請先登入醫師帳號'}), 401
+    user_id = session['user_id']
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT line_user_id FROM users WHERE user_id = %s", (user_id,))
+    user = cursor.fetchone()
+    cursor.close()
+    db.close()
+    if not user:
+        return jsonify({'error': '用戶不存在'}), 404
+    is_bound = user['line_user_id'] is not None
+    return jsonify({
+        'is_bound': is_bound,
+        'line_user_id': user['line_user_id'] if is_bound else None
+    })
+
+
+@app.route('/api/doctor/line/unbind', methods=['POST'])
+def unbind_doctor_line():
+    """解除醫師的 LINE 綁定"""
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return jsonify({'error': '請先登入醫師帳號'}), 401
+    user_id = session['user_id']
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("UPDATE users SET line_user_id = NULL WHERE user_id = %s", (user_id,))
+    db.commit()
+    cursor.close()
+    db.close()
+    return jsonify({'success': True, 'message': '已成功解除醫師 LINE 綁定'})
+
+
+@app.route('/api/doctor/line/test-notification', methods=['POST'])
+def test_doctor_line_notification():
+    """測試推播通知給醫師（開發用）"""
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return jsonify({'error': '請先登入醫師帳號'}), 401
+    user_id = session['user_id']
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT line_user_id, username FROM users WHERE user_id = %s", (user_id,))
+    user = cursor.fetchone()
+    cursor.close()
+    db.close()
+    if not user or not user['line_user_id']:
+        return jsonify({'error': '未綁定 LINE 帳號'}), 400
+    from line_notifier import push_line_message
+    message = (
+        f"🔔 測試通知\n\n"
+        f"醫師 {user['username']} 您好！\n\n"
+        f"這是一則測試通知，確認您已成功綁定 LINE 通知服務。\n\n"
+        f"✅ 系統將在以下情況推送通知給您：\n"
+        f"• 📅 新預約建立\n"
+        f"• ⏰ 看診提醒（開始前 5 分鐘）\n"
+        f"• 🚫 預約取消\n"
+        f"• 📬 患者問題回報\n"
+        f"• 📝 醫囑填寫提醒\n\n"
+        f"祝您使用愉快！😊"
+    )
+    success = push_line_message(user['line_user_id'], message)
+    if success:
+        return jsonify({'success': True, 'message': '測試通知已發送，請查看您的 LINE'})
+    return jsonify({'success': False, 'error': '推播失敗，請檢查設定'}), 500
 
 @app.route("/api/doctor/followup-request", methods=["POST"])
 def create_followup_request():

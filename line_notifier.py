@@ -270,8 +270,9 @@ def notify_upcoming_appointments():
 def start_scheduler():
     scheduler = BackgroundScheduler(timezone="Asia/Taipei")
     scheduler.add_job(notify_upcoming_appointments, "interval", minutes=1)
+    scheduler.add_job(notify_upcoming_appointments_for_doctor, "interval", minutes=1)
     scheduler.start()
-    print("[排程器啟動] 每分鐘檢查看診提醒（開始前 5 分鐘）")
+    print("[排程器啟動] 每分鐘檢查看診提醒（病患 + 醫師，開始前 5 分鐘）")
     return scheduler
 
 # ═══════════════════════════════════════════════════════════════════
@@ -687,6 +688,207 @@ def notify_followup_pending_review(line_id: str, patient_name: str,
     import requests as _req
     resp = _req.post(url, headers=headers, json=payload)
     return resp.status_code == 200
+
+# ═══════════════════════════════════════════════════════════════════
+# 醫師端 LINE 通知
+# ═══════════════════════════════════════════════════════════════════
+
+# ─────────────────────────────────────────
+# 取得醫師的 LINE user id
+# ─────────────────────────────────────────
+def get_doctor_line_id(doctor_id: int):
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT u.line_user_id
+            FROM users u
+            JOIN doctor d ON u.user_id = d.user_id
+            WHERE d.doctor_id = %s
+        """, (doctor_id,))
+        row = cursor.fetchone()
+        cursor.close()
+        db.close()
+        return row["line_user_id"] if row else None
+    except Exception as e:
+        print(f"[get_doctor_line_id 錯誤] {e}")
+        return None
+
+
+# ─────────────────────────────────────────
+# 醫師通知一：有新預約
+# ─────────────────────────────────────────
+def notify_doctor_new_booking(doctor_id: int, doctor_name: str,
+                               patient_name: str, specialty: str,
+                               date_str: str, time_str: str,
+                               symptoms: str = "") -> bool:
+    line_id = get_doctor_line_id(doctor_id)
+    if not line_id:
+        return False
+    symptoms_line = f"📋 主訴：{symptoms}\n" if symptoms else ""
+    message = (
+        f"📅 新預約通知\n\n"
+        f"醫師 {doctor_name} 您好！\n"
+        f"您有一筆新的預約。\n\n"
+        f"👤 患者：{patient_name}\n"
+        f"🏥 科別：{specialty}\n"
+        f"🗓 日期：{date_str}\n"
+        f"⏰ 時間：{time_str}\n"
+        f"{symptoms_line}"
+        f"\n請登入系統查看詳情 📋"
+    )
+    ok = push_line_message(line_id, message)
+    if ok:
+        print(f"[醫師-新預約] doctor_id={doctor_id}, patient={patient_name}")
+    return ok
+
+
+# ─────────────────────────────────────────
+# 醫師通知二：預約取消通知
+# ─────────────────────────────────────────
+def notify_doctor_booking_cancelled(doctor_id: int, doctor_name: str,
+                                     patient_name: str, specialty: str,
+                                     date_str: str, time_str: str,
+                                     cancel_reason: str = "") -> bool:
+    line_id = get_doctor_line_id(doctor_id)
+    if not line_id:
+        return False
+    reason_line = f"📝 取消原因：{cancel_reason}\n" if cancel_reason else ""
+    message = (
+        f"🚫 預約取消通知\n\n"
+        f"醫師 {doctor_name} 您好！\n"
+        f"患者已取消一筆預約。\n\n"
+        f"👤 患者：{patient_name}\n"
+        f"🏥 科別：{specialty}\n"
+        f"🗓 原預約日期：{date_str}\n"
+        f"⏰ 原預約時間：{time_str}\n"
+        f"{reason_line}"
+        f"\n該時段已自動釋放，可供其他患者預約 📋"
+    )
+    ok = push_line_message(line_id, message)
+    if ok:
+        print(f"[醫師-預約取消] doctor_id={doctor_id}, patient={patient_name}")
+    return ok
+
+
+# ─────────────────────────────────────────
+# 醫師通知三：問題回報通知
+# ─────────────────────────────────────────
+def notify_doctor_feedback_received(doctor_id: int, doctor_name: str,
+                                     patient_name: str,
+                                     categories_str: str,
+                                     feedback_text: str) -> bool:
+    line_id = get_doctor_line_id(doctor_id)
+    if not line_id:
+        return False
+    preview = (feedback_text or "")[:50]
+    if len(feedback_text or "") > 50:
+        preview += "..."
+    message = (
+        f"📬 患者問題回報\n\n"
+        f"醫師 {doctor_name} 您好！\n"
+        f"患者 {patient_name} 提交了一筆問題回報。\n\n"
+        f"🏷 問題類別：{categories_str or '未分類'}\n"
+        f"📝 內容摘要：{preview}\n\n"
+        f"請登入系統查看完整內容並處理 🙏"
+    )
+    ok = push_line_message(line_id, message)
+    if ok:
+        print(f"[醫師-問題回報] doctor_id={doctor_id}, patient={patient_name}")
+    return ok
+
+
+# ─────────────────────────────────────────
+# 醫師通知四：醫囑填寫提醒
+# ─────────────────────────────────────────
+def notify_doctor_consultation_reminder(doctor_id: int, doctor_name: str,
+                                         patient_name: str,
+                                         appointment_id: int,
+                                         ended_time_str: str) -> bool:
+    line_id = get_doctor_line_id(doctor_id)
+    if not line_id:
+        return False
+    message = (
+        f"📝 醫囑填寫提醒\n\n"
+        f"醫師 {doctor_name} 您好！\n"
+        f"您與患者 {patient_name} 的看診（{ended_time_str} 結束）\n"
+        f"尚未填寫醫囑建議。\n\n"
+        f"請盡快登入系統填寫診療建議和處方，\n"
+        f"以便患者及時查看 🙏\n\n"
+        f"預約 ID：#{appointment_id}"
+    )
+    ok = push_line_message(line_id, message)
+    if ok:
+        print(f"[醫師-醫囑提醒] doctor_id={doctor_id}, appt_id={appointment_id}")
+    return ok
+
+
+# ─────────────────────────────────────────
+# 排程：醫師看診提醒（開始前 5 分鐘）
+# ─────────────────────────────────────────
+def notify_upcoming_appointments_for_doctor():
+    try:
+        db = get_db()
+        cursor = db.cursor(dictionary=True)
+
+        now          = datetime.now()
+        window_start = now + timedelta(minutes=4)
+        window_end   = now + timedelta(minutes=6)
+
+        cursor.execute("""
+            SELECT
+                a.appointment_id,
+                a.appointment_date,
+                a.appointment_time,
+                u.line_user_id,
+                CONCAT(d.first_name, d.last_name) AS doctor_name,
+                CONCAT(p.first_name, p.last_name) AS patient_name,
+                d.doctor_id
+            FROM appointments a
+            JOIN doctor  d ON a.doctor_id  = d.doctor_id
+            JOIN users   u ON d.user_id    = u.user_id
+            JOIN patient p ON a.patient_id = p.patient_id
+            WHERE a.status = '已確認'
+              AND a.doctor_notified_at IS NULL
+              AND u.line_user_id IS NOT NULL
+              AND TIMESTAMP(a.appointment_date, a.appointment_time)
+                  BETWEEN %s AND %s
+        """, (window_start, window_end))
+
+        rows = cursor.fetchall()
+        cursor.close()
+        db.close()
+
+        for appt in rows:
+            date_str = str(appt['appointment_date'])
+            time_str = str(appt['appointment_time'])[:5]
+            ok = push_line_message(
+                appt["line_user_id"],
+                (
+                    f"⏰ 看診提醒\n\n"
+                    f"醫師 {appt['doctor_name']} 您好！\n"
+                    f"您即將在 5 分鐘後開始看診。\n\n"
+                    f"👤 患者：{appt['patient_name']}\n"
+                    f"🗓 日期：{date_str}\n"
+                    f"⏰ 時間：{time_str}\n\n"
+                    f"請準備進入視訊會議室 🎥"
+                )
+            )
+            if ok:
+                db2 = get_db()
+                cur2 = db2.cursor()
+                cur2.execute(
+                    "UPDATE appointments SET doctor_notified_at = NOW() WHERE appointment_id = %s",
+                    (appt["appointment_id"],)
+                )
+                db2.commit()
+                cur2.close()
+                db2.close()
+                print(f"[醫師看診提醒] appt_id={appt['appointment_id']}, doctor={appt['doctor_name']}")
+
+    except Exception as e:
+        print(f"[醫師看診提醒錯誤] {e}")
+
 
 if __name__ == "__main__":
     import time
