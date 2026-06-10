@@ -8,18 +8,19 @@ export async function POST(request) {
     // 取得使用者最新問題
     const latestMessage =
       messages[messages.length - 1]?.text || "";
-      // =========================
+
+    // =========================
     // 建立知識庫內容
     // =========================
     let knowledgeContext = "";
 
     medicalKnowledge.forEach((item) => {
-    const matched = item.keywords.some((keyword) =>
-    latestMessage.includes(keyword)
-    );
+      const matched = item.keywords.some((keyword) =>
+        latestMessage.includes(keyword)
+      );
 
-    if (matched) {
-    knowledgeContext += `
+      if (matched) {
+        knowledgeContext += `
     資料來源：${item.source}
     參考網址：${item.url}
 
@@ -27,103 +28,111 @@ export async function POST(request) {
     ${item.content}
 
     `;
-    }
+      }
     });
 
-
     // =========================
-    // 緊急症狀偵測
+    // AI 語意分類：緊急狀況 + 問題範圍
+    // 傳入對話歷史，讓分類器有上下文可以理解語意
     // =========================
-    const emergencyKeywords = [
-      "胸痛",
-      "呼吸困難",
-      "無法呼吸",
-      "昏倒",
-      "意識不清",
-      "中風",
-      "自殺",
-      "快死了",
-      "喘不過氣",
-      "心臟痛"
-    ];
+    const recentHistory = messages
+      .slice(-7, -1)
+      .map((msg) => ({
+        role: msg.sender === "user" ? "user" : "assistant",
+        content: msg.text
+      }));
 
-    const isEmergency = emergencyKeywords.some((keyword) =>
-      latestMessage.includes(keyword)
-    );
-
-    if (isEmergency) {
-    return new Response(
-      `data: ${JSON.stringify({
-        choices: [
-          {
-            delta: {
-              content:
-                "⚠️ 偵測到可能緊急症狀，請立即撥打119或盡速前往急診就醫。"
-            }
-          }
-        ]
-      })}\n\n`,
+    const classifyRes = await fetch(
+      "https://api.openai.com/v1/chat/completions",
       {
+        method: "POST",
         headers: {
-          "Content-Type": "text/event-stream",
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
         },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          temperature: 0,
+          messages: [
+            {
+              role: "system",
+              content: `你是一個醫療健康問題分類器。
+你會收到一段對話紀錄（含歷史訊息）與使用者最新訊息。
+請結合上下文，判斷以下兩件事：
+
+1. isEmergency（緊急狀況）：
+   - 對話中出現任何可能危及生命或需要立即急救的狀況，
+     例如：昏倒、失去意識、呼吸困難、胸痛、大量出血、
+     中風跡象、無法回應、心跳異常、嚴重過敏反應、
+     有自傷或自殺意圖等。
+   - 即使沒有精確醫學詞彙，只要描述情境屬緊急，就設為 true。
+
+2. isInScope（在服務範圍內）：
+   - 與健康、身體症狀、疾病、醫療、藥物、營養、運動、
+     心理健康，或 MedOnGo / MOG 平台操作相關，設為 true。
+   - 若使用者是在追問 AI 剛才的回答（例如「這樣算診斷嗎」、
+     「你確定嗎」、「那我應該怎麼辦」、「這是你的看法嗎」），
+     且對話脈絡屬醫療健康，也設為 true。
+   - 只有當問題明顯與健康及平台完全無關（如純數學、投資、程式、感情），
+     才設為 false。
+
+請只回傳 JSON，不要有任何說明文字：
+{"isEmergency": true, "isInScope": true}`
+            },
+            ...recentHistory,
+            {
+              role: "user",
+              content: latestMessage
+            }
+          ]
+        })
       }
     );
-  }
 
-    // =========================
-    // 醫療問題限制
-    // =========================
-    const allowedKeywords = [
-      "健康",
-      "症狀",
-      "感冒",
-      "頭痛",
-      "發燒",
-      "咳嗽",
-      "流鼻水",
-      "喉嚨",
-      "血壓",
-      "糖尿病",
-      "胃痛",
-      "皮膚",
-      "醫師",
-      "醫生",
-      "掛號",
-      "預約",
-      "營養",
-      "減肥",
-      "藥",
-      "失眠",
-      "焦慮",
-      "月經",
-      "MOG",
-      "MedOnGo"
-    ];
+    const classifyData = await classifyRes.json();
+    const classifyText = classifyData.choices?.[0]?.message?.content || "{}";
+    let classification = { isEmergency: false, isInScope: true };
+    try {
+      classification = JSON.parse(classifyText.replace(/```json|```/g, "").trim());
+    } catch (_) {
+      // 解析失敗時保守處理：放行讓主模型回答
+    }
 
-    const isMedicalQuestion = allowedKeywords.some((keyword) =>
-      latestMessage.includes(keyword)
-    );
-
-    if (!isMedicalQuestion) {
-    return new Response(
-      `data: ${JSON.stringify({
-        choices: [
-          {
-            delta: {
-              content:
-                "此問題超出 MOG AI 的服務範圍，目前僅提供健康與 MedOnGo 平台相關資訊。"
+    if (classification.isEmergency) {
+      return new Response(
+        `data: ${JSON.stringify({
+          choices: [
+            {
+              delta: {
+                content:
+                  "⚠️ 您描述的情況可能是緊急狀況，請立即撥打 119 或盡速前往急診就醫，不要等待。"
+              }
             }
-          }
-        ]
-      })}\n\n`,
-      {
-        headers: {
-          "Content-Type": "text/event-stream",
-        },
-      }
-    );
-  }
+          ]
+        })}\n\ndata: [DONE]\n\n`,
+        {
+          headers: { "Content-Type": "text/event-stream" }
+        }
+      );
+    }
+
+    if (!classification.isInScope) {
+      return new Response(
+        `data: ${JSON.stringify({
+          choices: [
+            {
+              delta: {
+                content:
+                  "此問題超出 MOG AI 的服務範圍，目前僅提供健康與 MedOnGo 平台相關資訊。"
+              }
+            }
+          ]
+        })}\n\ndata: [DONE]\n\n`,
+        {
+          headers: { "Content-Type": "text/event-stream" }
+        }
+      );
+    }
 
     // =========================
     // 格式化對話紀錄
