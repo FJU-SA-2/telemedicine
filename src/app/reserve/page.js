@@ -387,7 +387,7 @@ function BookingPage({ doctors, schedules, setSchedules, isUnverified }) {
                 >
                   <div className="flex items-start gap-4 mb-4">
                     <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg flex-shrink-0">
-                      {doctor.last_name.charAt(0)}
+                      {doctor.first_name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-lg text-gray-800 truncate">

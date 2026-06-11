@@ -303,7 +303,7 @@ export default function AppointmentRecords() {
     try {
       console.log("followUpAppointment:", followUpAppointment);
       // 直接打 Flask 5000，不走 Next.js route（避免 HTML 404）
-      const res = await fetch("http://localhost:5000/api/doctor/followup-request", {
+      const res = await fetch("/api/doctor/followup-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -1128,7 +1128,7 @@ export default function AppointmentRecords() {
                   {isGeneratingAISummary ? (
                     <div className="flex flex-col items-center justify-center py-12 text-gray-400">
                       <RefreshCw size={28} className="animate-spin mb-3 text-purple-400" />
-                      <p className="text-sm">AI 正在分析看診內容，請稍候...</p>
+                      <p className="text-sm">正在分析看診內容，請稍候...</p>
                     </div>
                   ) : appointmentSummary ? (
                     <>
@@ -1367,13 +1367,13 @@ export default function AppointmentRecords() {
                     {isGeneratingSummary ? <><RefreshCw size={15} className="animate-spin" /> 生成中...</> : <><Sparkles size={15} /> 生成摘要</>}
                   </button>
                 </div>
-                <p className="text-xs text-gray-400 mt-2">使用 GPT-4o 分析已完成看診的逐字稿與醫師建議</p>
+                
               </div>
               <div className="p-5 flex-1 overflow-y-auto">
                 {isGeneratingSummary ? (
                   <div className="flex flex-col items-center justify-center py-12 text-gray-400">
                     <RefreshCw size={32} className="animate-spin mb-3 text-purple-400" />
-                    <p className="text-sm">GPT-4o 正在分析看診紀錄，請稍候...</p>
+                    <p className="text-sm">正在分析看診紀錄，請稍候...</p>
                   </div>
                 ) : weeklySummary ? (
                   <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">

@@ -230,19 +230,19 @@ function DoctorCard({ doctor, onEdit }) {
             <img
               src={`http://localhost:5000/uploads/profile_pictures/${doctor.photo}`}
               className="w-full h-full object-cover"
-              alt={`${doctor.last_name}${doctor.first_name}`}
+              alt={`${doctor.first_name}${doctor.last_name}`}
               onError={(e) => { e.target.style.display = "none"; }}
             />
           ) : (
             <span className="text-white font-bold text-3xl">
-              {doctor.last_name?.charAt(0) || "醫"}
+              {doctor.first_name?.charAt(0) || "醫"}
             </span>
           )}
         </div>
 
         {/* 姓名 */}
         <h3 className="mt-3 font-bold text-gray-800 text-lg leading-tight text-center">
-          {doctor.last_name}{doctor.first_name}
+          {doctor.first_name}{doctor.last_name}
         </h3>
 
         {/* 科別標籤 */}

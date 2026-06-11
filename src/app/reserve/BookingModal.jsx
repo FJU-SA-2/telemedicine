@@ -118,7 +118,7 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
 
           <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6 pr-8">
             <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl sm:text-2xl shadow-lg flex-shrink-0">
-              {doctor.last_name?.charAt(0) || "醫"}
+              {doctor.first_name?.charAt(0) || "醫"}
             </div>
             <div className="min-w-0">
               <h3 className="font-bold text-base sm:text-xl text-gray-800 truncate">{doctorFullName} 醫師</h3>
