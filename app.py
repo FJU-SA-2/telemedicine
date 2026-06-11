@@ -2726,16 +2726,18 @@ def get_all_schedules():
         cursor = db.cursor(dictionary=True)
         cursor.execute("""
             SELECT 
-                schedule_id,
-                doctor_id,
-                DATE_FORMAT(schedule_date, '%Y-%m-%d') as schedule_date,
-                time_slot,
-                is_available,
-                schedule_type
-            FROM schedules
-            WHERE is_available = 1
-            AND TIMESTAMP(schedule_date, time_slot) >= NOW()
-            ORDER BY schedule_date ASC, time_slot ASC
+                s.schedule_id,
+                s.doctor_id,
+                DATE_FORMAT(s.schedule_date, '%Y-%m-%d') as schedule_date,
+                s.time_slot,
+                s.is_available,
+                s.schedule_type
+            FROM schedules s
+            INNER JOIN doctor d ON s.doctor_id = d.doctor_id
+            WHERE s.is_available = 1
+            AND d.approval_status = 'approved'
+            AND TIMESTAMP(s.schedule_date, s.time_slot) >= NOW()
+            ORDER BY s.schedule_date ASC, s.time_slot ASC
         """)
         schedules = cursor.fetchall()
         for s in schedules:
@@ -5361,31 +5363,36 @@ def get_mechanism_stats():
     db = get_db()
     cursor = db.cursor(dictionary=True)
     try:
-        cursor.execute("SELECT COUNT(*) AS total FROM doctor WHERE mechanism_id = %s", (request.mechanism_id,))
-        total_doctors = cursor.fetchone()['total']
-
-        cursor.execute("SELECT COUNT(*) AS total FROM doctor WHERE mechanism_id = %s AND approval_status = 'approved'", (request.mechanism_id,))
-        approved_doctors = cursor.fetchone()['total']
-
+        # 醫師數量
         cursor.execute("""
-            SELECT COUNT(DISTINCT a.patient_id) AS total
-            FROM appointments a JOIN doctor d ON a.doctor_id = d.doctor_id
+            SELECT COUNT(*) AS total_doctors
+            FROM doctor
+            WHERE mechanism_id = %s
+        """, (request.mechanism_id,))
+        total_doctors = cursor.fetchone()["total_doctors"]
+
+        # 患者數量
+        cursor.execute("""
+            SELECT COUNT(*) AS total_patients
+            FROM patient
+            WHERE mechanism_id = %s
+        """, (request.mechanism_id,))
+        total_patients = cursor.fetchone()["total_patients"]
+
+        # 今日預約數
+        cursor.execute("""
+            SELECT COUNT(*) AS today_appointments
+            FROM appointments a
+            JOIN doctor d ON a.doctor_id = d.doctor_id
             WHERE d.mechanism_id = %s
+            AND a.appointment_date = CURDATE()
         """, (request.mechanism_id,))
-        total_patients = cursor.fetchone()['total']
-
-        cursor.execute("""
-            SELECT COUNT(*) AS total
-            FROM appointments a JOIN doctor d ON a.doctor_id = d.doctor_id
-            WHERE d.mechanism_id = %s AND DATE(a.appointment_date) = CURDATE()
-        """, (request.mechanism_id,))
-        today_appointments = cursor.fetchone()['total']
+        today_appointments = cursor.fetchone()["today_appointments"]
 
         return jsonify({
-            'total_doctors': total_doctors,
-            'approved_doctors': approved_doctors,
-            'total_patients': total_patients,
-            'today_appointments': today_appointments,
+            "total_doctors": total_doctors,
+            "total_patients": total_patients,
+            "today_appointments": today_appointments
         })
     finally:
         cursor.close()
@@ -5453,7 +5460,7 @@ def update_mechanism_doctor(doctor_id):
     doctor_allowed = ['first_name', 'last_name', 'gender', 'specialty']
     
     # doctor_info 表允許更新的欄位
-    doctor_info_allowed = ['photo_url', 'education', 'descriptions', 'experience', 'qualifications']
+    doctor_info_allowed = ['photo', 'education', 'description', 'experience', 'qualifications']
 
     doctor_updates = {k: v for k, v in data.items() if k in doctor_allowed}
     doctor_info_updates = {k: v for k, v in data.items() if k in doctor_info_allowed}
@@ -5526,7 +5533,7 @@ def get_doctor_info(doctor_id):
             return jsonify({'error': '醫師不存在或無權限'}), 404
 
         cursor.execute(
-            "SELECT photo_url, education, descriptions, experience, qualifications FROM doctor_info WHERE doctor_id = %s",
+            "SELECT photo, education, description, experience, qualifications FROM doctor_info WHERE doctor_id = %s",
             (doctor_id,)
         )
         row = cursor.fetchone()
@@ -5615,14 +5622,29 @@ def manage_mechanism_patients():
         try:
             sql = """
                 SELECT
-                    p.patient_id, p.first_name, p.last_name, p.gender,
-                    p.date_of_birth, p.phone_number, p.smoking_status, p.chronic_disease,
-                    MAX(a.appointment_date) AS last_appointment,
-                    COUNT(a.appointment_id) AS total_appointments
+                    p.patient_id,
+                    p.first_name,
+                    p.last_name,
+                    p.gender,
+                    p.date_of_birth,
+                    p.phone_number,
+                    p.smoking_status,
+                    p.chronic_disease,
+
+                    (
+                        SELECT MAX(a.appointment_date)
+                        FROM appointments a
+                        WHERE a.patient_id = p.patient_id
+                    ) AS last_appointment,
+
+                    (
+                        SELECT COUNT(*)
+                        FROM appointments a
+                        WHERE a.patient_id = p.patient_id
+                    ) AS total_appointments
+
                 FROM patient p
-                JOIN appointments a ON p.patient_id = a.patient_id
-                JOIN doctor d ON a.doctor_id = d.doctor_id
-                WHERE d.mechanism_id = %s
+                WHERE p.mechanism_id = %s
             """
             params = [request.mechanism_id]
 
@@ -5687,13 +5709,41 @@ def manage_mechanism_patients():
                 )
             user_id = cursor.lastrowid
 
-            # 3. 插入 patient 表
+            # 取得目前機構
+            cursor.execute("""
+                SELECT mechanism_id
+                FROM mechanism
+                WHERE user_id = %s
+            """, (session.get("user_id"),))
+
+            mech = cursor.fetchone()
+
+            if not mech:
+                cursor.close()
+                conn.close()
+                return jsonify({"error": "找不到機構"}), 403
+
+            mechanism_id = mech["mechanism_id"]
+
+            # 插入 patient 表
             cursor.execute("""
                 INSERT INTO patient
-                  (user_id, first_name, last_name, gender, phone_number)
-                VALUES (%s, %s, %s, %s, %s)
+                (
+                    user_id,
+                    first_name,
+                    last_name,
+                    gender,
+                    phone_number,
+                    mechanism_id
+                )
+                VALUES (%s, %s, %s, %s, %s, %s)
             """, (
-                user_id, first_name, last_name, gender, phone_number or None
+                user_id,
+                first_name,
+                last_name,
+                gender,
+                phone_number or None,
+                mechanism_id
             ))
             patient_id = cursor.lastrowid
 
@@ -5714,10 +5764,11 @@ def get_mechanism_patient_detail(patient_id):
     cursor = db.cursor(dictionary=True)
     try:
         cursor.execute("""
-            SELECT COUNT(*) AS cnt FROM appointments a
-            JOIN doctor d ON a.doctor_id = d.doctor_id
-            WHERE a.patient_id = %s AND d.mechanism_id = %s
-        """, (patient_id, request.mechanism_id))
+                SELECT COUNT(*) AS cnt
+                FROM patient
+                WHERE patient_id = %s
+                AND mechanism_id = %s
+            """, (patient_id, request.mechanism_id))
         if cursor.fetchone()['cnt'] == 0:
             return jsonify({'error': '患者不存在或無權限'}), 404
 

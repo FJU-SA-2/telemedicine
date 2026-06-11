@@ -8,7 +8,7 @@ const dbConfig = {
   database: "telemedicine",
 };
 
-// POST - 新增預約 (狀態直接設為已確認 + 立即通知)
+// POST - 新增預約
 export async function POST(request) {
   let connection;
   try {
@@ -53,19 +53,32 @@ export async function POST(request) {
       [patient_id]
     );
 
-    const patientName = patientInfo.length > 0 
+    const patientName = patientInfo.length > 0
       ? `${patientInfo[0].first_name}${patientInfo[0].last_name}`
       : '患者';
-    //1新增預約
+
+    // consultation_fee 從 doctor_info 取預設值，若前端有傳 amount 則優先使用
+    const [feeResult] = await connection.execute(
+      `SELECT COALESCE(di.consultation_fee, 0) AS consultation_fee
+       FROM doctor d
+       LEFT JOIN doctor_info di ON d.doctor_id = di.doctor_id
+       WHERE d.doctor_id = ?`,
+      [doctor_id]
+    );
+    const defaultFee = feeResult.length > 0 ? Number(feeResult[0].consultation_fee) : 0;
+    const finalAmount = amount != null ? Number(amount) : null;
+
     const [result] = await connection.execute(
       `INSERT INTO appointments 
        (patient_id, doctor_id, appointment_date, appointment_time, status, symptoms, payment_method, amount) 
        VALUES (?, ?, ?, ?, '已確認', ?, ?, ?)`,
-      [patient_id, doctor_id, appointment_date, appointment_time, symptoms || null, payment_method || null, amount || 250]
+      [patient_id, doctor_id, appointment_date, appointment_time,
+       symptoms || null, payment_method || null, finalAmount]
     );
 
     const appointmentId = result.insertId;
-    //2把排班時段標為不可用
+
+    // 2. 把排班時段標為不可用
     await connection.execute(
       `UPDATE schedules 
        SET is_available = '0' 
@@ -73,34 +86,34 @@ export async function POST(request) {
       [doctor_id, appointment_date, appointment_time]
     );
 
-    const notificationMessage = `預約成功! 您的線上看診已確認
+    const notificationMessage = `預約成功！您的看診已確認
 
-📅 看診日期: ${appointment_date}
-⏰ 看診時間: ${appointment_time}
-👨‍⚕️ 主治醫師: ${doctorName}
-🏥 專科: ${doctor.specialty}
-🏢 執業醫院: ${doctor.practice_hospital}
+📅 看診日期：${appointment_date}
+⏰ 看診時間：${appointment_time}
+👨‍⚕️ 主治醫師：${doctorName}
+🏥 專科：${doctor.specialty}
+🏢 執業醫院：${doctor.practice_hospital}
 
-💳 付款方式: ${payment_method || '未指定'}
-💰 費用: NT$ ${amount || 250}
 
-⚠️ 請在預約時間前 10 分鐘準備好進入視訊會議室
+⚠️ 請在預約時間前 10 分鐘準備好
 📱 系統將會提前提醒您`;
-    //3寫通知給病患
+
+    // 3. 寫通知給病患
     await connection.execute(
       `INSERT INTO notifications (patient_id, type, title, message, related_id, is_read)
        VALUES (?, 'appointment_confirmed', '預約成功', ?, ?, FALSE)`,
       [patient_id, notificationMessage, appointmentId]
     );
 
-    const doctorNotificationMessage = `您有新的預約!
+    const doctorNotificationMessage = `您有新的預約！
 
-📅 預約時間: ${appointment_date} ${appointment_time}
-👤 患者: ${patientName}
-📝 症狀描述: ${symptoms || '未填寫'}
+📅 預約時間：${appointment_date} ${appointment_time}
+👤 患者：${patientName}
+📝 症狀描述：${symptoms || '未填寫'}
 
 請準時為患者提供看診服務。`;
-    //4寫通知給醫師
+
+    // 4. 寫通知給醫師
     await connection.execute(
       `INSERT INTO doctor_notifications (doctor_id, type, title, message, related_id, is_read)
        VALUES (?, 'new_appointment', '新預約通知', ?, ?, FALSE)`,
@@ -109,7 +122,7 @@ export async function POST(request) {
 
     await connection.commit();
 
-    // ✅ 即時 LINE 推播（非同步，不影響回應速度）
+    // LINE 推播（非同步，不影響回應速度）
     fetch("http://localhost:5000/api/internal/line/booking-success", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -125,18 +138,19 @@ export async function POST(request) {
 
     console.log(`✅ 預約成功 - ID: ${appointmentId}, 患者: ${patient_id}`);
 
-    return NextResponse.json({ 
-      success: true, 
-      appointment_id: appointmentId, 
-      message: "預約成功,通知已發送" 
+    return NextResponse.json({
+      success: true,
+      appointment_id: appointmentId,
+      message: "預約成功，通知已發送",
+      amount: finalAmount,
     }, { status: 201 });
 
   } catch (error) {
     if (connection) await connection.rollback();
     console.error("預約創建錯誤:", error);
-    return NextResponse.json({ 
-      error: "預約失敗", 
-      details: error.message 
+    return NextResponse.json({
+      error: "預約失敗",
+      details: error.message
     }, { status: 500 });
   } finally {
     if (connection) await connection.end();
@@ -229,9 +243,9 @@ export async function PATCH(request) {
     const appointmentDateTime = new Date(`${appointment.appointment_date} ${appointment.appointment_time}`);
     const diffHours = (appointmentDateTime - new Date()) / (1000 * 60 * 60);
     let refundPercentage, refundMessage;
-    if (diffHours < 24) { refundPercentage = 20; refundMessage = "24小時內取消,退款 20%"; }
-    else if (diffHours < 48) { refundPercentage = 50; refundMessage = "48小時內取消,退款 50%"; }
-    else { refundPercentage = 100; refundMessage = "提前取消,全額退款"; }
+    if (diffHours < 24) { refundPercentage = 20; refundMessage = "24小時內取消，退款 20%"; }
+    else if (diffHours < 48) { refundPercentage = 50; refundMessage = "48小時內取消，退款 50%"; }
+    else { refundPercentage = 100; refundMessage = "提前取消，全額退款"; }
 
     await connection.execute(
       `UPDATE appointments SET status = '已取消', cancellation_reason = ?, updated_at = NOW() WHERE appointment_id = ?`,
@@ -248,16 +262,15 @@ export async function PATCH(request) {
 
     await connection.execute(
       `INSERT INTO notifications (patient_id, type, title, message, related_id, is_read) VALUES (?, 'appointment_cancelled', '預約已取消', ?, ?, FALSE)`,
-      [appointment.patient_id, `預約已取消\n📅 原預約時間: ${appointment.appointment_date} ${appointment.appointment_time}\n👨‍⚕️ 醫師: ${doctorName}\n📝 取消理由: ${cancellation_reason}\n💰 退款說明: ${refundMessage}`, appointment_id]
+      [appointment.patient_id, `預約已取消\n📅 原預約時間：${appointment.appointment_date} ${appointment.appointment_time}\n👨‍⚕️ 醫師：${doctorName}\n📝 取消理由：${cancellation_reason}\n💰 退款說明：${refundMessage}`, appointment_id]
     );
     await connection.execute(
       `INSERT INTO doctor_notifications (doctor_id, type, title, message, related_id, is_read) VALUES (?, 'appointment_cancelled', '預約已取消', ?, ?, FALSE)`,
-      [appointment.doctor_id, `患者已取消預約\n📅 原預約時間: ${appointment.appointment_date} ${appointment.appointment_time}\n👤 患者: ${patientName}\n📝 取消原因: ${cancellation_reason}`, appointment_id]
+      [appointment.doctor_id, `患者已取消預約\n📅 原預約時間：${appointment.appointment_date} ${appointment.appointment_time}\n👤 患者：${patientName}\n📝 取消原因：${cancellation_reason}`, appointment_id]
     );
 
     await connection.commit();
 
-    // ✅ 即時 LINE 推播（非同步）
     fetch("http://localhost:5000/api/internal/line/booking-cancelled", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -274,7 +287,7 @@ export async function PATCH(request) {
     }).catch(err => console.warn("LINE 取消推播呼叫失敗:", err));
 
     console.log(`✅ 預約已取消 - ID: ${appointment_id}`);
-    return NextResponse.json({ success: true, message: `取消成功,${refundMessage}`, refund_percentage: refundPercentage }, { status: 200 });
+    return NextResponse.json({ success: true, message: `取消成功，${refundMessage}`, refund_percentage: refundPercentage }, { status: 200 });
 
   } catch (error) {
     if (connection) await connection.rollback();

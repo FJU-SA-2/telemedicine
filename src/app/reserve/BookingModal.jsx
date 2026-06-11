@@ -12,31 +12,37 @@ export default function BookingModal({ doctor, schedules, onClose, onConfirm, de
   const [symptoms, setSymptoms] = useState("");
   const [processing, setProcessing] = useState(false);
 
-  // 初診患者強制 physical，否則帶入外層選擇或空
-  const [selectedScheduleType, setSelectedScheduleType] = useState(
-    isUnverified ? "physical" : (defaultScheduleType || "")
-  );
-
   const isTimeSlotExpired = (dateStr, timeStr) => {
     const now = new Date();
     return new Date(`${dateStr}T${timeStr}`) < now;
   };
 
-  // schedules 表沒有 schedule_type 欄位
-  // 改用 doctor.consultation_type 判斷此醫師支援哪些方式：
-  //   "現場看診" → physical only
-  //   其他（線上）→ online only
-  //   若日後有兩種，可再擴充
-  const consultationType = doctor.consultation_type || "";
-  const hasOnline   = !isUnverified && consultationType !== "現場看診";
-  const hasPhysical = consultationType === "現場看診" || isUnverified;
+  // 此醫師所有未過期可用排班
+  const allDoctorSchedules = schedules.filter(
+    s => s.doctor_id === doctor.doctor_id &&
+         s.is_available === 1 &&
+         !isTimeSlotExpired(s.schedule_date, s.time_slot)
+  );
 
-  // 此醫師所有可用排班（不依 schedule_type 過濾，因為資料表沒有這欄）
-  const availableSchedules = schedules.filter(
-    s =>
-      s.doctor_id === doctor.doctor_id &&
-      s.is_available === 1 &&
-      !isTimeSlotExpired(s.schedule_date, s.time_slot)
+  // 依排班 schedule_type 判斷此醫師提供哪些診別
+  const scheduleTypes = new Set(allDoctorSchedules.map(s => s.schedule_type).filter(Boolean));
+  const hasOnline   = !isUnverified && scheduleTypes.has("online");
+  const hasPhysical = scheduleTypes.has("physical") || isUnverified;
+
+  // 初始看診方式
+  const getInitialType = () => {
+    if (isUnverified) return "physical";
+    if (defaultScheduleType && scheduleTypes.has(defaultScheduleType)) return defaultScheduleType;
+    if (scheduleTypes.has("physical")) return "physical";
+    if (scheduleTypes.has("online")) return "online";
+    return "physical";
+  };
+
+  const [selectedScheduleType, setSelectedScheduleType] = useState(getInitialType);
+
+  // 依選擇的看診方式過濾排班
+  const availableSchedules = allDoctorSchedules.filter(s =>
+    !selectedScheduleType || s.schedule_type === selectedScheduleType
   );
 
   const uniqueDates = [...new Set(availableSchedules.map(s => s.schedule_date))].sort();
