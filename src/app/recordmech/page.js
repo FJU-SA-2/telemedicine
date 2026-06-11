@@ -506,7 +506,7 @@ export default function MechAppointmentRecords() {
                       className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
                     >
                       <div className="p-6">
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 mb-3">
                         {/* 狀態 */}
                         <span
                           className={`px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(appointment.status)}`}
@@ -790,7 +790,7 @@ export default function MechAppointmentRecords() {
 
                           {/* 核准 / 拒絕（只有 pending_review 顯示） */}
                           {isPendingReview && (
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 mb-3">
                               <button
                                 onClick={() => handleApprove(req.request_id)}
                                 disabled={isProcessing}

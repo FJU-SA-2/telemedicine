@@ -613,7 +613,7 @@ const DoctorProfileModal = ({ doctor, onClose, onSaved }) => {
     }
   };
 
-  const inputCls = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400";
+  const inputCls = "w-full px-3 py-2 text-sm text-gray-800 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 placeholder:text-gray-500";
   const textareaCls = `${inputCls} resize-none`;
 
   return (

@@ -5403,11 +5403,12 @@ def get_mechanism_stats():
         """, (request.mechanism_id,))
         total_doctors = cursor.fetchone()["total_doctors"]
 
-        # 患者數量
+        # 患者數量（透過 appointments → doctor → mechanism 關聯）
         cursor.execute("""
-            SELECT COUNT(*) AS total_patients
-            FROM patient
-            WHERE mechanism_id = %s
+            SELECT COUNT(DISTINCT a.patient_id) AS total_patients
+            FROM appointments a
+            JOIN doctor d ON a.doctor_id = d.doctor_id
+            WHERE d.mechanism_id = %s
         """, (request.mechanism_id,))
         total_patients = cursor.fetchone()["total_patients"]
 
@@ -5676,7 +5677,12 @@ def manage_mechanism_patients():
                     ) AS total_appointments
 
                 FROM patient p
-                WHERE p.mechanism_id = %s
+                WHERE p.patient_id IN (
+                    SELECT DISTINCT a.patient_id
+                    FROM appointments a
+                    JOIN doctor d ON a.doctor_id = d.doctor_id
+                    WHERE d.mechanism_id = %s
+                )
             """
             params = [request.mechanism_id]
 
@@ -5797,9 +5803,10 @@ def get_mechanism_patient_detail(patient_id):
     try:
         cursor.execute("""
                 SELECT COUNT(*) AS cnt
-                FROM patient
-                WHERE patient_id = %s
-                AND mechanism_id = %s
+                FROM appointments a
+                JOIN doctor d ON a.doctor_id = d.doctor_id
+                WHERE a.patient_id = %s
+                AND d.mechanism_id = %s
             """, (patient_id, request.mechanism_id))
         if cursor.fetchone()['cnt'] == 0:
             return jsonify({'error': '患者不存在或無權限'}), 404
