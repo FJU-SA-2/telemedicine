@@ -4674,7 +4674,7 @@ def generate_patient_overall_summary(patient_id):
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=1500,
+            max_tokens=3000,
             temperature=0.3
         )
         summary = response.choices[0].message.content.strip()
@@ -5064,7 +5064,22 @@ def cancel_appointment():
                 refund_message = refund_message,
             )
         except Exception as line_err:
-            print(f"⚠️ LINE 取消通知推播失敗: {line_err}")
+            print(f"⚠️ LINE 病患取消通知推播失敗: {line_err}")
+
+        # ✅ 即時 LINE 推播給醫師
+        try:
+            from line_notifier import notify_doctor_booking_cancelled
+            notify_doctor_booking_cancelled(
+                doctor_id     = appt["doctor_id"],
+                doctor_name   = doctor_name,
+                patient_name  = patient_name,
+                specialty     = appt["specialty"],
+                date_str      = appointment_date.strftime('%Y年%m月%d日'),
+                time_str      = str(appointment_time)[:5],
+                cancel_reason = cancel_reason,
+            )
+        except Exception as line_err:
+            print(f"⚠️ LINE 醫師取消通知推播失敗: {line_err}")
 
         return jsonify({
             "success": True, 
@@ -5177,9 +5192,12 @@ def check_consultation_reminder():
                     a.appointment_id, a.doctor_id,
                     a.meeting_ended_at,
                     p.first_name as patient_first_name,
-                    p.last_name as patient_last_name
+                    p.last_name as patient_last_name,
+                    d.first_name as doctor_first_name,
+                    d.last_name as doctor_last_name
                 FROM appointments a
                 INNER JOIN patient p ON a.patient_id = p.patient_id
+                INNER JOIN doctor  d ON a.doctor_id  = d.doctor_id
                 WHERE a.status = '已完成'
                 AND a.meeting_ended_at IS NOT NULL
                 AND (a.doctor_advice IS NULL OR a.doctor_advice = '')
@@ -5195,6 +5213,7 @@ def check_consultation_reminder():
             
             for apt in appointments:
                 patient_name = f"{apt['patient_last_name']}{apt['patient_first_name']}"
+                doctor_name  = f"{apt['doctor_last_name']}{apt['doctor_first_name']}"
                 
                 notification_message = f"""請記得填寫醫囑建議
 
@@ -5210,6 +5229,19 @@ def check_consultation_reminder():
                     notification_message,
                     apt['appointment_id']
                 )
+                
+                # ✅ LINE 推播給醫師
+                try:
+                    from line_notifier import notify_doctor_consultation_reminder
+                    notify_doctor_consultation_reminder(
+                        doctor_id      = apt['doctor_id'],
+                        doctor_name    = doctor_name,
+                        patient_name   = patient_name,
+                        appointment_id = apt['appointment_id'],
+                        ended_time_str = apt['meeting_ended_at'].strftime('%H:%M'),
+                    )
+                except Exception as line_err:
+                    print(f"⚠️ 醫囑提醒 LINE 推播失敗: {line_err}")
                 
                 print(f"✅ 已發送填寫醫囑提醒給醫師 {apt['doctor_id']}")
             
@@ -6540,6 +6572,125 @@ def internal_line_feedback_received():
         print(f"⚠️ 回報通知推播失敗: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
+
+# ─────────────────────────────────────────
+# 醫師端 LINE 推播 API（供 Next.js route.js 呼叫）
+# ─────────────────────────────────────────
+
+@app.route("/api/internal/line/doctor-new-booking", methods=["POST"])
+def internal_line_doctor_new_booking():
+    """新預約時即時推播給醫師"""
+    try:
+        data = request.get_json()
+        from line_notifier import notify_doctor_new_booking
+        notify_doctor_new_booking(
+            doctor_id    = data["doctor_id"],
+            doctor_name  = data["doctor_name"],
+            patient_name = data["patient_name"],
+            specialty    = data["specialty"],
+            date_str     = data["date_str"],
+            time_str     = data["time_str"],
+            symptoms     = data.get("symptoms", ""),
+        )
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        print(f"⚠️ 醫師新預約 LINE 推播失敗: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/internal/line/doctor-booking-cancelled", methods=["POST"])
+def internal_line_doctor_booking_cancelled():
+    """預約取消時即時推播給醫師"""
+    try:
+        data = request.get_json()
+        from line_notifier import notify_doctor_booking_cancelled
+        notify_doctor_booking_cancelled(
+            doctor_id     = data["doctor_id"],
+            doctor_name   = data["doctor_name"],
+            patient_name  = data["patient_name"],
+            specialty     = data["specialty"],
+            date_str      = data["date_str"],
+            time_str      = data["time_str"],
+            cancel_reason = data.get("cancel_reason", ""),
+        )
+        return jsonify({"ok": True}), 200
+    except Exception as e:
+        print(f"⚠️ 醫師取消預約 LINE 推播失敗: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ─────────────────────────────────────────
+# 醫師 LINE 綁定狀態查詢 / 解綁 / 測試推播
+# ─────────────────────────────────────────
+
+@app.route('/api/doctor/line/binding-status', methods=['GET'])
+def get_doctor_line_binding_status():
+    """檢查醫師的 LINE 綁定狀態"""
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return jsonify({'error': '請先登入醫師帳號'}), 401
+    user_id = session['user_id']
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT line_user_id FROM users WHERE user_id = %s", (user_id,))
+    user = cursor.fetchone()
+    cursor.close()
+    db.close()
+    if not user:
+        return jsonify({'error': '用戶不存在'}), 404
+    is_bound = user['line_user_id'] is not None
+    return jsonify({
+        'is_bound': is_bound,
+        'line_user_id': user['line_user_id'] if is_bound else None
+    })
+
+
+@app.route('/api/doctor/line/unbind', methods=['POST'])
+def unbind_doctor_line():
+    """解除醫師的 LINE 綁定"""
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return jsonify({'error': '請先登入醫師帳號'}), 401
+    user_id = session['user_id']
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("UPDATE users SET line_user_id = NULL WHERE user_id = %s", (user_id,))
+    db.commit()
+    cursor.close()
+    db.close()
+    return jsonify({'success': True, 'message': '已成功解除醫師 LINE 綁定'})
+
+
+@app.route('/api/doctor/line/test-notification', methods=['POST'])
+def test_doctor_line_notification():
+    """測試推播通知給醫師（開發用）"""
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return jsonify({'error': '請先登入醫師帳號'}), 401
+    user_id = session['user_id']
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT line_user_id, username FROM users WHERE user_id = %s", (user_id,))
+    user = cursor.fetchone()
+    cursor.close()
+    db.close()
+    if not user or not user['line_user_id']:
+        return jsonify({'error': '未綁定 LINE 帳號'}), 400
+    from line_notifier import push_line_message
+    message = (
+        f"🔔 測試通知\n\n"
+        f"醫師 {user['username']} 您好！\n\n"
+        f"這是一則測試通知，確認您已成功綁定 LINE 通知服務。\n\n"
+        f"✅ 系統將在以下情況推送通知給您：\n"
+        f"• 📅 新預約建立\n"
+        f"• ⏰ 看診提醒（開始前 5 分鐘）\n"
+        f"• 🚫 預約取消\n"
+        f"• 📬 患者問題回報\n"
+        f"• 📝 醫囑填寫提醒\n\n"
+        f"祝您使用愉快！😊"
+    )
+    success = push_line_message(user['line_user_id'], message)
+    if success:
+        return jsonify({'success': True, 'message': '測試通知已發送，請查看您的 LINE'})
+    return jsonify({'success': False, 'error': '推播失敗，請檢查設定'}), 500
+
 @app.route("/api/doctor/followup-request", methods=["POST"])
 def create_followup_request():
     """
@@ -7101,6 +7252,213 @@ def get_followup_requests():
     except Exception as e:
         print(f"[get_followup_requests 錯誤] {e}")
         return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+# ════════════════════════════════════════════════════════════════
+#  GET /api/mechanism/feedbacks
+#  query params: status (unread/read/resolved), user_role, search
+# ════════════════════════════════════════════════════════════════
+@app.route("/api/mechanism/feedbacks", methods=["GET"])
+def get_feedbacks():
+    if 'user_id' not in session or session.get('role') != 'mech':
+        return jsonify({"error": "未授權"}), 401
+
+    db_temp = get_db()
+    cur_temp = db_temp.cursor(dictionary=True)
+    cur_temp.execute("SELECT mechanism_id FROM mechanism WHERE user_id = %s", (session['user_id'],))
+    mech_row = cur_temp.fetchone()
+    cur_temp.close()
+    db_temp.close()
+    if not mech_row:
+        return jsonify({"error": "找不到機構資料"}), 404
+    mechanism_id = mech_row['mechanism_id']
+
+    status    = request.args.get("status")
+    user_role = request.args.get("user_role")
+    search    = request.args.get("search")
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        sql = """
+            SELECT
+                f.feedback_id,
+                f.patient_id,
+                f.doctor_id,
+                f.mechanism_id,
+                f.user_role,
+                f.categories,
+                f.feedback_text,
+                f.status,
+                f.created_at,
+                f.updated_at,
+                CASE
+                    WHEN f.user_role = 'patient' THEN CONCAT(p.first_name, p.last_name)
+                    WHEN f.user_role = 'doctor'  THEN CONCAT(d.first_name, d.last_name)
+                    ELSE NULL
+                END AS user_name
+            FROM feedback f
+            LEFT JOIN patient p ON f.patient_id = p.patient_id
+            LEFT JOIN doctor  d ON f.doctor_id  = d.doctor_id
+            WHERE (f.mechanism_id = %s OR f.user_role IN ('patient', 'doctor'))
+        """
+        args = [mechanism_id]
+
+        if status:
+            sql += " AND f.status = %s"
+            args.append(status)
+        if user_role:
+            sql += " AND f.user_role = %s"
+            args.append(user_role)
+        if search:
+            sql += " AND f.feedback_text LIKE %s"
+            args.append(f"%{search}%")
+
+        sql += " ORDER BY f.created_at DESC"
+
+        cursor.execute(sql, args)
+        feedbacks = cursor.fetchall()
+
+        for fb in feedbacks:
+            if fb.get("created_at"):
+                fb["created_at"] = str(fb["created_at"])
+            if fb.get("updated_at"):
+                fb["updated_at"] = str(fb["updated_at"])
+
+        return jsonify({"feedbacks": feedbacks}), 200
+
+    except Exception as e:
+        print(f"[get_feedbacks 錯誤] {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+# ════════════════════════════════════════════════════════════════
+#  PATCH /api/mechanism/feedbacks/<feedback_id>
+#  body: { "status": "unread" | "read" | "resolved" }
+# ════════════════════════════════════════════════════════════════
+@app.route("/api/mechanism/feedbacks/<int:feedback_id>", methods=["PATCH"])
+def update_feedback_status(feedback_id):
+    if 'user_id' not in session or session.get('role') != 'mech':
+        return jsonify({"error": "未授權"}), 401
+
+    db_temp = get_db()
+    cur_temp = db_temp.cursor(dictionary=True)
+    cur_temp.execute("SELECT mechanism_id FROM mechanism WHERE user_id = %s", (session['user_id'],))
+    mech_row = cur_temp.fetchone()
+    cur_temp.close()
+    db_temp.close()
+    if not mech_row:
+        return jsonify({"error": "找不到機構資料"}), 404
+    mechanism_id = mech_row['mechanism_id']
+
+    body   = request.get_json() or {}
+    status = body.get("status")
+
+    if status not in {"unread", "read", "resolved"}:
+        return jsonify({"error": "status 必須是 unread / read / resolved"}), 400
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        cursor.execute(
+            """SELECT feedback_id FROM feedback 
+                WHERE feedback_id = %s 
+                AND (mechanism_id = %s OR user_role IN ('patient', 'doctor'))""",
+            (feedback_id, mechanism_id)
+        ) 
+             
+        if not cursor.fetchone():
+            return jsonify({"error": "找不到此回報或無權限"}), 404
+
+        cursor.execute(
+            "UPDATE feedback SET status = %s WHERE feedback_id = %s",
+            (status, feedback_id)
+        )
+        db.commit()
+        return jsonify({"message": "狀態已更新", "status": status}), 200
+
+    except Exception as e:
+        db.rollback()
+        print(f"[update_feedback_status 錯誤] {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+# ════════════════════════════════════════════════════════════════
+#  GET /api/mechanism/ratings
+#  query params: rating (1-5), search (醫師姓名或留言)
+# ════════════════════════════════════════════════════════════════
+@app.route("/api/mechanism/ratings", methods=["GET"])
+def get_ratings():
+    if 'user_id' not in session or session.get('role') != 'mech':
+        return jsonify({"error": "未授權"}), 401
+
+    db_temp = get_db()
+    cur_temp = db_temp.cursor(dictionary=True)
+    cur_temp.execute("SELECT mechanism_id FROM mechanism WHERE user_id = %s", (session['user_id'],))
+    mech_row = cur_temp.fetchone()
+    cur_temp.close()
+    db_temp.close()
+    if not mech_row:
+        return jsonify({"error": "找不到機構資料"}), 404
+    mechanism_id = mech_row['mechanism_id']
+
+    rating_filter = request.args.get("rating")
+    search        = request.args.get("search")
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        sql = """
+            SELECT
+                r.rating_id,
+                r.appointment_id,
+                r.patient_id,
+                r.doctor_id,
+                r.rating,
+                r.comment,
+                r.created_at,
+                r.updated_at,
+                CONCAT(d.first_name, d.last_name) AS doctor_name,
+                d.specialty,
+                CONCAT(p.first_name, p.last_name) AS patient_name
+            FROM ratings r
+            JOIN doctor  d ON r.doctor_id  = d.doctor_id
+            JOIN patient p ON r.patient_id = p.patient_id
+            WHERE d.mechanism_id = %s
+        """
+        args = [mechanism_id]
+
+        if rating_filter:
+            sql += " AND r.rating = %s"
+            args.append(int(rating_filter))
+        if search:
+            sql += " AND (CONCAT(d.first_name, d.last_name) LIKE %s OR r.comment LIKE %s)"
+            args.extend([f"%{search}%", f"%{search}%"])
+
+        sql += " ORDER BY r.created_at DESC"
+
+        cursor.execute(sql, args)
+        ratings = cursor.fetchall()
+
+        for r in ratings:
+            if r.get("created_at"):
+                r["created_at"] = str(r["created_at"])
+            if r.get("updated_at"):
+                r["updated_at"] = str(r["updated_at"])
+
+        return jsonify({"ratings": ratings}), 200
+
+    except Exception as e:
+        print(f"[get_ratings 錯誤] {e}")
+        return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()
         db.close()

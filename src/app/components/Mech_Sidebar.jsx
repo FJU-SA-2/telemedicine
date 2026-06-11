@@ -27,7 +27,8 @@ export default function DoctorSidebar({ isOpen, setIsOpen, approvalStatus }) {
     { id: "/schedules", label: "排班管理", icon: CalendarClock, href: "/mechpage/schedule", },
     { id: "/record", label: "預約紀錄", icon: ClipboardList, href: "/recordmech",},
     { id: "/mechfeedback", label: "問題回報", icon: MessageCircleMore, href: "/mechfeedback" },
-      ];
+    { id: "/mechrating", label: "評分紀錄", icon: ClipboardList, href: "/mechpage/rating" },
+  ];
   // 為了確保主色調能被正確引用 (這是從 globals.css 中取值)
   const COLOR_AZURE = "var(--color-azure)"; 
   const COLOR_PERIWINKLE = "var(--color-periwinkle)"; 

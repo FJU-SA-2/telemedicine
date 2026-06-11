@@ -1,280 +1,347 @@
 "use client";
-import { useState, useEffect } from 'react';  // 🔥 需要添加 useEffect
-import Mech_Sidebar from "../components/Mech_Sidebar";
+import React, { useState, useEffect, useCallback } from "react";
 import Navbar from "../components/Navbar";
-import { Menu, AlertCircle, Send } from 'lucide-react';
+import Mech_Sidebar from "../components/Mech_Sidebar";
+import {
+  Menu, MessageCircleMore, Search, RefreshCw, X,
+  AlertCircle, CheckCircle, Clock, Loader2, Tag,
+} from "lucide-react";
 
-function MechanismFeedbackFormContent() {
-  const [selectedCategories, setSelectedCategories] = useState([]);
-  const [feedback, setFeedback] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+const Toast = ({ message, type, onClose }) => (
+  <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium
+    ${type === "success" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"}`}>
+    {type === "success" ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+    {message}
+    <button onClick={onClose} className="ml-2 opacity-70 hover:opacity-100"><X size={14} /></button>
+  </div>
+);
 
-  const categories = [
-    { id: '帳號與權限管理', label: '帳號與權限管理' },
-    { id: '排班與診間管理', label: '排班與診間管理' },
-    { id: '數據與報表', label: '數據與報表' },
-    { id: '金流與行政整合', label: '金流與行政整合' },
-    { id: '其他', label: '其他' }
-  ];
+// status: unread / read / resolved
+const StatusBadge = ({ status }) => {
+  const map = {
+    unread:   { cls: "bg-rose-50 text-rose-600 ring-1 ring-rose-200",         label: "未讀" },
+    read:     { cls: "bg-amber-50 text-amber-700 ring-1 ring-amber-200",       label: "已讀" },
+    resolved: { cls: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200", label: "已解決" },
+  };
+  const s = map[status] || { cls: "bg-gray-100 text-gray-500", label: status };
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${s.cls}`}>
+      {s.label}
+    </span>
+  );
+};
 
-  const toggleCategory = (categoryId) => {
-    setSelectedCategories(prev => 
-      prev.includes(categoryId)
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
-    );
+// user_role badge
+const RoleBadge = ({ role }) => {
+  const map = {
+    patient: { cls: "bg-teal-50 text-teal-600",   label: "患者" },
+    doctor:  { cls: "bg-blue-50 text-blue-600",   label: "醫師" },
+    mech:    { cls: "bg-violet-50 text-violet-600", label: "機構" },
+  };
+  const s = map[role] || { cls: "bg-gray-100 text-gray-500", label: role };
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${s.cls}`}>
+      {s.label}
+    </span>
+  );
+};
+
+const SkeletonRow = () => (
+  <div className="px-6 py-4 space-y-2">
+    <div className="h-4 bg-gray-200 rounded animate-pulse w-1/3" />
+    <div className="h-3 bg-gray-100 rounded animate-pulse w-2/3" />
+    <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+  </div>
+);
+
+async function apiFetch(url, options = {}) {
+  const res = await fetch(url, { credentials: "include", ...options });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "請求失敗");
+  return data;
+}
+
+export default function MechFeedbackPage() {
+  const [sidebarOpen, setSidebarOpen]     = useState(false);
+  const [isDesktop, setIsDesktop]         = useState(false);
+  const [approvalStatus, setApprovalStatus] = useState(undefined);
+
+  const [feedbacks, setFeedbacks]         = useState([]);
+  const [loading, setLoading]             = useState(true);
+  const [search, setSearch]               = useState("");
+  const [statusFilter, setStatusFilter]   = useState("");
+  const [roleFilter, setRoleFilter]       = useState("");
+  const [toast, setToast]                 = useState(null);
+  const [updatingId, setUpdatingId]       = useState(null);
+  const [expandedId, setExpandedId]       = useState(null);
+
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
   };
 
-  const handleSubmit = async () => {
+  useEffect(() => {
+    const checkDesktop = () => setIsDesktop(window.innerWidth >= 1024);
+    checkDesktop();
+    window.addEventListener("resize", checkDesktop);
+    return () => window.removeEventListener("resize", checkDesktop);
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = (sidebarOpen && !isDesktop) ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [sidebarOpen, isDesktop]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res  = await fetch("/api/me", { credentials: "include" });
+        const data = await res.json();
+        setApprovalStatus(
+          data.authenticated && data.user?.role === "mech" ? "approved" : "unauthorized"
+        );
+      } catch {
+        setApprovalStatus("error");
+      }
+    })();
+  }, []);
+
+  const fetchFeedbacks = useCallback(async () => {
     setLoading(true);
-    setError('');
-
     try {
-      const user_id = localStorage.getItem('user_id');
-      const user_type = localStorage.getItem('user_type'); // 確認你系統中的欄位名稱
-      
-      console.log('user_id:', localStorage.getItem('user_id'));
-      console.log('role:', localStorage.getItem('role'));
-      console.log('user_type:', localStorage.getItem('user_type'));
-
-      if (!user_id || user_id === 'null' || user_id === 'undefined') {
-        setError('請先登入後再提交回報');
-        setLoading(false);
-        return;
-      }
-
-      const userIdNumber = parseInt(user_id, 10);
-      
-      if (isNaN(userIdNumber)) {
-        setError(`user_id 格式錯誤: ${user_id}`);
-        setLoading(false);
-        return;
-      }
-
-      if (selectedCategories.length === 0) {
-        setError('請至少選擇一個問題類別');
-        setLoading(false);
-        return;
-      }
-
-      if (!feedback || feedback.trim() === '') {
-        setError('請填寫問題描述');
-        setLoading(false);
-        return;
-      }
-
-      const requestBody = {
-        user_id: userIdNumber,
-        user_type: 'mech', 
-        categories: selectedCategories,
-        feedback_text: feedback,
-      };
-
-      console.log('發送的請求內容:', requestBody);
-
-      const response = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      const data = await response.json();
-      
-      console.log('API 回應:', data);
-
-      if (!response.ok) {
-        setError(data.message || '提交失敗');
-        return;
-      }
-
-      setSubmitted(true);
-      setSelectedCategories([]);
-      setFeedback('');
-
-      setTimeout(() => setSubmitted(false), 3000);
-    } catch (err) {
-      console.error('提交錯誤:', err);
-      setError(`提交失敗: ${err.message}`);
+      const p = new URLSearchParams();
+      if (search)       p.set("search", search);
+      if (statusFilter) p.set("status", statusFilter);
+      if (roleFilter)   p.set("user_role", roleFilter);
+      const data = await apiFetch(`/api/mechanism/feedbacks?${p}`);
+      setFeedbacks(Array.isArray(data) ? data : (data.feedbacks ?? []));
+    } catch (e) {
+      showToast(e.message, "error");
     } finally {
       setLoading(false);
     }
+  }, [search, statusFilter, roleFilter]);
+
+  useEffect(() => {
+    const t = setTimeout(fetchFeedbacks, search ? 400 : 0);
+    return () => clearTimeout(t);
+  }, [fetchFeedbacks]);
+
+  const handleStatusChange = async (feedbackId, newStatus) => {
+    setUpdatingId(feedbackId);
+    try {
+      await apiFetch(`/api/mechanism/feedbacks/${feedbackId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      showToast("狀態已更新");
+      // 樂觀更新，不重新 fetch
+      setFeedbacks(prev =>
+        prev.map(fb => fb.feedback_id === feedbackId ? { ...fb, status: newStatus } : fb)
+      );
+    } catch (e) {
+      showToast(e.message, "error");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // 嘗試解析 categories JSON
+  const parseCategories = (raw) => {
+    if (!raw) return [];
+    try { return JSON.parse(raw); } catch { return []; }
   };
 
   return (
-    <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
-      <div className="bg-white rounded-2xl shadow-xl max-w-2xl mx-auto p-5 sm:p-8">
-        <div className="flex items-center gap-3 mb-4 sm:mb-6">
-          <AlertCircle className="w-6 h-6 sm:w-8 sm:h-8 text-indigo-600" />
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">機構問題回報</h1>
-        </div>
-        
-        <p className="text-gray-600 text-sm sm:text-base mb-5 sm:mb-8">
-          請告訴我們您在使用系統時遇到的問題，我們會盡快處理並改善服務品質。
-        </p>
-
-        <div>
-          <div className="mb-5 sm:mb-8">
-            <h2 className="text-base sm:text-lg font-semibold text-gray-700 mb-3 sm:mb-4">
-              請選擇問題類別 <span className="text-red-500">*</span>
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {categories.map((category) => (
-                <label
-                  key={category.id}
-                  className={`flex items-center p-3 sm:p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    selectedCategories.includes(category.id)
-                      ? 'border-indigo-600 bg-indigo-50'
-                      : 'border-gray-200 hover:border-indigo-300 bg-white'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    name="category"
-                    value={category.id}
-                    checked={selectedCategories.includes(category.id)}
-                    onChange={() => toggleCategory(category.id)}
-                    className="w-4 h-4 text-indigo-600 focus:ring-indigo-500 rounded"
-                  />
-                  <span className="ml-2 sm:ml-3 text-sm sm:text-base text-gray-700 font-medium">
-                    {category.label}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <label htmlFor="feedback" className="block text-base sm:text-lg font-semibold text-gray-700 mb-2 sm:mb-3">
-              問題描述 <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              id="feedback"
-              value={feedback}
-              onChange={(e) => setFeedback(e.target.value)}
-              placeholder="請詳細描述您遇到的問題，例如：在哪個功能、執行什麼操作時發生、錯誤訊息內容等..."
-              rows="5"
-              className="text-gray-700 w-full px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base border-2 border-gray-200 rounded-lg focus:border-indigo-600 focus:outline-none resize-none transition-colors"
-              disabled={loading}
-            />
-            <p className="text-sm text-gray-500 mt-2">
-              {feedback.length} 字
-            </p>
-          </div>
-
-          {error && (
-            <div className="mb-4 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
-              <p className="text-red-800 text-sm">{error}</p>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full bg-indigo-600 text-white py-2.5 sm:py-3 px-6 rounded-lg font-semibold text-base sm:text-lg hover:bg-indigo-700 disabled:bg-gray-400 transition-colors flex items-center justify-center gap-2"
-          >
-            <Send className="w-5 h-5" />
-            {loading ? '提交中...' : '送出回報'}
-          </button>
-        </div>
-
-        {submitted && (
-          <div className="mt-6 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
-            <p className="text-green-800 font-medium text-center">
-              ✓ 感謝您的回報！我們已收到您的意見，會盡快處理。
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-export default function MechanismFeedbackPage() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [approvalStatus, setApprovalStatus] = useState(null);
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  useEffect(() => {
-    const check = () => setIsDesktop(window.innerWidth >= 1024);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-
-  useEffect(() => {
-    if (isOpen && !isDesktop) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => { document.body.style.overflow = ""; };
-  }, [isOpen, isDesktop]);
-
-
-  useEffect(() => {
-      async function fetchApprovalStatus() {
-        try {
-          const res = await fetch("/api/me", {
-            credentials: 'include'
-          });
-          const data = await res.json();
-          
-          if (data.authenticated && data.user && data.user.role === 'mech') {
-            setApprovalStatus(data.user.approval_status);
-          }
-        } catch (error) {
-          console.error("Failed to fetch approval status:", error);
-        }
-      }
-      fetchApprovalStatus();
-  }, []);
-
-  return (
-    <div className="relative min-h-screen flex flex-col bg-gray-50">
-      {!isOpen && (
-                <button
-                    onClick={() => setIsOpen(true)}
-                    className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition "
-                    aria-label="開啟選單"
-                >
-                    <Menu size={24} />
-                </button>
-            )}
-
-      {isOpen && !isDesktop && (
-        <div
-          className="fixed inset-0 bg-black/50 z-30 transition-opacity duration-300"
-          onClick={() => setIsOpen(false)}
-        />
+    <div className="relative min-h-screen bg-slate-50 font-sans flex flex-col">
+      {!sidebarOpen && (
+        <button onClick={() => setSidebarOpen(true)}
+          className="p-2 fixed top-3 left-3 text-gray-800 z-30 hover:bg-white rounded-lg transition"
+          aria-label="開啟選單">
+          <Menu size={24} />
+        </button>
+      )}
+      {sidebarOpen && !isDesktop && (
+        <div className="fixed inset-0 bg-black/50 z-30 transition-opacity duration-300"
+          onClick={() => setSidebarOpen(false)} />
       )}
 
-      <Mech_Sidebar
-        isOpen={isOpen}
-        setIsOpen={setIsOpen}
-        approvalStatus={approvalStatus}
-      />
+      <Mech_Sidebar isOpen={sidebarOpen} setIsOpen={setSidebarOpen} approvalStatus={approvalStatus} />
 
-      <div
-        className={`flex-1 flex flex-col transition-all duration-300 ${
-          isOpen && isDesktop ? "lg:ml-64" : "ml-0"
-        }`}
-      >
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen && isDesktop ? "lg:ml-64" : "ml-0"}`}>
         <Navbar />
-        <MechanismFeedbackFormContent />
-        {/* Footer */}
-        <footer className="bg-gray-800 text-white py-8 mt-auto">
-          <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400 text-sm">
-              © 2025 MedOnGo 平台. 讓醫療服務更便捷、更專業。
-            </p>
+
+        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-5xl mx-auto w-full">
+
+          {/* 標題 */}
+          <div className="mb-6 sm:mb-8 flex items-center justify-between gap-3 pt-2">
+            <div className="flex items-center gap-3">
+              <MessageCircleMore size={24} className="text-violet-500" />
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-800">問題回報</h1>
+                <p className="text-gray-500 text-xs sm:text-sm mt-0.5">查看與處理使用者回報的問題</p>
+              </div>
+            </div>
+            <button onClick={fetchFeedbacks}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-white rounded-lg border border-gray-200 transition shrink-0">
+              <RefreshCw size={14} /> 重新整理
+            </button>
           </div>
-        </footer>
+
+          {/* 統計小卡 */}
+          <div className="grid grid-cols-3 gap-3 mb-5">
+            {[
+              { label: "未讀", status: "unread",   color: "text-rose-600 bg-rose-50" },
+              { label: "已讀", status: "read",     color: "text-amber-600 bg-amber-50" },
+              { label: "已解決", status: "resolved", color: "text-emerald-600 bg-emerald-50" },
+            ].map(({ label, status, color }) => (
+              <button key={status}
+                onClick={() => setStatusFilter(prev => prev === status ? "" : status)}
+                className={`rounded-xl p-3 text-center transition border-2
+                  ${statusFilter === status ? "border-current " + color : "bg-white border-transparent hover:border-gray-200"}`}>
+                <p className={`text-xl font-bold ${statusFilter === status ? "" : "text-gray-800"}`}>
+                  {feedbacks.filter(f => f.status === status).length}
+                </p>
+                <p className={`text-xs mt-0.5 ${statusFilter === status ? "" : "text-gray-400"}`}>{label}</p>
+              </button>
+            ))}
+          </div>
+
+          {/* 搜尋 + 篩選 */}
+          <div className="flex gap-2 mb-4 flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input type="text" placeholder="搜尋回報內容..." value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-sm text-gray-800 bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-400 transition" />
+            </div>
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+              className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg outline-none text-gray-600">
+              <option value="">全部狀態</option>
+              <option value="unread">未讀</option>
+              <option value="read">已讀</option>
+              <option value="resolved">已解決</option>
+            </select>
+            <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
+              className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg outline-none text-gray-600">
+              <option value="">全部角色</option>
+              <option value="patient">患者</option>
+              <option value="doctor">醫師</option>
+              <option value="mech">機構</option>
+            </select>
+          </div>
+
+          {/* 列表 */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+              <MessageCircleMore size={16} className="text-violet-500" />
+              <h2 className="font-semibold text-gray-800">回報列表</h2>
+              <span className="bg-violet-50 text-violet-600 text-xs font-medium px-2 py-0.5 rounded-full">
+                {feedbacks.length} 筆
+              </span>
+            </div>
+
+            <div className="divide-y divide-gray-50">
+              {loading
+                ? [0, 1, 2, 3].map(i => <SkeletonRow key={i} />)
+                : feedbacks.length === 0
+                  ? (
+                    <div className="py-16 text-center text-gray-400 text-sm">
+                      <MessageCircleMore size={32} className="mx-auto mb-3 opacity-30" />
+                      目前沒有問題回報
+                    </div>
+                  )
+                  : feedbacks.map(fb => {
+                    const id   = fb.feedback_id;
+                    const cats = parseCategories(fb.categories);
+                    const isExpanded = expandedId === id;
+
+                    return (
+                      <div key={id} className="px-6 py-4 hover:bg-slate-50 transition-colors">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : id)}>
+                            {/* 狀態列 */}
+                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                              <StatusBadge status={fb.status} />
+                              <RoleBadge role={fb.user_role} />
+                              <span className="text-xs text-gray-400 flex items-center gap-1">
+                                <Clock size={11} />
+                                {fb.created_at ? new Date(fb.created_at).toLocaleString("zh-TW") : "—"}
+                              </span>
+                            </div>
+
+                            {/* 問題類別 tags */}
+                            {cats.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mb-1.5">
+                                {cats.map((c, i) => (
+                                  <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-md">
+                                    <Tag size={10} />{c}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* 內文 */}
+                            <p className={`text-sm text-gray-700 ${isExpanded ? "" : "line-clamp-2"}`}>
+                              {fb.feedback_text}
+                            </p>
+                            {!isExpanded && fb.feedback_text?.length > 100 && (
+                              <span className="text-xs text-violet-500 mt-0.5 inline-block">展開全文</span>
+                            )}
+                          </div>
+
+                          {/* 操作按鈕 */}
+                          <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
+                            {updatingId === id
+                              ? <Loader2 size={16} className="animate-spin text-gray-400" />
+                              : (
+                                <>
+                                  {fb.status === "unread" && (
+                                    <>
+                                      <button onClick={() => handleStatusChange(id, "read")}
+                                        className="px-3 py-1.5 text-xs bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition whitespace-nowrap">
+                                        標記已讀
+                                      </button>
+                                      <button onClick={() => handleStatusChange(id, "resolved")}
+                                        className="px-3 py-1.5 text-xs bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition whitespace-nowrap">
+                                        標記已解決
+                                      </button>
+                                    </>
+                                  )}
+                                  {fb.status === "read" && (
+                                    <button onClick={() => handleStatusChange(id, "resolved")}
+                                      className="px-3 py-1.5 text-xs bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition whitespace-nowrap">
+                                      標記已解決
+                                    </button>
+                                  )}
+                                  {fb.status === "resolved" && (
+                                    <button onClick={() => handleStatusChange(id, "unread")}
+                                      className="px-3 py-1.5 text-xs bg-gray-200 text-gray-600 rounded-lg hover:bg-gray-300 transition whitespace-nowrap">
+                                      重新開啟
+                                    </button>
+                                  )}
+                                </>
+                              )
+                            }
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+              }
+            </div>
+          </div>
+        </main>
+
+        <div className="bg-gray-800 text-white py-8 mt-8 flex-shrink-0">
+          <div className="max-w-5xl mx-auto px-4 text-center">
+            <p className="text-gray-400 text-sm">© 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。</p>
+          </div>
+        </div>
       </div>
+
+      {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }
