@@ -1,15 +1,56 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   User, UserCheck, ArrowLeft, Mail, Lock, Phone,
-  Shield, Building2, ChevronDown, Clock, CheckCircle
+  Shield, Building2, ChevronDown, Clock, CheckCircle, X, AlertCircle
 } from 'lucide-react';
 
 /* ─────────────────────────── helpers ─────────────────────────── */
 const CHRONIC_OPTIONS = [
   '高血壓', '糖尿病', '心臟病', '高血脂', '氣喘', '慢性腎病', '甲狀腺疾病', '其他',
 ];
+
+/* ─────────────────────────── Toast 元件 ─────────────────────────── */
+function Toast({ toasts, onRemove }) {
+  return (
+    <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[999] flex flex-col gap-2 w-full max-w-sm px-4 pointer-events-none">
+      {toasts.map(t => (
+        <div
+          key={t.id}
+          className={`flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium pointer-events-auto
+            animate-[slideDown_0.3s_ease]
+            ${t.type === 'success' ? 'bg-green-500' : t.type === 'error' ? 'bg-red-500' : 'bg-blue-500'}`}
+        >
+          <span className="mt-0.5 shrink-0">
+            {t.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+          </span>
+          <span className="flex-1 whitespace-pre-line leading-relaxed">{t.message}</span>
+          <button onClick={() => onRemove(t.id)} className="shrink-0 opacity-70 hover:opacity-100">
+            <X size={14} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─────────────────────────── useToast hook ─────────────────────────── */
+function useToast() {
+  const [toasts, setToasts] = useState([]);
+
+  const showToast = useCallback((message, type = 'info', duration = 4000) => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), duration);
+  }, []);
+
+  const removeToast = useCallback((id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  return { toasts, showToast, removeToast };
+}
 
 /* ─────────────────────────── sub-components ─────────────────────────── */
 function FieldWrapper({ label, children }) {
@@ -102,6 +143,7 @@ function ScheduleCard({ schedule, selected, onSelect }) {
 /* ─────────────────────────── main component ─────────────────────────── */
 export default function TelemedicineAuth() {
   const router = useRouter();
+  const { toasts, showToast, removeToast } = useToast();
 
   // step: 'role' | 'auth' | 'guest-form' | 'verify'
   const [currentStep, setCurrentStep] = useState('role');
@@ -180,7 +222,7 @@ export default function TelemedicineAuth() {
   // 複診病患 login: email + password（預設為身份證字號，可自行修改）
   const handlePatientLogin = async (e) => {
     e.preventDefault();
-    if (!email || !password) { alert('請輸入電子信箱與密碼'); return; }
+    if (!email || !password) { showToast('請輸入電子信箱與密碼', 'error'); return; }
     setIsLoading(true);
     try {
       const res = await fetch('/api/login', {
@@ -190,7 +232,7 @@ export default function TelemedicineAuth() {
         body: JSON.stringify({ email, password, role: 'patient' }),
       });
       const data = await res.json();
-      if (!res.ok || data.success === false) { alert(data.message || '登入失敗，請確認帳號或密碼'); return; }
+      if (!res.ok || data.success === false) { showToast(data.message || '登入失敗，請確認帳號或密碼', 'error'); return; }
       const { user } = data;
       if (user) {
         localStorage.setItem('user_id', user.user_id);
@@ -201,44 +243,42 @@ export default function TelemedicineAuth() {
       router.push('/PatientPage');
     } catch (err) {
       console.error(err);
-      alert('登入失敗，請稍後再試');
+      showToast('登入失敗，請稍後再試', 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
   // 機構 / 醫師 login: email + password_hash (users table)
-  // 不傳 role_hint，讓後端依資料庫實際 role 判斷，再由前端依回傳 role 決定導向
   const handleMechLogin = async (e) => {
     e.preventDefault();
-    if (!email || !password) { alert('請輸入電子信箱與密碼'); return; }
+    if (!email || !password) { showToast('請輸入電子信箱與密碼', 'error'); return; }
     setIsLoading(true);
     try {
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, password }), // 不傳 role，後端自行判斷
+        body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok || data.success === false) { alert(data.message || '登入失敗，請確認帳號或密碼'); return; }
+      if (!res.ok || data.success === false) { showToast(data.message || '登入失敗，請確認帳號或密碼', 'error'); return; }
       const { user } = data;
       if (user) {
         localStorage.setItem('user_id', user.user_id);
         localStorage.setItem('user_type', user.role);
         localStorage.setItem('email', user.email);
       }
-      // 依後端回傳的實際角色決定導向
       if (user?.role === 'doctor') {
         router.push('/doctorpage');
       } else if (user?.role === 'mech') {
         router.push('/mechpage');
       } else {
-        alert(`不支援的角色：${user?.role}`);
+        showToast(`不支援的角色：${user?.role}`, 'error');
       }
     } catch (err) {
       console.error(err);
-      alert('登入失敗，請稍後再試');
+      showToast('登入失敗，請稍後再試', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -247,9 +287,9 @@ export default function TelemedicineAuth() {
   // 初診病患：只建立帳號與病患資料，預約到 reserve 頁面進行
   const handleGuestSubmit = async (e) => {
     e.preventDefault();
-    if (!guestForm.first_name || !guestForm.last_name) { alert('請填寫姓名'); return; }
-    if (!guestForm.id_number) { alert('請填寫身份證字號'); return; }
-    if (!guestForm.email) { alert('請填寫電子信箱（作為登入帳號）'); return; }
+    if (!guestForm.first_name || !guestForm.last_name) { showToast('請填寫姓名', 'error'); return; }
+    if (!guestForm.id_number) { showToast('請填寫身份證字號', 'error'); return; }
+    if (!guestForm.email) { showToast('請填寫電子信箱（作為登入帳號）', 'error'); return; }
     setIsLoading(true);
     try {
       const res = await fetch('/api/register/guest', {
@@ -261,14 +301,18 @@ export default function TelemedicineAuth() {
       if (res.ok && data.success) {
         localStorage.setItem('account_status', 'unverified');
         localStorage.setItem('user_id', data.user_id);
-        alert(`帳號建立成功！\n\n登入帳號：${guestForm.email}\n初始密碼：您的身份證字號\n\n即將前往預約頁面。`);
-        router.push('/reserve');
+        showToast(
+          `帳號建立成功！\n登入帳號：${guestForm.email}\n初始密碼：您的身份證字號`,
+          'success',
+          5000
+        );
+        setTimeout(() => router.push('/reserve'), 2000);
       } else {
-        alert(data.message || '建立失敗，請稍後再試');
+        showToast(data.message || '建立失敗，請稍後再試', 'error');
       }
     } catch (err) {
       console.error(err);
-      alert('發生錯誤，請稍後再試');
+      showToast('發生錯誤，請稍後再試', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -278,7 +322,9 @@ export default function TelemedicineAuth() {
 
   /* ─── render ─── */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
+    <>
+      <Toast toasts={toasts} onRemove={removeToast} />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
 
         {/* Header */}
@@ -573,5 +619,6 @@ export default function TelemedicineAuth() {
         </div>
       </div>
     </div>
+    </>
   );
 }
