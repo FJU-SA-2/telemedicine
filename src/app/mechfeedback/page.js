@@ -228,7 +228,6 @@ export default function MechFeedbackPage() {
               <option value="">全部角色</option>
               <option value="patient">患者</option>
               <option value="doctor">醫師</option>
-              <option value="mech">機構</option>
             </select>
           </div>
 
