@@ -6758,7 +6758,7 @@ def create_followup_request():
             doctor_name         = row["doctor_name"],
             specialty           = row["specialty"],
             suggested_weeks     = suggested_weeks,
-            appointment_type    = appointment_type,
+            appointment_type    = data.get("appointment_type", "online"),
             note                = note,
             followup_request_id = followup_request_id,
         )
@@ -7171,17 +7171,21 @@ def internal_line_followup_request():
     try:
         data = request.get_json()
         from line_notifier import notify_followup_request
+        print(f"[internal_line_followup_request] 收到: {data}")
         ok = notify_followup_request(
             patient_id          = data["patient_id"],
             patient_name        = data["patient_name"],
             doctor_name         = data["doctor_name"],
             specialty           = data["specialty"],
             suggested_weeks     = data["suggested_weeks"],
-            note                = data["note"],
+            appointment_type    = data.get("appointment_type", "online"),
+            note                = data.get("note", ""),
             followup_request_id = data["followup_request_id"],
         )
+        print(f"[internal_line_followup_request] ok={ok}")
         return jsonify({"ok": ok}), 200
     except Exception as e:
+        import traceback; traceback.print_exc()
         print(f"⚠️ 回診推播失敗: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 

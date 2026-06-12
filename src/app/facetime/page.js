@@ -198,35 +198,30 @@ export default function DoctorVideoConsultation() {
 
   const startRecording = async () => {
     try {
-      // 嘗試直接抓取 Jitsi iframe 內的 video 元素串流
       let stream = null;
 
-      // 方法1: 從 Jitsi iframe 內抓取所有 video 串流並合併
-      const iframe = jitsiContainerRef.current?.querySelector('iframe');
-      if (iframe) {
+      // 螢幕錄製：錄到整個 Jitsi 視窗，包含雙方畫面
+      // 瀏覽器會跳出選擇視窗，選「分頁」或「視窗」即可
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: { frameRate: { ideal: 30 }, displaySurface: 'browser' },
+          audio: { echoCancellation: true, noiseSuppression: true },
+          preferCurrentTab: true, // Chrome 優先選目前分頁
+        });
+
+        // 同時抓麥克風音訊（螢幕錄製的 audio 是系統音，再加上麥克風才完整）
+        let micStream = null;
         try {
-          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-          const videos = iframeDoc?.querySelectorAll('video');
-          const videoStreams = [];
-          videos?.forEach(video => {
-            if (video.srcObject instanceof MediaStream) {
-              videoStreams.push(video.srcObject);
-            }
-          });
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+        } catch (_) {}
 
-          if (videoStreams.length > 0) {
-            // 合併所有視訊/音訊軌道
-            const allTracks = videoStreams.flatMap(s => s.getTracks());
-            stream = new MediaStream(allTracks);
-          }
-        } catch (e) {
-          console.warn('無法直接存取 iframe 內容（跨域限制），改用螢幕錄製');
-        }
-      }
-
-      // 方法2: 若無法直接抓 iframe，改用 captureStream 錄製 canvas 或退回 getUserMedia
-      if (!stream) {
-        // 嘗試抓取自己的鏡頭+麥克風（至少錄到醫師端）
+        // 合併螢幕畫面 + 系統音 + 麥克風
+        const tracks = [...screenStream.getTracks()];
+        if (micStream) micStream.getAudioTracks().forEach(t => tracks.push(t));
+        stream = new MediaStream(tracks);
+      } catch (e) {
+        console.warn('螢幕錄製失敗，退回鏡頭錄製:', e);
+        // fallback：只錄自己鏡頭+麥克風
         stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
           audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, sampleRate: 48000 }

@@ -183,10 +183,13 @@ export default function MechAppointmentRecords() {
       const data = await res.json();
       if (data.success) {
         alert("處方箋上傳成功");
+        // 取純檔名，避免路徑重複拼接；加 timestamp 強制瀏覽器不用快取
+        const filename = (data.image_url || data.filename || "").split("/").pop();
+        const busted = filename + "?t=" + Date.now();
         setAppointments((prev) =>
           prev.map((a) =>
             a.appointment_id === appointmentId
-              ? { ...a, prescription_image: data.image_url }
+              ? { ...a, prescription_image: busted }
               : a
           )
         );

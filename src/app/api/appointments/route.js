@@ -13,7 +13,7 @@ export async function POST(request) {
   let connection;
   try {
     const body = await request.json();
-    const { patient_id, doctor_id, appointment_date, appointment_time, symptoms, payment_method, amount } = body;
+    const { patient_id, doctor_id, appointment_date, appointment_time, symptoms, schedule_type, payment_method, amount } = body;
 
     if (!patient_id || !doctor_id || !appointment_date || !appointment_time) {
       return NextResponse.json({ error: "缺少必要欄位" }, { status: 400 });
@@ -70,10 +70,10 @@ export async function POST(request) {
 
     const [result] = await connection.execute(
       `INSERT INTO appointments 
-       (patient_id, doctor_id, appointment_date, appointment_time, status, symptoms, payment_method, amount) 
-       VALUES (?, ?, ?, ?, '已確認', ?, ?, ?)`,
+       (patient_id, doctor_id, appointment_date, appointment_time, status, symptoms, schedule_type, payment_method, amount) 
+       VALUES (?, ?, ?, ?, '已確認', ?, ?, ?, ?)`,
       [patient_id, doctor_id, appointment_date, appointment_time,
-       symptoms || null, payment_method || null, finalAmount]
+       symptoms || null, schedule_type || 'online', payment_method || null, finalAmount]
     );
 
     const appointmentId = result.insertId;

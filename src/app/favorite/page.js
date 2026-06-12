@@ -406,7 +406,7 @@ export default function FavoritesPage() {
 
                         <div className="flex items-start gap-3 sm:gap-4 mb-4">
                           <div className="w-14 h-14 sm:w-16 sm:h-16 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg sm:text-xl flex-shrink-0">
-                            {doctor.last_name.charAt(0)}
+                            {doctor.first_name.charAt(0)}
                           </div>
                           <div className="flex-1 min-w-0">
                             <h3 className="font-bold text-base sm:text-lg text-gray-800 truncate pr-6">
