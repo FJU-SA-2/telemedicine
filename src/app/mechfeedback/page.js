@@ -228,7 +228,6 @@ export default function MechFeedbackPage() {
               <option value="">全部角色</option>
               <option value="patient">患者</option>
               <option value="doctor">醫師</option>
-              <option value="mech">機構</option>
             </select>
           </div>
 
@@ -336,7 +335,7 @@ export default function MechFeedbackPage() {
 
         <div className="bg-gray-800 text-white py-8 mt-8 flex-shrink-0">
           <div className="max-w-5xl mx-auto px-4 text-center">
-            <p className="text-gray-400 text-sm">© 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。</p>
+            <p className="text-gray-400 text-sm">© 2025 MedOnGo 機構平台. 讓醫療服務更便捷、更專業。</p>
           </div>
         </div>
       </div>

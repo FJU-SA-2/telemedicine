@@ -183,10 +183,13 @@ export default function MechAppointmentRecords() {
       const data = await res.json();
       if (data.success) {
         alert("處方箋上傳成功");
+        // 取純檔名，避免路徑重複拼接；加 timestamp 強制瀏覽器不用快取
+        const filename = (data.image_url || data.filename || "").split("/").pop();
+        const busted = filename + "?t=" + Date.now();
         setAppointments((prev) =>
           prev.map((a) =>
             a.appointment_id === appointmentId
-              ? { ...a, prescription_image: data.image_url }
+              ? { ...a, prescription_image: busted }
               : a
           )
         );
@@ -506,7 +509,7 @@ export default function MechAppointmentRecords() {
                       className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden"
                     >
                       <div className="p-6">
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 mb-3">
                         {/* 狀態 */}
                         <span
                           className={`px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(appointment.status)}`}
@@ -790,7 +793,7 @@ export default function MechAppointmentRecords() {
 
                           {/* 核准 / 拒絕（只有 pending_review 顯示） */}
                           {isPendingReview && (
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 mb-3">
                               <button
                                 onClick={() => handleApprove(req.request_id)}
                                 disabled={isProcessing}
@@ -834,7 +837,7 @@ export default function MechAppointmentRecords() {
 
         <footer className="bg-gray-800 text-white py-8 mt-auto">
           <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400">© 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。</p>
+            <p className="text-gray-400">© 2025 MedOnGo 機構平台. 讓醫療服務更便捷、更專業。</p>
           </div>
         </footer>
       </div>

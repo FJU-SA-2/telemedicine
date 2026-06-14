@@ -305,9 +305,9 @@ const PatientDetailModal = ({ patientId, onClose }) => {
                           <p className="text-xs text-gray-500">主治醫師：{appt.doctor_name}（{appt.specialty}）</p>
                           {appt.symptoms && <p className="text-xs text-gray-500 mt-1">症狀：{appt.symptoms}</p>}
                         </div>
-                        {appt.amount && (
+                        {/* {appt.amount && (
                           <span className="text-sm font-semibold text-gray-700 flex-shrink-0">NT$ {Number(appt.amount).toLocaleString()}</span>
-                        )}
+                        )} */}
                       </div>
                       {appt.consultation_notes && (
                         <div className="mt-2 pt-2 border-t border-gray-100">
@@ -568,7 +568,7 @@ const DoctorProfileModal = ({ doctor, onClose, onSaved }) => {
     last_name: doctor.last_name || "",
     gender: doctor.gender || "male",
     specialty: doctor.specialty || "",
-    photo_url: "",
+    
     education: "",
     descriptions: "",
     experience: "",
@@ -583,7 +583,7 @@ const DoctorProfileModal = ({ doctor, onClose, onSaved }) => {
         const data = await apiFetch(`/api/mechanism/doctors/${doctor.doctor_id}/info`);
         setForm(prev => ({
           ...prev,
-          photo_url: data.photo_url || "",
+          
           education: data.education || "",
           descriptions: data.descriptions || "",
           experience: data.experience || "",
@@ -613,7 +613,7 @@ const DoctorProfileModal = ({ doctor, onClose, onSaved }) => {
     }
   };
 
-  const inputCls = "w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400";
+  const inputCls = "w-full px-3 py-2 text-sm text-gray-800 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 placeholder:text-gray-500";
   const textareaCls = `${inputCls} resize-none`;
 
   return (
@@ -670,7 +670,7 @@ const DoctorProfileModal = ({ doctor, onClose, onSaved }) => {
             <div className="pt-3 border-t border-gray-100">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">個人頁面資訊</p>
               <div className="space-y-3">
-                <div>
+                {/* <div>
                   <label className="text-sm text-gray-600 mb-1 block">頭像網址</label>
                   <input value={form.photo_url} onChange={e => set("photo_url", e.target.value)}
                     placeholder="https://..." className={inputCls} />
@@ -678,7 +678,7 @@ const DoctorProfileModal = ({ doctor, onClose, onSaved }) => {
                     <img src={form.photo_url} alt="預覽"
                       className="mt-2 w-16 h-16 rounded-full object-cover border border-gray-200" />
                   )}
-                </div>
+                </div> */}
                 <div>
                   <label className="text-sm text-gray-600 mb-1 block">學歷</label>
                   <textarea value={form.education} onChange={e => set("education", e.target.value)}
@@ -928,7 +928,7 @@ const TelemedicineDashboard = () => {
                     : doctors.map(doc => (
                       <div key={doc.doctor_id} className="px-6 py-4 flex items-center gap-4 hover:bg-slate-50 transition-colors group">
                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                          {doc.last_name?.charAt(0)}
+                          {doc.first_name?.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-gray-800 text-sm">{doc.first_name}{doc.last_name}</p>
@@ -995,7 +995,7 @@ const TelemedicineDashboard = () => {
                         className="px-6 py-4 flex items-center gap-4 hover:bg-slate-50 transition-colors group cursor-pointer"
                         onClick={() => setViewingPatientId(pt.patient_id)}>
                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
-                          {pt.last_name?.charAt(0)}
+                          {pt.first_name?.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
@@ -1026,7 +1026,7 @@ const TelemedicineDashboard = () => {
 
         <div className="bg-gray-800 text-white py-8 mt-8 flex-shrink-0">
           <div className="max-w-7xl mx-auto px-4 text-center">
-            <p className="text-gray-400 text-sm">© 2025 MedOnGo 醫師平台. 讓醫療服務更便捷、更專業。</p>
+            <p className="text-gray-400 text-sm">© 2025 MedOnGo 機構平台. 讓醫療服務更便捷、更專業。</p>
           </div>
         </div>
       </div>

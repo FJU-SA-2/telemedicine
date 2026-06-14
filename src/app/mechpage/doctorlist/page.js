@@ -28,7 +28,7 @@ function EditDoctorModal({ doctor, onClose, onSaved }) {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch(`http://localhost:5000/api/mechanism/doctors/${doctor.doctor_id}`, {
+      const res = await fetch(`/api/mechanism/doctors/${doctor.doctor_id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -55,28 +55,28 @@ function EditDoctorModal({ doctor, onClose, onSaved }) {
             <div>
               <label className="block text-xs text-gray-500 mb-1">姓</label>
               <input name="last_name" value={form.last_name} onChange={handleChange}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" />
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">名</label>
               <input name="first_name" value={form.first_name} onChange={handleChange}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" />
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" />
             </div>
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-1">專科</label>
             <input name="specialty" value={form.specialty} onChange={handleChange}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" />
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" />
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-1">聯絡電話</label>
             <input name="phone_number" value={form.phone_number} onChange={handleChange}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" />
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" />
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-1">性別</label>
             <select name="gender" value={form.gender} onChange={handleChange}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50">
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50">
               <option value="male">男</option>
               <option value="female">女</option>
             </select>
@@ -196,7 +196,7 @@ function DoctorCard({ doctor, onEdit }) {
       setLoadingSchedule(true);
       try {
         const res = await fetch(
-          `http://localhost:5000/api/mechanism/doctors/${doctor.doctor_id}/schedules`,
+          `/api/mechanism/doctors/${doctor.doctor_id}/schedules`,
           { credentials: "include" }
         );
         const data = await res.json();
@@ -228,21 +228,21 @@ function DoctorCard({ doctor, onEdit }) {
         <div className={`w-24 h-24 rounded-full overflow-hidden shrink-0 ${avatarColors[colorIdx]} flex items-center justify-center shadow`}>
           {doctor.photo ? (
             <img
-              src={`http://localhost:5000/uploads/profile_pictures/${doctor.photo}`}
+              src={`${process.env.NEXT_PUBLIC_FLASK_URL || "http://localhost:5000"}/uploads/profile_pictures/${doctor.photo}`}
               className="w-full h-full object-cover"
-              alt={`${doctor.last_name}${doctor.first_name}`}
+              alt={`${doctor.first_name}${doctor.last_name}`}
               onError={(e) => { e.target.style.display = "none"; }}
             />
           ) : (
             <span className="text-white font-bold text-3xl">
-              {doctor.last_name?.charAt(0) || "醫"}
+              {doctor.first_name?.charAt(0) || "醫"}
             </span>
           )}
         </div>
 
         {/* 姓名 */}
         <h3 className="mt-3 font-bold text-gray-800 text-lg leading-tight text-center">
-          {doctor.last_name}{doctor.first_name}
+          {doctor.first_name}{doctor.last_name}
         </h3>
 
         {/* 科別標籤 */}
@@ -437,7 +437,7 @@ export default function MechDoctorListPage() {
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 placeholder="搜尋醫師姓名、科別、院所..."
-                className="w-full pl-9 pr-9 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition"
+                className="w-full text-gray-700 pl-9 pr-9 py-2.5 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:bg-white transition"
               />
               {keyword && (
                 <button onClick={() => setKeyword("")}

@@ -3,17 +3,19 @@ import mysql from "mysql2/promise";
 import { cookies } from "next/headers";
 
 const dbConfig = {
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "telemedicine",
+  host: process.env.DB_HOST || "localhost",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "",
+  database: process.env.DB_NAME || "telemedicine",
 };
+
+const FLASK_BASE = process.env.FLASK_API_URL || "http://localhost:5000";
 
 export async function POST(request) {
   let connection;
   try {
     const body = await request.json();
-    const { appointment_id, patient_id, suggested_weeks, note } = body;
+    const { appointment_id, patient_id, suggested_weeks, appointment_type, note } = body;
 
     if (!appointment_id || !patient_id) {
       return NextResponse.json({ success: false, message: "缺少必要參數" }, { status: 400 });
@@ -44,26 +46,37 @@ export async function POST(request) {
     // 寫入 followup_requests
     const [result] = await connection.execute(
       `INSERT INTO followup_requests
-         (appointment_id, patient_id, doctor_id, suggested_weeks, note, status, created_at)
-       VALUES (?, ?, ?, ?, ?, 'pending', NOW())`,
-      [appointment_id, patient_id, doctor_id, suggested_weeks ?? 2, note ?? ""]
+         (appointment_id, patient_id, doctor_id, suggested_weeks, appointment_type, note, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())`,
+      [appointment_id, patient_id, doctor_id, suggested_weeks ?? 2, appointment_type ?? "online", note ?? ""]
     );
     const followup_request_id = result.insertId;
 
-    // 呼叫 Flask 推播 LINE
-    fetch("http://localhost:5000/api/internal/line/followup-request", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        patient_id,
-        patient_name,
-        doctor_name,
-        specialty,
-        suggested_weeks: suggested_weeks ?? 2,
-        note: note ?? "",
-        followup_request_id,
-      }),
-    }).catch(err => console.warn("LINE 回診推播失敗:", err));
+    // 呼叫 Flask 推播 LINE（await 確保 serverless 不會提早結束）
+    try {
+      const lineRes = await fetch(`${FLASK_BASE}/api/internal/line/followup-request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patient_id,
+          patient_name,
+          doctor_name,
+          specialty,
+          suggested_weeks: suggested_weeks ?? 2,
+          appointment_type: appointment_type ?? "online",
+          note: note ?? "",
+          followup_request_id,
+        }),
+      });
+      if (!lineRes.ok) {
+        const errText = await lineRes.text();
+        console.warn(`[LINE 推播] Flask 回應異常 status=${lineRes.status}:`, errText);
+      } else {
+        console.log("[LINE 推播] 成功送出，followup_request_id=", followup_request_id);
+      }
+    } catch (lineErr) {
+      console.warn("[LINE 推播] 呼叫 Flask 失敗:", lineErr.message);
+    }
 
     return NextResponse.json({ success: true, followup_request_id }, { status: 200 });
 

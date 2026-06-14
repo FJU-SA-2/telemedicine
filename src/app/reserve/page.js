@@ -32,15 +32,30 @@ function BookingPage({ doctors, schedules, setSchedules, isUnverified }) {
     return slotDateTime < now;
   };
 
-  // 有效排班：未過期且可預約
-  const validSchedules = schedules.filter(
-    s => s.is_available === 1 && !isTimeSlotExpired(s.schedule_date, s.time_slot)
-  );
+  // 依目前選擇的看診方式過濾有效排班
+  const validSchedules = schedules.filter(s => {
+    if (s.is_available !== 1) return false;
+    if (isTimeSlotExpired(s.schedule_date, s.time_slot)) return false;
+    // selectedScheduleType === "all" 全部保留；否則只留對應 schedule_type
+    if (selectedScheduleType !== "all" && s.schedule_type !== selectedScheduleType) return false;
+    return true;
+  });
 
-  // 只顯示「有排班的醫師」，沒排班的直接不出現
+  // 只顯示「有符合條件排班」的醫師
   const doctorsWithSchedules = new Set(
     validSchedules.map(s => s.doctor_id)
   );
+
+  // 判斷每位醫師提供哪些診別（依排班資料，不依 consultation_type 字串）
+  const doctorScheduleTypes = (doctorId) => {
+    const types = new Set(
+      schedules
+        .filter(s => s.doctor_id === doctorId && s.is_available === 1 && !isTimeSlotExpired(s.schedule_date, s.time_slot))
+        .map(s => s.schedule_type)
+        .filter(Boolean)
+    );
+    return types;
+  };
 
   const availableSpecialties = [...new Set(
     doctors
@@ -54,19 +69,20 @@ function BookingPage({ doctors, schedules, setSchedules, isUnverified }) {
     if (selectedHospital !== "all" && doctor.practice_hospital !== selectedHospital) return false;
     if (selectedPaymentType !== "all" && doctor.consultation_type !== selectedPaymentType) return false;
 
-    // 初診患者只顯示實體看診醫師；一般使用者依 tab 篩選
+    const types = doctorScheduleTypes(doctor.doctor_id);
+
     if (isUnverified) {
-      if (doctor.consultation_type !== "現場看診") return false;
+      // 初診只顯示有 physical 排班的醫師
+      if (!types.has("physical")) return false;
     } else if (selectedScheduleType === "online") {
-      if (doctor.consultation_type === "現場看診") return false;
+      if (!types.has("online")) return false;
     } else if (selectedScheduleType === "physical") {
-      if (doctor.consultation_type !== "現場看診") return false;
+      if (!types.has("physical")) return false;
     }
 
     if (selectedDate) {
       const hasAvailableSlot = validSchedules.some(
-        s => s.doctor_id === doctor.doctor_id &&
-          s.schedule_date === selectedDate
+        s => s.doctor_id === doctor.doctor_id && s.schedule_date === selectedDate
       );
       if (!hasAvailableSlot) return false;
     }
@@ -117,20 +133,17 @@ function BookingPage({ doctors, schedules, setSchedules, isUnverified }) {
 
       const response = await fetch("/api/appointments", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           patient_id: patientId,
           doctor_id: bookingData.doctor.doctor_id,
           appointment_date: bookingData.date,
           appointment_time: bookingData.time,
           symptoms: bookingData.symptoms,
-          payment_method: bookingData.paymentMethod,
           appointment_type: bookingData.appointmentType,
-          // ✅ 新增：傳遞 schedule_type 給後端
           schedule_type: bookingData.scheduleType,
-          amount: 250
+          // consultation_fee 由後端從 doctor_info 取得，前端不需傳
         }),
         credentials: "include",
       });
@@ -387,7 +400,7 @@ function BookingPage({ doctors, schedules, setSchedules, isUnverified }) {
                 >
                   <div className="flex items-start gap-4 mb-4">
                     <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg flex-shrink-0">
-                      {doctor.last_name.charAt(0)}
+                      {doctor.first_name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-lg text-gray-800 truncate">

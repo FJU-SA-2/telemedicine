@@ -355,14 +355,14 @@ export default function AppointmentRecords() {
                         <div className="flex gap-2">
                         {/* 狀態 */}
                         <span
-                          className={`px-3 py-1 rounded-full text-sm font-semibold border ${getStatusColor(appointment.status)}`}
+                          className={`px-3 py-1 mb-2 rounded-full text-sm font-semibold border ${getStatusColor(appointment.status)}`}
                         >
                           {appointment.status}
                         </span>
 
                         {/* 預約類型 */}
                         <span
-                          className={`px-3 py-1 rounded-full text-sm font-semibold border ${getScheduleTypeColor(appointment.schedule_type)}`}
+                          className={`px-3 py-1 mb-2 rounded-full text-sm font-semibold border ${getScheduleTypeColor(appointment.schedule_type)}`}
                         >
                           {getScheduleTypeText(appointment.schedule_type)}
                         </span>

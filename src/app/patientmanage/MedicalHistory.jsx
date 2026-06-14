@@ -133,7 +133,7 @@ export default function MedicalHistory({ patientId }) {
               {isGeneratingOverall ? (
                 <div className="flex items-center gap-2 text-gray-400 text-sm py-4 justify-center">
                   <RefreshCw size={18} className="animate-spin text-purple-400" />
-                  <span>GPT-4o 正在分析所有就診紀錄...</span>
+                  <span>正在分析所有就診紀錄...</span>
                 </div>
               ) : (
                 <p className="text-gray-700 text-sm whitespace-pre-wrap leading-relaxed">{overallSummary}</p>
