@@ -13,7 +13,7 @@ export default function PatientDetailModal({ patient, onClose }) {
     async function fetchPatientDetail() {
       try {
         setLoading(true);
-        const res = await fetch(`/api/doctors/patients/${patient.patient_id}`, {
+        const res = await fetch(`/api/doctors/patients?id=${patient.patient_id}`, {
           credentials: 'include'
         });
         if (res.ok) {

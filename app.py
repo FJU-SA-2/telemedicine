@@ -5639,6 +5639,79 @@ def get_mechanism_doctor_schedules(doctor_id):  # 改這行
         cursor.close()
         db.close()
 
+
+# ── 醫師端：我的患者列表 & 詳情 ────────────────────────────────────────
+
+@app.route('/api/doctors/patients', methods=['GET'])
+def get_doctor_patients():
+    if 'user_id' not in session or session.get('role') != 'doctor':
+        return jsonify({'error': '未授權'}), 401
+    doctor_id = session.get('doctor_id')
+    if not doctor_id:
+        return jsonify({'error': '無法獲取醫師資訊'}), 400
+
+    patient_id = request.args.get('id')
+    from datetime import date
+    today = date.today().isoformat()
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    try:
+        if patient_id:
+            # 單一患者詳情
+            cursor.execute(
+                "SELECT 1 FROM appointments WHERE patient_id=%s AND doctor_id=%s LIMIT 1",
+                (patient_id, doctor_id)
+            )
+            if not cursor.fetchone():
+                return jsonify({'error': '無權限查看此患者'}), 403
+
+            cursor.execute("""
+                SELECT p.*,
+                  (SELECT COUNT(*) FROM appointments
+                   WHERE patient_id=p.patient_id AND doctor_id=%s AND status='已完成') AS total_appointments,
+                  (SELECT MAX(appointment_date) FROM appointments
+                   WHERE patient_id=p.patient_id AND doctor_id=%s AND status='已完成' AND appointment_date<=%s) AS last_appointment_date
+                FROM patient p WHERE p.patient_id=%s
+            """, (doctor_id, doctor_id, today, patient_id))
+            pt = cursor.fetchone()
+            if not pt:
+                return jsonify({'error': '找不到患者'}), 404
+            for k in ['date_of_birth', 'last_appointment_date', 'created_at', 'updated_at']:
+                if pt.get(k):
+                    pt[k] = str(pt[k])[:10]
+            pt['total_appointments'] = int(pt.get('total_appointments') or 0)
+            return jsonify({'patient': pt, 'history': []})
+
+        # 患者列表
+        cursor.execute("""
+            SELECT DISTINCT
+              p.patient_id, p.first_name, p.last_name, p.gender, p.date_of_birth,
+              p.phone_number, p.address, p.id_number, p.smoking_status,
+              p.drug_allergies, p.medical_history, p.emergency_contact_name, p.emergency_contact_phone,
+              (SELECT COUNT(*) FROM appointments
+               WHERE patient_id=p.patient_id AND doctor_id=%s AND status='已完成') AS total_appointments,
+              (SELECT MAX(appointment_date) FROM appointments
+               WHERE patient_id=p.patient_id AND doctor_id=%s AND status='已完成' AND appointment_date<=%s) AS last_appointment_date
+            FROM patient p
+            INNER JOIN appointments a ON p.patient_id=a.patient_id
+            WHERE a.doctor_id=%s AND a.status='已完成'
+            ORDER BY last_appointment_date DESC
+        """, (doctor_id, doctor_id, today, doctor_id))
+        patients = cursor.fetchall()
+        for p in patients:
+            for k in ['date_of_birth', 'last_appointment_date']:
+                if p.get(k):
+                    p[k] = str(p[k])[:10]
+            p['total_appointments'] = int(p.get('total_appointments') or 0)
+        return jsonify(patients)
+    except Exception as e:
+        print(f"get_doctor_patients 錯誤: {e}")
+        return jsonify({'error': '伺服器錯誤'}), 500
+    finally:
+        cursor.close()
+        db.close()
+
 # ── 患者管理 ──────────────────────────────────────────────────────────
 
 @app.route('/api/mechanism/patients', methods=['GET', 'POST'])

@@ -331,8 +331,8 @@ export default function Page() {
     };
 
     fetchAppointments();
-    const interval = setInterval(fetchAppointments, 60000); // 每分鐘更新
-    return () => clearInterval(interval);
+    // const interval = setInterval(fetchAppointments, 60000); // 每分鐘更新
+    // return () => clearInterval(interval);
   }, []);
 
   const MAX_FEATURED_ITEMS = 11;

@@ -509,7 +509,7 @@ export default function HomePage() {
 
         const resDoctors = await fetch("/api/doctors");
         const doctorsData = await resDoctors.json();
-        setDoctors(doctorsData);
+        setDoctors(Array.isArray(doctorsData) ? doctorsData : []);
 
         const resSchedules = await fetch("/api/schedules");
         const schedulesData = await resSchedules.json();
